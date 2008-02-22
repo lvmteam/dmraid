@@ -1,7 +1,7 @@
 
--- dmraid 1.0.0.rc12 TODO --					2006.09.19
+-- dmraid 1.0.0.rc14 TODO --					2006.11.08
 
-o use kpartx instead of my own metadata format handlers
+o use kpartx instead of my own DOS metadata format handler
 
 o more enhancements for RAID set consistency checks
 

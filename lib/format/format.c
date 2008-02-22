@@ -18,7 +18,7 @@
  * Comment next line out to avoid pre-registration
  * checks on metadata format handlers.
  */
-#define	CHECK_FORMAT_HANDLER
+// #define	CHECK_FORMAT_HANDLER
 #ifdef	CHECK_FORMAT_HANDLER
 /*
  * Check that mandatory members of a metadata form handler are present.

@@ -353,7 +353,7 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 
 	if (ddf1->adapter &&
 	    ddf1->adapter->pci_vendor == PCI_VENDOR_ID_ADAPTEC2) {
-		log_notice(lc, "%s: Adaptec mode discvered on %s",
+		log_notice(lc, "%s: Adaptec mode discovered on %s",
 			   handler, di->path);
 		ddf1->adaptec_mode = 1;
 	}
@@ -682,7 +682,7 @@ static uint64_t get_size(struct lib_context *lc, struct ddf1 *ddf1,
 			 struct ddf1_config_record *cr,
 			 struct ddf1_phys_drive *pd)
 {
-	if (cr)
+	if (cr && cr->sectors)
 		/* Some Adaptec controllers need this clamping. */
 		return type(lc, ddf1, cr) == t_raid0 ?
 		       cr->sectors - cr->sectors % stride(cr) : cr->sectors;

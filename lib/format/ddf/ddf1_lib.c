@@ -57,7 +57,9 @@ uint16_t ddf1_cr_off_maxpds_helper(struct ddf1 *ddf1)
 	struct ddf1_header *h = ddf1->primary;
 
 	/* The 0xFFFF nonsense is a weird Adaptec quirk */
-	return (h->max_primary_elements == 0xFFFF && ddf1->adaptec_mode) ?
+//	bz211016
+//	return (h->max_primary_elements == 0xFFFF && ddf1->adaptec_mode) ?
+	return (h->max_primary_elements == 0xFFFF) ?
 		h->max_phys_drives : h->max_primary_elements;
 }
 

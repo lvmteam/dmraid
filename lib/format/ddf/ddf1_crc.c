@@ -16,10 +16,50 @@
 #include "ddf1.h"
 #include "ddf1_crc.h"
 #include "ddf1_lib.h"
-#include "zlib.h"
 
 #define DM_BYTEORDER_SWAB
 #include <datastruct/byteorder.h>
+
+/*
+ * CRC table code to avoid linking to zlib, because Ubuntu has
+ * problems with that plus this additionally saves space.
+ */
+
+/* Make the table for a fast CRC. */
+#define	CRC_TABLE_SIZE	256
+static inline void crc_table_init(uint32_t *crc_table)
+{
+	static int new = 1; /* Flag for table not yet computed. */
+
+	if (new) {
+		uint32_t c, n, k;
+
+		for (new = n = 0; n < CRC_TABLE_SIZE; *(crc_table++) = c, n++) {
+			for (c = n, k = 0; k < 8; k++)
+				c = (c & 1) ? (c >> 1) ^ 0xEDB88320L : c >> 1;
+		}
+	}
+}
+
+/*
+ * Update a running CRC with the bytes buf[0..len-1] -- the CRC
+ * should be initialized to all 1's, and the transmitted value
+ * is the 1's complement of the final running CRC (see the
+ * crc() routine below).
+ */
+/* Return the CRC of the bytes buf[0..len-1]. */
+static uint32_t crc(uint32_t crc, unsigned char *buf, int len)
+{
+	int n;
+	static uint32_t crc_table[CRC_TABLE_SIZE]; /* CRCs of 8-bit messages. */
+
+	crc_table_init(crc_table);
+	for (n = 0; n < len; n++)
+		crc = crc_table[(crc ^ buf[n]) & (CRC_TABLE_SIZE - 1)] ^
+		      (crc >> 8);
+
+	return crc ^ 0xFFFFFFFFL;
+}
 
 /* CRC info for various functions below */
 struct crc_info {
@@ -32,22 +72,23 @@ struct crc_info {
 /* Compute the checksum of a table */
 static uint32_t do_crc32(struct lib_context *lc, struct crc_info *ci)
 {
-	uint32_t old_csum = *ci->crc, ret = crc32(0, NULL, 0); /* Init CRC */
+	uint32_t old_csum = *ci->crc, ret = 0xFFFFFFFF;
 
-	*ci->crc = 0xFFFFFFFF;
-	ret = crc32(ret, ci->p, ci->size); /* zlib */
+	*ci->crc = ret;
+	ret = crc(ret, ci->p, ci->size);
 	*ci->crc = old_csum;
 	return ret;
 }
 
+/* Return VD record size. */
 static inline size_t record_size(struct ddf1 *ddf1)
 {
 	return ddf1->primary->vd_config_record_len * DDF1_BLKSIZE;
 }
 
-#define CRC32(postfix, record_type, macro) \
-static int crc32_ ## postfix(struct lib_context *lc, struct dev_info *di, \
-			     struct ddf1 *ddf1, int idx) \
+#define CRC32(suffix, record_type, macro) \
+static int crc32_ ## suffix(struct lib_context *lc, struct dev_info *di, \
+			    struct ddf1 *ddf1, int idx) \
 { \
 	struct record_type *r = macro(ddf1, idx); \
 	struct crc_info ci = { \
@@ -86,8 +127,9 @@ static int check_crc(struct lib_context *lc, struct dev_info *di,
 
 	crc32 = do_crc32(lc, ci);
 	if (*ci->crc != crc32)
-		log_warn(lc, "%s: %s with CRC %X, expected %X on %s",
+		log_print(lc, "%s: %s with CRC %X, expected %X on %s",
 			 HANDLER, ci->text, crc32, *ci->crc, di->path);
+	
 	
 	return 1;
 
@@ -159,7 +201,7 @@ static int all_crcs(struct lib_context *lc, struct dev_info *di,
 		}
 	}
 
-	return type == CHECK ? ret & check_cfg_crc(lc, di, ddf1) :
+	return type == CHECK ? (ret & check_cfg_crc(lc, di, ddf1)) :
 			       update_cfg_crc(lc, di, ddf1);
 }
 
