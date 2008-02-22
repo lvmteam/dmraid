@@ -1,0 +1,156 @@
+#
+# Copyright (C) 2004-2005  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
+#
+# See file LICENSE at the top of this source tree for license information.
+#
+
+SHELL = /bin/sh
+
+@SET_MAKE@
+
+CC = @CC@
+RANLIB = @RANLIB@
+SHELL = /bin/sh
+INSTALL = @INSTALL@
+LN_S = @LN_S@
+LIBS = @LIBS@
+CFLAGS += @CFLAGS@
+CLDFLAGS += @CLDFLAGS@
+LDFLAGS += @LDFLAGS@
+LD_DEPS += @LD_DEPS@
+SOFLAG += @SOFLAG@
+
+# Setup directory variables
+prefix = $(DESTDIR)@prefix@
+exec_prefix = $(DESTDIR)@exec_prefix@
+bindir = @bindir@
+ifeq ("@KLIBC@", "no")
+  libdir = @libdir@
+  sbindir = @sbindir@
+  includedir = @includedir@
+  infodir = @infodir@
+  mandir = @mandir@
+else
+  libdir = $(DESTDIR)@KLIBC_LIB_DIR@
+  sbindir = $(DESTDIR)@KLIBC_SBIN_DIR@
+  includedir = $(DESTDIR)@KLIBC_INCLUDE_DIR@
+  infodir = @infodir@
+  mandir = @mandir@
+endif
+
+
+# setup misc variables
+# define the ownership variables for the binaries and man pages
+OWNER = @OWNER@
+GROUP = @GROUP@
+DMRAID_LIB_VERSION = @DMRAID_LIB_VERSION@
+
+# The number of jobs to run, if blank, defaults to the make standard
+ifndef MAKEFLAGS
+MAKEFLAGS = @JOBS@
+endif
+
+SUFFIXES=.c .o .so .a
+
+CFLAGS+=-fPIC -Wall -Wundef -Wcast-align -Wwrite-strings -Winline
+
+ifeq ("@KLIBC@", "yes")
+  # These ones make klibc compiles very loud
+  CFLAGS+=-Wshadow -Wmissing-prototypes -Wmissing-declarations -Wnested-externs
+endif
+
+ifeq ("@DMRAID_TEST@", "yes")
+  CFLAGS+=-DDMRAID_TEST
+endif
+
+ifeq ("@DEBUG@", "yes")
+  CFLAGS+=-g -fno-omit-frame-pointer -DDEBUG
+else
+  ifeq ("@KLIBC@", "no")
+    CFLAGS+=-O2
+  else
+    CFLAGS+=-Os
+  endif
+endif
+
+ifeq ("@DEBUG_MALLOC@", "yes")
+  CFLAGS+=-DDEBUG_MALLOC
+endif
+
+CFLAGS+=-D_LARGEFILE64_SOURCE
+
+INCLUDES+=-I. -I$(top_srcdir)/include -I$(top_srcdir)/lib
+
+STRIP=
+
+ifdef DESTDIR
+  INCLUDES+=-I$(DESTDIR)/usr/include
+endif
+
+DEPS=$(top_srcdir)/make.tmpl $(top_srcdir)/tools/VERSION Makefile
+
+OBJECTS=$(SOURCES:%.c=%.o)
+
+SUBDIRS.install := $(SUBDIRS:=.install)
+SUBDIRS.remove := $(SUBDIRS:=.remove)
+SUBDIRS.clean := $(SUBDIRS:=.clean)
+SUBDIRS.distclean := $(SUBDIRS:=.distclean)
+
+.PHONY: all install distclean clean
+.PHONY: $(SUBDIRS) $(SUBDIRS.install) $(SUBDIRS.clean) $(SUBDIRS.distclean)
+.PHONY: $(SUBDIRS.remove)
+
+all: $(SUBDIRS) $(TARGETS)
+
+install: all $(SUBDIRS.install)
+
+remove: $(SUBDIRS.remove)
+
+$(SUBDIRS):
+	$(MAKE) -C $@
+
+$(SUBDIRS.install): $(SUBDIRS)
+	$(MAKE) -C $(@:.install=) install
+
+$(SUBDIRS.remove): $(SUBDIRS)
+	$(MAKE) -C $(@:.remove=) remove
+
+$(SUBDIRS.clean):
+	-$(MAKE) -C $(@:.clean=) clean
+
+$(SUBDIRS.distclean):
+	-$(MAKE) -C $(@:.distclean=) distclean
+
+$(TARGETS): $(OBJECTS)
+
+%.o: %.c
+	$(CC) -MM -MF ${@:%.o=%.d} $(INCLUDES) $(CFLAGS) $<; \
+	$(CC) -c $(INCLUDES) $(CFLAGS) $< -o $@
+
+%.so: $(OBJECTS) .export.sym
+
+%.so: $(OBJECTS)
+	$(CC) -shared -Wl,-soname,$(notdir $@).$(DMRAID_LIB_VERSION) \
+	-Wl,--version-script,.export.sym $(OBJECTS) -o $@
+
+$(LIB_STATIC): $(OBJECTS)
+	$(RM) $@
+	$(AR) r $@ $(OBJECTS)
+	$(RANLIB) $@
+
+clean: $(SUBDIRS.clean)
+	$(RM) $(OBJECTS) $(TARGETS) $(CLEAN_TARGETS) $(SOURCES:%.c=%.d)
+
+distclean: $(SUBDIRS.distclean)
+	$(RM) $(OBJECTS) $(TARGETS) $(CLEAN_TARGETS) $(SOURCES:%.c=%.d) \
+	      cscope.out \
+	      config.cache config.log config.status \
+	      Makefile make.tmpl core tools/version.h
+
+ifneq ($(MAKECMDGOALS),clean)
+  ifneq ($(MAKECMDGOALS),distclean)
+    ifdef SOURCES
+       -include $(SOURCES:.c=.d)
+    endif
+  endif
+endif

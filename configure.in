@@ -1,0 +1,244 @@
+#
+# Copyright (C) 2004-2005  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
+#
+# See file LICENSE at the top of this source tree for license information.
+#
+
+# configure.in for dmraid
+
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(lib/device/dev-io.h)
+
+dnl setup the directory where autoconf has auxilary files
+AC_CONFIG_AUX_DIR(autoconf) 
+
+dnl Get system type
+AC_CANONICAL_SYSTEM
+
+dnl Checks for programs.
+AC_PROG_AWK
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
+AC_PROG_RANLIB
+
+dnl Enables linking to klibc
+dnl We need to do this before header checks, as we need to set CC
+AC_CHECK_KLIBC
+
+dnl Checks for CC
+dnl This should be done after klibc check, as CC is changed
+AC_PROG_CC
+
+dnl Checks for header files.
+AC_HEADER_DIRENT
+AC_HEADER_STDC
+AC_CHECK_HEADERS(fcntl.h sys/ioctl.h unistd.h)
+if test x$KLIBC != xyes; then
+	AC_CHECK_HEADERS(malloc.h)
+fi
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_C_INLINE
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_STRUCT_ST_RDEV
+AC_HEADER_TIME
+
+dnl Set system type flags
+dnl We do not want this with klibc
+if test x$KLIBC != xyes; then
+	case "$host_os" in
+		linux*)
+			CFLAGS=-O2
+			CLDFLAGS="-Wl,--version-script,.export.sym"
+			LD_DEPS=".export.sym"
+			SOFLAG="-shared" ;;
+	esac
+fi
+
+dnl -- prefix is /usr by default, the exec_prefix default is setup later
+AC_PREFIX_DEFAULT(/usr)
+
+dnl -- setup the ownership of the files
+AC_ARG_WITH(user,
+  [  --with-user=USER        Set the owner of installed files ],
+  [ OWNER="$withval" ],
+  [ OWNER="root" ])
+
+dnl -- setup the group ownership of the files
+AC_ARG_WITH(group,
+  [  --with-group=GROUP      Set the group owner of installed files ],
+  [ GROUP="$withval" ],
+  [ GROUP="root" ])
+
+echo $ac_n "checking whether to enable debugging""... $ac_c" 1>&6
+dnl Enable Debugging
+AC_ARG_ENABLE(debug, [  --enable-debug          Enable debugging],  \
+DEBUG=yes, DEBUG=no)
+echo "$ac_t""$DEBUG" 1>&6
+
+echo $ac_n "checking whether to enable malloc debugging""... $ac_c" 1>&6
+dnl Enable malloc debugging
+AC_ARG_ENABLE(debug_malloc, [  --enable-debug_malloc   Enable malloc debugging],  \
+DEBUG_MALLOC=yes, DEBUG_MALLOC=no)
+echo "$ac_t""$DEBUG" 1>&6
+
+dnl Enables linking to dietlibc
+AC_ARG_ENABLE(dietlibc, [  --enable-dietlibc       Use this to link the tools to dietlibc ], DIETLIBC=yes, DIETLIBC=no)
+
+if test x$DIETLIBC = xyes; then
+	if test x$KLIBC = xyes; then
+		AC_MSG_ERROR(You can' enable both dietlibc and klibc!)
+		exit 1
+	fi
+        CC="diet gcc"
+	FLAVOUR="dietlibc "
+fi
+
+AC_ARG_ENABLE(jobs,  [  --enable-jobs=NUM       Number of jobs to run simultaneously], JOBS=-j$enableval, JOBS=-j1)
+
+dnl Enables linking to libselinux
+AC_ARG_ENABLE(libselinux, [  --enable-libselinux     Use this to link the tools to libselinux ], LIBSELINUX=$enableval, LIBSELINUX=no)
+
+dnl Enables linking to libselinux
+AC_ARG_ENABLE(libsepol, [  --enable-libsepol       Use this to link the tools to libsepol ], LIBSEPOL=$enableval, LIBSEPOL=no)
+
+dnl Enables mini binary
+AC_ARG_ENABLE(mini, [  --enable-mini           Use this to create a minimal binrary suitable
+                          for early boot environments],  DMRAID_MINI=$enableval, DMRAID_MINI=no)
+
+echo $ac_n "checking whether to disable native metadata logging""... $ac_c" 1>&6
+dnl Disable native metadata logging
+AC_ARG_ENABLE(native_log, [  --disable-native_log    Disable native metadata logging. Default is enabled],  \
+DMRAID_NATIVE_LOG=$enableval, DMRAID_NATIVE_LOG=yes)
+echo "$ac_t""$DMRAID_NATIVE_LOG" 1>&6
+
+dnl Enables staticly linked tools
+AC_ARG_ENABLE(static_link, [  --enable-static_link    Use this to link the tools to the dmraid and devmapper
+                          libraries statically.  Default is dynamic linking],  STATIC_LINK=$enableval, STATIC_LINK=no)
+
+dnl Enables shared libdmraid
+AC_ARG_ENABLE(shared_lib,
+                           [  --enable-shared_lib     Use this to generate shared libdmraid and link the
+                          tools to it. Default is static libdmraid],  LIB_SO=$enableval, LIB_SO=no)
+
+echo $ac_n "checking whether to disable testing with mapped devices""... $ac_c" 1>&6
+dnl Disable testing with mapped devices
+AC_ARG_ENABLE(testing, [  --disable-testing       Disable testing with mapped devices],  \
+DMRAID_TEST=no, DMRAID_TEST=yes)
+
+echo "$ac_t""$DEBUG" 1>&6
+
+if test x$LIB_SO = xyes; then
+	FLAVOUR="shared "
+fi
+
+if test x$STATIC_LINK = xyes; then
+	FLAVOUR="static "
+	if test x$LIB_SO = xyes; then
+		AC_MSG_ERROR(You can' enable both shared_lib and static_link!)
+		exit 1
+	fi
+fi
+
+if test x$DMRAID_MINI = xyes; then
+        CFLAGS="$CFLAGS -DDMRAID_MINI"
+	FLAVOUR="${FLAVOUR}mini "
+else
+	if test x$DMRAID_NATIVE_LOG = xno; then
+		FLAVOUR="${FLAVOUR}no_native_log "
+	else
+        	CFLAGS="$CFLAGS -DDMRAID_NATIVE_LOG"
+	fi
+fi
+
+if test x$DEBUG = xyes; then
+	FLAVOUR="${FLAVOUR}debug "
+fi
+
+if test x$DEBUG_MALLOC = xyes; then
+	FLAVOUR="${FLAVOUR}debug_malloc "
+fi
+
+dnl Mess with default exec_prefix
+if [[ "x$exec_prefix" = xNONE -a "x$prefix" = xNONE ]];
+ then  exec_prefix="";
+fi;
+
+dnl Checks for library functions.
+AC_PROG_GCC_TRADITIONAL
+AC_TYPE_SIGNAL
+AC_FUNC_VPRINTF
+AC_CHECK_FUNCS(mkdir rmdir uname)
+
+dnl check for termcap (Shamelessly copied from parted 1.4.17)
+if test x$READLINE = xyes; then
+	AC_SEARCH_LIBS(tgetent, ncurses curses termcap termlib, ,
+		AC_MSG_ERROR(
+termcap could not be found which is required for the
+--enable-readline option (which is enabled by default).  Either disable readline
+support with --disable-readline or download and install termcap from:
+	ftp.gnu.org/gnu/termcap
+Note: if you are using precompiled packages you will also need the development
+  package as well (which may be called termcap-devel or something similar).
+Note: (n)curses also seems to work as a substitute for termcap.  This was
+  not found either - but you could try installing that as well.
+)
+	exit
+	)
+fi
+
+dnl Klibc do not currently support getopt_long, but the test passes anyhow as
+dnl it calls gcc -E without considering CFLAGS ...
+if test x$KLIBC != xyes; then
+	dnl Check for getopt
+	AC_CHECK_HEADERS(getopt.h, CFLAGS="$CFLAGS -DHAVE_GETOPTLONG")
+fi
+
+if test "-f tools/VERSION"; then
+  DMRAID_VERSION="`cat tools/VERSION`"
+else
+  DMRAID_VERSION="Unknown"
+fi
+
+if test "-f lib/version.h"; then
+  DMRAID_LIB_VERSION="`sed --quiet 's/^.*\(DMRAID_LIB_VERSION\)[[^_]].*"\(.*\)"/\2/p' lib/version.h`"
+else
+  DMRAID_LIB_VERSION="Unknown"
+fi
+
+AC_SUBST(CC)
+AC_SUBST(CFLAGS)
+AC_SUBST(CLDFLAGS)
+AC_SUBST(DEBUG)
+AC_SUBST(DEBUG_MALLOC)
+AC_SUBST(DMRAID_TEST)
+AC_SUBST(DMRAID_VERSION)
+AC_SUBST(DMRAID_LIB_VERSION)
+AC_SUBST(DIETLIBC)
+AC_SUBST(GROUP)
+AC_SUBST(JOBS)
+AC_SUBST(LD_DEPS)
+AC_SUBST(FLAVOUR)
+AC_SUBST(LIBS)
+AC_SUBST(LIBSELINUX)
+AC_SUBST(LIBSEPOL)
+AC_SUBST(LIB_SO)
+AC_SUBST(OWNER)
+AC_SUBST(SOFLAG)
+AC_SUBST(STATIC_LINK)
+
+dnl First and last lines should not contain files to generate in order to 
+dnl keep utility scripts running properly
+AC_OUTPUT( 								\
+include/Makefile						 	\
+lib/Makefile							 	\
+man/Makefile								\
+tools/Makefile								\
+tools/version.h								\
+Makefile								\
+make.tmpl                                                               \
+)
