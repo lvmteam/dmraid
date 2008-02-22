@@ -987,8 +987,7 @@ int erase_metadata(struct lib_context *lc)
  */
 enum type rd_type(struct types *t, unsigned int type)
 {
-	for (; t->type && t->type != type; t++);
-
+	for (; t->unified_type != t_undef && t->type != type; t++);
 	return t->unified_type;
 }
 
@@ -1000,7 +999,6 @@ enum type rd_type(struct types *t, unsigned int type)
 enum status rd_status(struct states *s, unsigned int status, enum compare cmp)
 {
 	for (; s->status && (cmp == AND ? !(s->status & status) : (s->status != status)); s++);
-
 	return s->unified_status;
 }
 

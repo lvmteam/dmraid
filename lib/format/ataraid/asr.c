@@ -114,6 +114,7 @@ static enum type type(struct asr_raid_configline *cl)
 		{ 0, t_undef},
 	};
 
+printf("cl->raidtype=%d rd_type=%d\n", cl->raidtype, rd_type(types, (unsigned int) cl->raidtype));
 	return cl ? rd_type(types, (unsigned int) cl->raidtype) : t_undef;
 }
 

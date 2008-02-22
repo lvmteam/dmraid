@@ -170,8 +170,7 @@ static int is_pdc(struct lib_context *lc, struct dev_info *di, void *meta)
 	 * No we've got the PDC magic string veryfied, we can
 	 * check that the rest of the metadata is valid.
 	 */
-	if (pdc->magic_0 == pdc->raid.magic_0 &&
-	    pdc->raid.total_disks &&
+	if (pdc->raid.total_disks &&
 	    pdc->raid.total_disks < PDC_MAXDISKS)
 		return 1;
 
