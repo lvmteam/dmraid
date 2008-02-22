@@ -13,5 +13,8 @@ int dm_create(struct lib_context *lc, struct raid_set *rs, char *table);
 int dm_remove(struct lib_context *lc, struct raid_set *rs);
 int dm_status(struct lib_context *lc, struct raid_set *rs);
 int dm_version(struct lib_context *lc, char *version, size_t size);
+int dm_suspend(struct lib_context *lc, struct raid_set *rs);
+int dm_resume(struct lib_context *lc, struct raid_set *rs);
+int dm_reload(struct lib_context *lc, struct raid_set *rs, char *table);
 
 #endif

@@ -1,4 +1,6 @@
 /*
+ * NVidia NVRAID metadata format handler.
+ *
  * Copyright (C) 2004      NVidia Corporation. All rights reserved.
  * Copyright (C) 2004,2005 Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
@@ -6,9 +8,6 @@
  * See file LICENSE at the top of this source tree for license information.
  */
 
-/*
- * NVidia NVRAID metadata format handler.
- */
 #define	HANDLER "nvidia"
 
 #include "internal.h"
@@ -62,45 +61,39 @@ static char *name(struct lib_context *lc, struct raid_dev *rd,
 	return ret;
 }
 
-/* Mapping of nv types to generic types */
-static struct types types[] = {
-	{ NV_LEVEL_JBOD, t_linear },
-	{ NV_LEVEL_0, t_raid0 },
-	{ NV_LEVEL_1, t_raid1 },
-	{ NV_LEVEL_1_0, t_raid0 },	/* Treat as 0 here, add mirror later */
-	{ NV_LEVEL_3, t_raid4 },
-	{ NV_LEVEL_5_SYM, t_raid5_ls },
-        { NV_LEVEL_UNKNOWN, t_spare},	/* FIXME: UNKNOWN = spare ? */
-	/* FIXME: The ones below don't really map to anything ?? */
-	{ NV_LEVEL_10, t_undef },
-	{ NV_LEVEL_5, t_undef },    /* Asymmetric RAID 5 is not used */
-};
-
 static enum status status(struct nv *nv)
 {
-	if (NV_BROKEN(nv))
-		return s_broken;
-	
-	switch(nv->array.raidJobCode) {
-	case NV_IDLE:
-		return s_ok;
+	static struct states states[] = {
+		{ NV_IDLE, s_ok },
+		{ NV_SCDB_INIT_RAID, s_nosync },
+		{ NV_SCDB_SYNC_RAID, s_nosync },
+		{ NV_SCDB_REBUILD_RAID, s_inconsistent },
+		{ NV_SCDB_UPGRADE_RAID, s_inconsistent },
+		{ 0, s_undef },
+	};
 
-	case NV_SCDB_INIT_RAID:
-	case NV_SCDB_SYNC_RAID:
-		return s_nosync;
-
-	case NV_SCDB_REBUILD_RAID:
-	case NV_SCDB_UPGRADE_RAID:
-		return s_inconsistent;
-	}
-
-	return s_broken; 
+	return NV_BROKEN(nv) ?
+	       s_broken : rd_status(states, nv->array.raidJobCode, EQUAL);
 }
 
 /* Neutralize disk type using generic metadata type mapping function. */
 static enum type type(struct nv *nv)
 {
 	uint8_t stripeWidth = nv->array.stripeWidth;
+	/* Mapping of nv types to generic types */
+	static struct types types[] = {
+		{ NV_LEVEL_JBOD, t_linear },
+		{ NV_LEVEL_0, t_raid0 },
+		{ NV_LEVEL_1, t_raid1 },
+		/* Treat as 0 here, add mirror later */
+		{ NV_LEVEL_1_0, t_raid0 },
+		{ NV_LEVEL_3, t_raid4 },
+		{ NV_LEVEL_5_SYM, t_raid5_ls },
+	        { NV_LEVEL_UNKNOWN, t_spare},	/* FIXME: UNKNOWN = spare ? */
+		/* FIXME: The ones below don't really map to anything ?? */
+		{ NV_LEVEL_10, t_undef },
+		{ NV_LEVEL_5, t_undef },    /* Asymmetric RAID 5 is not used */
+	};
 
 	/*
 	 * FIXME: is there a direct way to decide what
@@ -426,7 +419,8 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 	rd->type   = type(nv);
 
 	rd->offset = NV_DATAOFFSET;
-	rd->sectors = rd->meta_areas->offset;
+	if (!(rd->sectors = rd->meta_areas->offset))
+		return log_zero_sectors(lc, di->path, handler);
 
         return (rd->name = name(lc, rd, 1)) ? 1 : 0;
 }

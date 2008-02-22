@@ -17,6 +17,7 @@
 #include <dmraid/display.h>
 #include <dmraid/format.h>
 #include <dmraid/metadata.h>
+#include <dmraid/reconfig.h>
 
 /*
  * Library init/exit
@@ -43,6 +44,7 @@ extern unsigned int count_devices(struct lib_context *lc, enum dev_type type);
 extern int discover_devices(struct lib_context *lc, char **devnodes);
 extern void discover_raid_devices(struct lib_context *lc, char **devices);
 extern void discover_partitions(struct lib_context *lc);
+extern int write_dev(struct lib_context *lc, struct raid_dev *rd, int erase);
 
 /*
  * Erase ondisk metadata.

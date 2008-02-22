@@ -1,4 +1,26 @@
 
+Changelog from dmraid 1.0.0.rc11 to 1.0.0.rc12		2006.09.22
+
+
+FIXES:
+------
+o sil.c: quorate() OBO fix
+o activate.c: handler() OBO fix
+o added log_zero_sectors() to various metadata format handlers
+
+FEATURES:
+---------
+o added SNIA DDF1 support (IBM)
+o added reload functionality to devmapper.c (IBM)
+o sil.[ch]: added JBOD support
+
+
+MISCELANIOUS:
+-------------
+o streamlined devmapper.c
+
+
+
 Changelog from dmraid 1.0.0.rc10 to 1.0.0.rc11		2006.05.16
 
 FIXES:

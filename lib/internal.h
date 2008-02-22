@@ -13,6 +13,7 @@
 #endif
 
 #include <ctype.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -34,6 +35,7 @@
 #include <dmraid/format.h>
 #include <dmraid/metadata.h>
 #include "activate/activate.h"
+#include <dmraid/reconfig.h>
 
 #ifndef	u_int16_t
 #define	u_int16_t	uint16_t

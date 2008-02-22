@@ -1,18 +1,14 @@
 
--- dmraid 1.0.0.rc11 TODO --					2006.05.15
+-- dmraid 1.0.0.rc12 TODO --					2006.09.19
+
+o use kpartx instead of my own metadata format handlers
 
 o more enhancements for RAID set consistency checks
 
 o neater -s output; something better than just paragraphs
   for super- and subsets ?
 
-o higher RAID levels above 1; main restriction to support these is
-  the need for device-mapper targets which map RAID4 and RAID5
-  (Alpha patch for device-mapper RAID4/RAID5 target on my people page now)
-
 o MD metadata format handler
-
-o SNIA DDF metadata format handler
 
 o enhance metadata write feature in order to be able to store state changes
   persistently; needs an event() method to inform the metadata handler about
@@ -23,9 +19,6 @@ o event daemon linked to libdmraid which keeps track of RAID device and set
   dmeventd coded; needs library for dmraid access
 
 o more cleanup and enhance debug and verbose output
-
-o support other partitions than MSDOS on Software RAID devices or
-  use kpartx instead ?
 
 o regular expressions for metadata format, RAID device and RAID set selection
 

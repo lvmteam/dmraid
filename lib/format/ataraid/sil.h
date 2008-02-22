@@ -50,6 +50,7 @@ struct sil {
 #define	SIL_T_RAID10	2
 #define	SIL_T_RAID5	16
 #define	SIL_T_SPARE	3
+#define	SIL_T_JBOD	255
 	int8_t		drives_per_striped_set;	/* 0x118 */
 	int8_t		striped_set_number;	/* 0x119 */
         int8_t		drives_per_mirrored_set;/* 0x11A */

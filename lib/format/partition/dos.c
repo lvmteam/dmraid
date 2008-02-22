@@ -143,6 +143,17 @@ static struct raid_set *_alloc_raid_set(struct lib_context *lc,
 	return rs;
 }
 
+/* Check sector vs. RAID device end */
+static int rd_check_end(struct lib_context *lc,
+			struct raid_dev *rd, uint64_t sector)
+{
+	if (sector > rd->di->sectors)
+		LOG_ERR(lc, 1, "%s: partition address past end of RAID device",
+		 	handler);
+
+	return 0;
+}
+
 /*
  * Allocate a DOS RAID device and a set.
  * Set the device up and add it to the set.
@@ -173,7 +184,9 @@ static int _create_rs_and_rd(struct lib_context *lc, struct raid_dev *rd,
 	r->offset = get_part_start(raw_part, sector);
 	r->sectors = (uint64_t) raw_part->length;
 
-	if (!(rs = _alloc_raid_set(lc, r)))
+	if (rd_check_end(lc, rd, r->offset) ||
+	    rd_check_end(lc, rd, r->offset + r->sectors) ||
+	    !(rs = _alloc_raid_set(lc, r)))
 		goto free_di;
 
 	list_add_tail(&r->devs, &rs->devs);
@@ -238,13 +251,13 @@ static int group_rd_extended(struct lib_context *lc, struct raid_dev *rd,
 	 * An entry pointing to the present logical partition.
 	 * It is an offset from the present partition table location.
 	 */
-	p1 = &dos->partitions[0];
+	p1 = dos->partitions;
 	
 	/*
 	 * An entry pointing to the next logical partition table.
 	 * It is an offset from the main extended partition start.
 	 */
-	p2 = &dos->partitions[1];
+	p2 = dos->partitions + 1;
 
 	/* If it is a partition, add it to the set */
 	if (is_partition(p1, start_sector) &&
@@ -301,8 +314,12 @@ static int group_rd(struct lib_context *lc, struct raid_dev *rd,
 		part_end   = part_start + raw_table_entry->length;
 		
 		/* Avoid infinite recursion (mostly). */
-		if (part_start == start_sector ||
-		    part_end > rd->sectors)
+		if (part_start == start_sector)
+			continue;
+
+		/* Check bogus partition starts + ends */
+		if (rd_check_end(lc, rd, part_start) ||
+		    rd_check_end(lc, rd, part_end))
 			continue;
 
 		/*
@@ -365,7 +382,7 @@ static struct dmraid_format dos_format = {
 	.check	= dos_check,
 	.events	= NULL, /* Not supported */
 #ifdef DMRAID_NATIVE_LOG
-	.log	= NULL, /* Not supported */
+	.log	= NULL, /* Not supported; use fdisk and friends */
 #endif
 };
 

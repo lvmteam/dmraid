@@ -1,13 +1,12 @@
 /*
+ * Silicon Image Medley ATARAID metadata format handler.
+ *
  * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
  * See file LICENSE at the top of this source tree for license information.
  */
 
-/*
- * Silicon Image Medley ATARAID metadata format handler.
- */
 #define	HANDLER	"sil"
 
 #include "internal.h"
@@ -58,31 +57,30 @@ static char *name(struct lib_context *lc, struct raid_dev *rd,
  */
 static enum status status(struct sil *sil)
 {
-	switch (sil->mirrored_set_state) {
-	case SIL_OK:
-	case SIL_MIRROR_SYNC:
-		return s_ok;
+	struct states states[] = {
+		{ SIL_OK, s_ok },
+		{ SIL_MIRROR_SYNC, s_ok },
+		{ SIL_MIRROR_NOSYNC, s_nosync },
+		{ 0, s_broken },
+	};
 
-	case SIL_MIRROR_NOSYNC:
-		return s_nosync;
-	}
-
-	return s_broken;
+	return rd_status(states, sil->mirrored_set_state, EQUAL);
 }
-
-/* Mapping of SIL 680 types to generic types */
-static struct types types[] = {
-        { SIL_T_SPARE,  t_spare},
-        { SIL_T_RAID0,  t_raid0},
-        { SIL_T_RAID5, 	t_raid5_ls},
-        { SIL_T_RAID1,  t_raid1},
-        { SIL_T_RAID10, t_raid0},
-        { 0,            t_undef}
-};
 
 /* Neutralize disk type */
 static enum type type(struct sil *sil)
 {
+	/* Mapping of SIL 680 types to generic types */
+	static struct types types[] = {
+	        { SIL_T_SPARE,  t_spare},
+	        { SIL_T_JBOD,   t_linear},
+	        { SIL_T_RAID0,  t_raid0},
+	        { SIL_T_RAID5, 	t_raid5_ls},
+	        { SIL_T_RAID1,  t_raid1},
+	        { SIL_T_RAID10, t_raid0},
+	        { 0,            t_undef}
+	};
+
 	return rd_type(types, (unsigned int) sil->type);
 }
 
@@ -178,8 +176,6 @@ static void *sil_read_metadata(struct lib_context *lc, struct dev_info *di,
 
 	if (!(sils = dbg_malloc(AREAS * sizeof(*sils))))
 		goto out;
-
-	memset(sils, 0, AREAS * sizeof(*sils));
 
 	/* Read the 4 metadata areas. */
 	for (i = valid = 0; i < AREAS; i++) {
@@ -316,6 +312,7 @@ static int group_rd(struct lib_context *lc, struct raid_set *rs,
 	list_add_sorted(lc, &rs->devs, &rd->devs, dev_sort);
 
 	switch (sil->type) {
+	case SIL_T_JBOD:
 	case SIL_T_RAID0:
 	case SIL_T_RAID1:
 	case SIL_T_RAID5:
@@ -533,35 +530,37 @@ static uint64_t sectors(struct raid_dev *rd)
 static struct sil *quorate(struct lib_context *lc, struct dev_info *di,
 			   struct sil *sils[])
 {
-	unsigned int areas = 0, i, j;
-	struct sil *sil;
+	unsigned int areas = 0, i, ident = 0, j;
+	struct sil *sil = NULL, *tmp;
 	
 	/* Count valid metadata areas. */
-	while (areas < AREAS && sils[areas++]);
+	while (areas < AREAS && sils[areas])
+		areas++;
 
-	if (areas == AREAS)
-		goto out;
-
-	log_err(lc, "%s: only %u/%u metadata areas found on %s, %sing...",
-		handler, areas, AREAS, di->path, areas > 1 ? "elect" : "pick");
+	if (areas != AREAS)
+		log_err(lc, "%s: only %u/%u metadata areas found on "
+			    "%s, %sing...",
+			handler, areas, AREAS, di->path,
+			areas > 1 ? "elect" : "pick");
 
 	/* Identify maximum identical copies. */
 	for (i = 0; i < areas; i++) {
-		for (j = i + 1, sil = sils[i]; j < areas; j++) {
+		for (ident = 0, j = i + 1, sil = sils[i]; j < areas; j++) {
 			if (!memcmp(sil, sils[j], sizeof(*sil)))
-				goto end;
+				ident++;
 		}
+
+		if (ident > areas / 2);
+			break;
 	}
 
-   end:
-	if (i) {
-		sil = sils[0];
-		sils[0] = sils[i];
-		sils[i] = sil;
+	if (ident) {
+		tmp = sils[0];
+		sils[0] = sil;
+		sils[i] = tmp;
 	}
 
-   out:
-	return sils[0];
+	return sil;
 }
 
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,

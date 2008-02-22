@@ -60,9 +60,12 @@ static unsigned int get_type_index(enum type type)
 {
 	unsigned int ret = ARRAY_SIZE(ascii_type);
 
-	while (ret-- && !(type & ascii_type[ret].type));
+	while (ret--) {
+		if (type & ascii_type[ret].type)
+			return ret;
+	}
 
-	return ret;
+	return 0;
 }
 
 const char *get_type(struct lib_context *lc, enum type type)
@@ -83,7 +86,8 @@ static const char *get_stacked_type(void *v)
 					get_type_index(rs->type))
 			 - get_type_index(t_raid1);
 
-	return stacked_ascii_type[T_RAID0(rs) ? 1 : 0][t];
+	return stacked_ascii_type[T_RAID0(rs) ? 1 : 0]
+				 [t > t_raid0 ? t_undef : t];
 }
 
 /* Check, if a RAID set is stacked (ie, hierachical). */
@@ -120,7 +124,7 @@ const char *get_status(struct lib_context *lc, enum status status)
 static uint64_t add_sectors(struct raid_set *rs, uint64_t sectors,
 			    uint64_t add)
 {
-	add = round_down(add, rs->stride);
+	add = rs->stride ? round_down(add, rs->stride) : add;
 
 	if (T_RAID1(rs)) {
 		if (!sectors || sectors > add)
@@ -626,8 +630,7 @@ static struct raid_dev *dmraid_read(struct lib_context *lc,
 /*
  * Write RAID metadata to a device.
  */
-static int dmraid_write(struct lib_context *lc,
-			struct raid_dev *rd, int erase)
+int write_dev(struct lib_context *lc, struct raid_dev *rd, int erase)
 {
 	int ret = 0;
 	struct dmraid_format *fmt = rd->fmt;
@@ -813,6 +816,20 @@ struct dmraid_format *get_format(struct raid_set *rs)
 	return DEVS(rs) ? (RD_RS(rs))->fmt : NULL;
 }
 
+/* Find the set associated with a device */
+struct raid_set *get_raid_set(struct lib_context *lc, struct raid_dev *dev)
+{
+	struct raid_set *rs;
+	struct raid_dev *rd;
+
+	list_for_each_entry(rs, LC_RS(lc), list)
+		list_for_each_entry(rd, &rs->devs, devs)
+			if (dev == rd)
+				return rs;
+
+	return NULL;
+}
+
 /* Check metadata consistency of raid sets. */
 static void check_raid_sets(struct lib_context *lc)
 {
@@ -933,7 +950,7 @@ int write_set(struct lib_context *lc, void *v)
 		 * FIXME: does it make sense to try the rest of the
 		 *	  devices in case we fail writing one ?
 		 */
-		if (!dmraid_write(lc, rd, 0)) {
+		if (!write_dev(lc, rd, 0)) {
 			log_err(lc, "writing RAID device \"%s\", continuing",
 				rd->di->path);
 			ret = 0;
@@ -953,7 +970,7 @@ int erase_metadata(struct lib_context *lc)
 		if (yes_no_prompt(lc, "Do you really want to erase \"%s\" "
 				  "ondisk metadata on %s",
 				  rd->fmt->name, rd->di->path) &&
-		    !dmraid_write(lc, rd, 1)) {
+		    !write_dev(lc, rd, 1)) {
 			log_err(lc, "erasing ondisk metadata on %s",
 				rd->di->path);
 			ret = 0;
@@ -970,15 +987,27 @@ int erase_metadata(struct lib_context *lc)
  */
 enum type rd_type(struct types *t, unsigned int type)
 {
-	for (; t->type != type && t->unified_type != t_undef; t++);
+	for (; t->type && t->type != type; t++);
 
 	return t->unified_type;
 }
 
 /*
+ * Support function for metadata format handlers:
+ *
+ * Return neutralized RAID status for given metadata status
+ */
+enum status rd_status(struct states *s, unsigned int status, enum compare cmp)
+{
+	for (; s->status && (cmp == AND ? !(s->status & status) : (s->status != status)); s++);
+
+	return s->unified_status;
+}
+
+/*
  * Support function for metadata format handlers.
  *
- * Sort a an element into a list by optionally
+ * Sort an element into a list by optionally
  * using a metadata format handler helper function.
  */
 void list_add_sorted(struct lib_context *lc,

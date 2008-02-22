@@ -79,6 +79,7 @@ struct hpt37x {
        uint8_t        boot_protect;
        uint8_t        error_log_entries;
        uint8_t        error_log_index;  
+#define	HPT37X_MAX_ERRORLOG	32
        struct hpt37x_errorlog
        {
 	       uint32_t       timestamp;
@@ -90,7 +91,7 @@ struct hpt37x {
 	       uint8_t        status;
 	       uint8_t        sectors;
 	       uint32_t       lba;
-       } errorlog[32];
+       } errorlog[HPT37X_MAX_ERRORLOG];
        uint8_t        filler[60];
 } __attribute__ ((packed));
 #endif

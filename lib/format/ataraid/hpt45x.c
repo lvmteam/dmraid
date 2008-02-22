@@ -1,4 +1,6 @@
 /*
+ * Highpoint 45X ATARAID series metadata format handler.
+ *
  * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
@@ -6,8 +8,6 @@
  */
 
 /*
- * Highpoint 45X ATARAID metadata format handler.
- *
  * hpt45x_read(), hpt45x_group() and group_rd() profited from
  * Carl-Daniel Hailfinger's raiddetect code.
  */
@@ -65,18 +65,18 @@ static enum status status(struct hpt45x *hpt)
 	return hpt->magic == HPT45X_MAGIC_BAD ? s_broken : s_ok;
 }
 
-/* Mapping of HPT 45X types to generic types */
-static struct types types[] = {
-	{ HPT45X_T_SPAN, t_linear},
-	{ HPT45X_T_RAID0, t_raid0},
-	{ HPT45X_T_RAID1, t_raid1},
-/* FIXME: handle RAID 3+5 */
-	{ 0, t_undef}
-};
-
 /* Neutralize disk type */
 static enum type type(struct hpt45x *hpt)
 {
+	/* Mapping of HPT 45X types to generic types */
+	static struct types types[] = {
+		{ HPT45X_T_SPAN, t_linear},
+		{ HPT45X_T_RAID0, t_raid0},
+		{ HPT45X_T_RAID1, t_raid1},
+		/* FIXME: handle RAID 4+5 */
+		{ 0, t_undef},
+	};
+
 	return hpt->magic_0 ? rd_type(types, (unsigned int) hpt->type) :
 	       t_spare;
 }

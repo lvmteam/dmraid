@@ -35,22 +35,24 @@
 
 struct format_member {
 	const unsigned short offset;
-	const unsigned char all;
-	const unsigned char method;
+	const unsigned char flags;
 	const char *msg;
 } __attribute__ ((packed));
 
+enum { FMT_ALL = 0x01, FMT_METHOD = 0x02 } format_flags;
+#define	IS_FMT_ALL(member)	(member->flags & FMT_ALL)
+#define	IS_FMT_METHOD(member)	(member->flags & FMT_METHOD)
 static struct format_member format_member[] = {
-	{ offset(name),   1, 0, "name" },
-	{ offset(descr),  1, 0, "description" },
-	{ offset(caps),   0, 0, "capabilities" },
-	{ offset(read),   1, 1, "read" },
-	{ offset(write),  0, 1, "write" },
-	{ offset(group),  1, 1, "group" },
-	{ offset(check),  1, 1, "check" },
-	{ offset(events), 0, 0, "events array" },
+	{ offset(name), FMT_ALL, "name" },
+	{ offset(descr), FMT_ALL, "description" },
+	{ offset(caps), 0, "capabilities" },
+	{ offset(read), FMT_ALL|FMT_METHOD, "read" },
+	{ offset(write), FMT_METHOD, "write" },
+	{ offset(group), FMT_ALL|FMT_METHOD, "group" },
+	{ offset(check), FMT_ALL|FMT_METHOD, "check" },
+	{ offset(events), 0, "events array" },
 #ifdef	NATIVE_LOG
-	{ offset(log),    0, 1, "log" },
+	{ offset(log),    FMT_METHOD, "log" },
 #endif
 };
 #undef	offset
@@ -58,12 +60,12 @@ static struct format_member format_member[] = {
 static int check_member(struct lib_context *lc, struct dmraid_format *fmt,
 			struct format_member *member)
 {
-	if ((!member->all && fmt->format != FMT_RAID) ||
+	if ((!IS_FMT_ALL(member) && fmt->format != FMT_RAID) ||
 	    *((unsigned long*) (((unsigned char*) fmt) + member->offset)))
 		return 0;
 
 	LOG_ERR(lc, 1, "%s: missing metadata format handler %s%s",
-		fmt->name, member->msg, member->method ? " method" : "");
+		fmt->name, member->msg, IS_FMT_METHOD(member) ? " method" : "");
 }
 
 static int check_format_handler(struct lib_context *lc,

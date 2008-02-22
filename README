@@ -1,6 +1,6 @@
 ********************************************************************************
 *                                                                              *
-*   dmraid (Device-Mapper Software RAID support tool) 1.0.0.rc11  2006.05.15   *
+*   dmraid (Device-Mapper Software RAID support tool) 1.0.0.rc12  2006.05.15   *
 *                                                                              *
 *   (C)opyright 2004-2006  Heinz Mauelshagen, Red Hat GmbH.                    *
 *   All rights reserved.                                                       *
@@ -26,6 +26,7 @@ LSI Logic MegaRAID
 NVidia NForce
 Promise FastTrack
 Silicon Image Medley
+SNIA DDF1
 VIA Software RAID
 
 Beside hints, enhancement proposals and patches, I want to know, if the mappings

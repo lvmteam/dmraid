@@ -1,13 +1,12 @@
 /*
+ * VIA metadata format handler.
+ *
  * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
  * See file DISCLAIMER at the top of this source tree for license information.
  */
 
-/*
- * VIA metadata format handler.
- */
 #define	HANDLER	"via"
 
 #include "internal.h"
@@ -95,18 +94,18 @@ static enum status status(struct via *via)
 	return via->array.disk.in_disk_array ? s_ok : s_undef;
 }
 
-/* Mapping of via types to generic types */
-static struct types types[] = {
-	{ VIA_T_SPAN,  t_linear },
-	{ VIA_T_RAID0, t_raid0 },
-	{ VIA_T_RAID1, t_raid1 },
-	{ VIA_T_RAID01, t_raid0 },
-        { 0, t_undef}
-};
-
 /* Neutralize disk type using generic metadata type mapping function */
 static enum type type(struct via *via)
 {
+	/* Mapping of via types to generic types */
+	static struct types types[] = {
+		{ VIA_T_SPAN,  t_linear },
+		{ VIA_T_RAID0, t_raid0 },
+		{ VIA_T_RAID1, t_raid1 },
+		{ VIA_T_RAID01, t_raid0 },
+	        { 0, t_undef}
+	};
+
 	return rd_type(types, (unsigned int) VIA_RAID_TYPE(via));
 }
 
@@ -142,7 +141,6 @@ static uint8_t checksum(struct via *via)
 	while (i--)
 		sum += ((uint8_t*) via)[i];
 
-printf("sum=%u via->checksum=%u\n", sum, via->checksum);
 	return sum == via->checksum;
 }
 
@@ -407,7 +405,8 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 	rd->type   = type(via);
 
 	rd->offset = VIA_DATAOFFSET;
-	rd->sectors = rd->meta_areas->offset;
+	if (!(rd->sectors = rd->meta_areas->offset))
+		return log_zero_sectors(lc, di->path, handler);
 
         return (rd->name = name(lc, rd, 1)) ? 1 : 0;
 }

@@ -1,4 +1,6 @@
 /*
+ * LSI Logic MegaRAID (and MegaIDE ?) ATARAID metadata format handler.
+ *
  * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
  *			    All rights reserved.
  *
@@ -6,10 +8,7 @@
  */
 
 /*
- * LSI Logic MegaRAID (and MegaIDE ?) ATARAID metadata format handler.
- *
- * Needs more metadata reengineering and grouping logic coding.
- *
+ * FIXME: needs more metadata reengineering and grouping logic coding.
  */
 
 #define	HANDLER	"lsi"
@@ -63,17 +62,17 @@ static char *name(struct lib_context *lc, struct raid_dev *rd,
 	return ret;
 }
 
-/* Mapping of LSI Logic types to generic types */
-static struct types types[] = {
-	{ LSI_T_RAID0, t_raid0 },
-	{ LSI_T_RAID1, t_raid1 },
-	{ LSI_T_RAID10, t_raid0 },
-        { 0, t_undef}
-};
-
 /* Neutralize disk type */
 static enum type type(struct lsi *lsi)
 {
+	/* Mapping of LSI Logic types to generic types */
+	static struct types types[] = {
+		{ LSI_T_RAID0, t_raid0 },
+		{ LSI_T_RAID1, t_raid1 },
+		{ LSI_T_RAID10, t_raid0 },
+	        { 0, t_undef}
+	};
+
 	return rd_type(types, (unsigned int) lsi->type);
 }
 
@@ -353,7 +352,8 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	rd->offset = LSI_DATAOFFSET;
 	/* FIXME: propper size ? */
-	rd->sectors = rd->meta_areas->offset;
+	if (!(rd->sectors = rd->meta_areas->offset))
+		return log_zero_sectors(lc, di->path, handler);
 
         return (rd->name = name(lc, rd, 1)) ? 1 : 0;
 }

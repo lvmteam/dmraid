@@ -1,13 +1,12 @@
 /*
+ * JMicron metadata format handler.
+ *
  * Copyright (C) 2006  Heinz Mauelshagen, Red Hat GmbH.
  *                     All rights reserved.
  *
  * See file LICENSE at the top of this source tree for license information.
  */
 
-/*
- * JMicron ATARAID metadata format handler.
- */
 #define	HANDLER "jmicron"
 
 #include "internal.h"
@@ -59,18 +58,18 @@ static enum status status(struct jm *jm)
 	return jm->attribute & ~(JM_MOUNT|JM_BOOTABLE|JM_BADSEC|JM_ACTIVE|JM_UNSYNC|JM_NEWEST) ? s_broken : s_ok;
 }
 
-/* Mapping of JM types to generic types */
-static struct types types[] = {
-	{ JM_T_JBOD, t_linear},
-	{ JM_T_RAID0, t_raid0},
-	{ JM_T_RAID01, t_raid1},
-	{ JM_T_RAID1, t_raid1},
-	{ 0, t_undef}
-};
-
 /* Neutralize disk type */
 static enum type type(struct jm *jm)
 {
+	/* Mapping of JM types to generic types */
+	static struct types types[] = {
+		{ JM_T_JBOD, t_linear},
+		{ JM_T_RAID0, t_raid0},
+		{ JM_T_RAID01, t_raid1},
+		{ JM_T_RAID1, t_raid1},
+		{ 0, t_undef},
+	};
+
 	return rd_type(types, (unsigned int) jm->mode);
 }
 
@@ -83,7 +82,8 @@ static int checksum(struct jm *jm)
         while (count--)
 		sum += *p++;
 
-	return sum;
+	/* FIXME: shouldn't this be one value only ? */
+	return sum == 0 || sum == 1;
 }
 
 static inline unsigned int segment(uint32_t m)
@@ -219,7 +219,7 @@ static int is_jm(struct lib_context *lc, struct dev_info *di, void *meta)
 
 	return !strncmp((const char*) jm->signature,
 			JM_SIGNATURE, JM_SIGNATURE_LEN)
-	       && !checksum(jm);
+	       && checksum(jm);
 }
 
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,

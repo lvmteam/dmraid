@@ -5,8 +5,6 @@
  * See file LICENSE at the top of this source tree for license information.
  */
 
-#include <errno.h>
-
 #ifndef __KLIBC__
 # include <sys/file.h>
 #endif

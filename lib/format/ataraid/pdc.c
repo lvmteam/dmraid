@@ -1,4 +1,6 @@
 /*
+ * Promise FastTrak ATARAID metadata format handler.
+ *
  * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
@@ -6,8 +8,6 @@
  */
 
 /*
- * Promise FastTrak ATARAID metadata format handler.
- *
  * pdc_read() and pdc_group() profited from
  * Carl-Daniel Hailfinger's raiddetect code.
  */
@@ -65,18 +65,7 @@ static enum status status(struct pdc *pdc)
 	return PDC_BROKEN(pdc) ? s_broken : s_ok;
 }
 
-/*
- * Mapping of Promise types to generic types.
- */
 #define	PDC_T_RAID10	0x2	/* Not defind by Promise (yet). */
-static struct types types[] = {
-        { PDC_T_SPAN,   t_linear},
-        { PDC_T_RAID0,  t_raid0},
-        { PDC_T_RAID1,  t_raid1},
-        { PDC_T_RAID10, t_raid0},
-        { 0, t_undef}
-};
-
 static int is_raid10(struct pdc *pdc)
 {
 	return pdc->raid.type == PDC_T_RAID10 ||
@@ -86,6 +75,15 @@ static int is_raid10(struct pdc *pdc)
 /* Neutralize disk type */
 static enum type type(struct pdc *pdc)
 {
+	/* Mapping of Promise types to generic types. */
+	static struct types types[] = {
+	        { PDC_T_SPAN,   t_linear},
+	        { PDC_T_RAID0,  t_raid0},
+	        { PDC_T_RAID1,  t_raid1},
+	        { PDC_T_RAID10, t_raid0},
+	        { 0, t_undef}
+	};
+
 	if (is_raid10(pdc))
 		pdc->raid.type = PDC_T_RAID10;
 

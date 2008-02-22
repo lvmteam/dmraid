@@ -11,6 +11,7 @@
 enum activate_type {
 	A_ACTIVATE,
 	A_DEACTIVATE,
+	A_RELOAD,
 };
 
 int change_set(struct lib_context *lc, enum activate_type what, void *rs);

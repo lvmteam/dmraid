@@ -18,7 +18,9 @@ SOURCES=\
 	format/format.c \
 	locking/locking.c \
 	log/log.c \
+	metadata/log_ops.c \
 	metadata/metadata.c \
+	metadata/reconfig.c \
 	misc/file.c \
 	misc/init.c \
 	misc/lib_context.c \
@@ -35,7 +37,11 @@ SOURCES=\
 	format/ataraid/pdc.c \
 	format/ataraid/sil.c \
 	format/ataraid/via.c \
-	format/ataraid/asr.c \
+	format/ddf/ddf1.c \
+	format/ddf/ddf1_lib.c \
+	format/ddf/ddf1_crc.c \
+	format/ddf/ddf1_cvt.c \
+	format/ddf/ddf1_dump.c \
 	format/partition/dos.c
 
 OBJECTS=$(SOURCES:%.c=%.o)

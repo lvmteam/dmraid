@@ -5,7 +5,6 @@
  * See file LICENSE at the top of this source tree for license information.
  */
 
-#include <errno.h>
 #include "internal.h"
 
 /* Create directory recusively. */

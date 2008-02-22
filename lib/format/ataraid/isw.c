@@ -1,4 +1,6 @@
 /*
+ * Intel Software RAID metadata format handler.
+ *
  * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
@@ -6,8 +8,6 @@
  */
 
 /*
- * Intel Software RAID metadata format handler.
- *
  * isw_read() etc. profited from Carl-Daniel Hailfinger's raiddetect code.
  *
  * Profited from the Linux 2.4 iswraid driver by
@@ -101,19 +101,16 @@ static enum status status(struct lib_context *lc, struct raid_dev *rd)
 	return s_undef;
 }
 
-/*
- * Mapping of Intel types to generic types.
- */
-static struct types types[] = {
-        { ISW_T_RAID0, t_raid0},
-        { ISW_T_RAID1, t_raid1},
-        { ISW_T_RAID5, t_raid5_la},
-        { 0, t_undef},
-};
-
 /* Neutralize disk type. */
 static enum type type(struct raid_dev *rd)
 {
+	/* Mapping of Intel types to generic types. */
+	static struct types types[] = {
+	        { ISW_T_RAID0, t_raid0},
+	        { ISW_T_RAID1, t_raid1},
+	        { ISW_T_RAID5, t_raid5_la},
+	        { 0, t_undef},
+	};
 	struct isw_dev *dev = rd->private.ptr;
 
 	return dev ? rd_type(types, (unsigned int) dev->vol.map.raid_level) :
@@ -229,7 +226,8 @@ static void to_cpu(struct isw *isw, enum convert cvt)
 
 static int is_isw(struct lib_context *lc, struct dev_info *di, struct isw *isw)
 {
-	if (strncmp((const char *) isw->sig, MPB_SIGNATURE, sizeof(MPB_SIGNATURE) - 1))
+	if (strncmp((const char *) isw->sig, MPB_SIGNATURE,
+		    sizeof(MPB_SIGNATURE) - 1))
 		return 0;
 
 	/* Check version info, older versions supported */
@@ -437,9 +435,10 @@ static struct raid_dev *_create_rd(struct lib_context *lc, struct raid_dev *rd,
 	r->fmt = rd->fmt;
 	
 	r->offset  = dev->vol.map.pba_of_lba0;
-	r->sectors = dev->vol.map.blocks_per_member;
+	if ((r->sectors = dev->vol.map.blocks_per_member))
+		goto out;
 
-	goto out;
+	log_zero_sectors(lc, rd->di->path, handler);
 
    free:
 	free_raid_dev(lc, &r);
@@ -792,7 +791,8 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 	rd->fmt = &isw_format;
 
 	rd->offset = ISW_DATAOFFSET;
-	rd->sectors = info->u64 >> 9;
+	if (!(rd->sectors = info->u64 >> 9))
+		return log_zero_sectors(lc, di->path, handler);
 
 	rd->status = status(lc, rd);
 	rd->type   = t_group;

@@ -16,7 +16,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <errno.h>
 #include <unistd.h>
 
 #include "internal.h"
@@ -148,19 +147,31 @@ static int check_table(struct lib_context *lc, char *table)
 	return handle_table(lc, NULL, table, get_target_list());
 }
 
-/* Create a mapped device. */
-int dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
+/* Create a task, set its name and run it. */
+static int run_task(struct lib_context *lc, struct raid_set *rs,
+		    char *table, int type)
 {
-	int ret = 0;
+	int ret;
 	struct dm_task *dmt;
 
 	_init_dm();
+	ret = (dmt = dm_task_create(type)) && dm_task_set_name(dmt, rs->name);
+	if (ret && table)
+		ret = parse_table(lc, dmt, table);
+
+	if (ret)
+		ret = dm_task_run(dmt);
+
+	_exit_dm(dmt);
+	return ret;
+}
+/* Create a mapped device. */
+int dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
+{
+	int ret;
 
 	/* Create <dev_name> */
-	ret = (dmt = dm_task_create(DM_DEVICE_CREATE)) &&
-	       dm_task_set_name(dmt, rs->name) &&
-	       parse_table(lc, dmt, table) &&
-	       dm_task_run(dmt);
+	ret = run_task(lc, rs, table, DM_DEVICE_CREATE);
 
 	/*
 	 * In case device creation failed, check if target
@@ -169,7 +180,37 @@ int dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
 	if (!ret)
 		check_table(lc, table);
 
-	_exit_dm(dmt);
+	return ret;
+}
+
+/* Suspend a mapped device. */
+int dm_suspend(struct lib_context *lc, struct raid_set *rs)
+{
+	/* Suspend <dev_name> */
+	return run_task(lc, rs, NULL, DM_DEVICE_SUSPEND);
+}
+
+/* Resume a mapped device. */
+int dm_resume(struct lib_context *lc, struct raid_set *rs)
+{
+	/* Resume <dev_name> */
+	return run_task(lc, rs, NULL, DM_DEVICE_RESUME);
+}
+
+/* Reload a mapped device. */
+int dm_reload(struct lib_context *lc, struct raid_set *rs, char *table)
+{
+	int ret;
+
+	/* Create <dev_name> */
+	ret = run_task(lc, rs, table, DM_DEVICE_RELOAD);
+
+	/*
+	 * In case device creation failed, check if target
+	 * isn't registered with the device-mapper core
+	 */
+	if (!ret)
+		check_table(lc, table);
 
 	return ret;
 }
@@ -177,19 +218,8 @@ int dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
 /* Remove a mapped device. */
 int dm_remove(struct lib_context *lc, struct raid_set *rs)
 {
-	int ret;
-	struct dm_task *dmt;
-
-	_init_dm();
-
-	/* remove <dev_name> */
-	ret = (dmt = dm_task_create(DM_DEVICE_REMOVE)) &&
-	       dm_task_set_name(dmt, rs->name) &&
-	       dm_task_run(dmt);
-
-	_exit_dm(dmt);
-
-	return ret;
+	/* Remove <dev_name> */
+	return run_task(lc, rs, NULL, DM_DEVICE_REMOVE);
 }
 
 /* Retrieve status of a mapped device. */

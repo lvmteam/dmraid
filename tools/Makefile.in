@@ -20,7 +20,7 @@ SOURCES=\
 TARGETS=\
 	dmraid
 
-DMRAIDLIBS=-ldmraid
+DMRAIDLIBS=-ldmraid -lz
 
 include $(top_srcdir)/make.tmpl
 

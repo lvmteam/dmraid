@@ -19,6 +19,8 @@ struct list_head {
 
 #define INIT_LIST_HEAD(a)	do { (a)->next = (a)->prev = a; } while(0)
 
+#define	LIST_HEAD(a)	struct list_head a = { .next = &a, .prev = &a }
+
 #define list_empty(pos)	((pos)->next == pos)
 
 static inline void __list_add(struct list_head *new,
@@ -42,6 +44,11 @@ static inline void __list_add(struct list_head *new,
 	(pos)->next->prev = (pos)->prev; \
 	(pos)->prev->next = (pos)->next; \
 	(pos)->next = (pos)->prev = 0; \
+}
+
+#define	list_del_init(pos) { \
+	list_del(pos); \
+	INIT_LIST_HEAD(pos); \
 }
 
 /* Pointer to a struct 'type' derived from 'pos' and list_head* 'member'. */

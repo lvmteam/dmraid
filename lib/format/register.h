@@ -16,6 +16,7 @@
 
 	/* Metadata format handlers. */
 	xx(asr)
+	xx(ddf1)
 	xx(hpt37x)
 	xx(hpt45x)
 	xx(isw)

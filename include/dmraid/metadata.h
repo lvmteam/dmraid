@@ -81,6 +81,18 @@ enum status {
 	s_setup		= 0x20,	/* Only during RAID setup transition. */
 };
 
+/*
+ * Mapping struct for RAID status unification.
+ *
+ * Format handler allocates an array and inserts mappings
+ * from format specific status to the unified ones above.
+ */
+enum compare { AND, EQUAL };
+struct states {
+	unsigned int status;
+	enum status unified_status;
+};
+
 /* Check macros for states. */
 #define	S_UNDEF(status)		((status) & s_undef)
 #define	S_BROKEN(status)	((status) & s_broken)
@@ -195,6 +207,8 @@ struct raid_set {
 	enum status status;		/* Status of set. */
 };
 
+extern struct raid_set *get_raid_set(struct lib_context *lc,
+				     struct raid_dev *rd);
 extern struct dmraid_format *get_format(struct raid_set *rs);
 extern const char *get_type(struct lib_context *lc, enum type type);
 extern const char *get_dm_type(struct lib_context *lc, enum type type);
@@ -244,11 +258,14 @@ extern int base_partitioned_set(struct lib_context *lc, void *rs);
 extern void discover_raid_devices(struct lib_context *lc, char **devices);
 extern void discover_partitions(struct lib_context *lc);
 extern unsigned int count_devices(struct lib_context *lc, enum dev_type type);
+extern enum status rd_status(struct states *states, unsigned int status,
+			     enum compare cmp);
 extern enum type rd_type(struct types *types, unsigned int type);
 extern void file_metadata(struct lib_context *lc, const char *handler,
 		   char *path, void *data, size_t size, uint64_t offset);
 extern void file_dev_size(struct lib_context *lc, const char *handler,
 		   struct dev_info *di);
+extern int write_dev(struct lib_context *lc, struct raid_dev *rd, int erase);
 extern int erase_metadata(struct lib_context *lc);
 
 #endif

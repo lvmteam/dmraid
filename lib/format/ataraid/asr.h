@@ -137,7 +137,8 @@ struct asr_raid_configline
 	uint16_t	blockStorageTid;
 	uint32_t	curAppBlock;
 	uint32_t	appBurstCount;
-	uint8_t		name[16];   /* Full name of the array. */
+#define	ASR_NAMELEN	16
+	uint8_t		name[ASR_NAMELEN];   /* Full name of the array. */
 } __attribute__ ((packed));
 
 struct asr_raidtable
@@ -148,6 +149,7 @@ struct asr_raidtable
 	uint32_t	rversion;	/* Version of the RAID config table */
 	uint16_t	maxelm;		/* Maximum number of elements */
 	uint16_t	elmcnt;		/* Element Count (number used) */
+#define	ASR_TBLELMCNT	7
 	uint16_t	elmsize;	/* Size of an individual raidCLine */
 	uint16_t	rchksum;	/* RAID table check sum
 					   (no rconfTblV2)*/

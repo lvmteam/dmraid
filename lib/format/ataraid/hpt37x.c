@@ -1,4 +1,6 @@
 /*
+ * Highpoint 37X ATARAID series metadata format handler.
+ *
  * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
@@ -6,8 +8,6 @@
  */
 
 /*
- * Highpoint 37X ATARAID metadata format handler.
- *
  * hpt37x_read(), hpt37x_group() and group_rd() profited from
  * Carl-Daniel Hailfinger's raiddetect code.
  */
@@ -70,21 +70,21 @@ static enum status status(struct hpt37x *hpt)
 	return hpt->magic == HPT37X_MAGIC_BAD ? s_broken : s_ok;
 }
 
-/* Mapping of HPT 37X types to generic types. */
-static struct types types[] = {
-	{ HPT37X_T_SINGLEDISK, t_linear},
-	{ HPT37X_T_SPAN, t_linear},
-	{ HPT37X_T_RAID0, t_raid0},
-	{ HPT37X_T_RAID1, t_raid1},
-	{ HPT37X_T_RAID01_RAID0, t_raid0},
-	{ HPT37X_T_RAID01_RAID1, t_raid1},
-	/* FIXME: support RAID 3+5 */
-	{ 0, t_undef}
-};
-
 /* Neutralize disk type. */
 static enum type type(struct hpt37x *hpt)
 {
+	/* Mapping of HPT 37X types to generic types. */
+	static struct types types[] = {
+		{ HPT37X_T_SINGLEDISK, t_linear},
+		{ HPT37X_T_SPAN, t_linear},
+		{ HPT37X_T_RAID0, t_raid0},
+		{ HPT37X_T_RAID1, t_raid1},
+		{ HPT37X_T_RAID01_RAID0, t_raid0},
+		{ HPT37X_T_RAID01_RAID1, t_raid1},
+		/* FIXME: support RAID 3+5 */
+		{ 0, t_undef},
+	};
+
 	return hpt->magic_0 ?
 	       rd_type(types, (unsigned int) hpt->type) : t_spare;
 }
@@ -103,6 +103,16 @@ static int set_sort(struct list_head *pos, struct list_head *new)
 	       (META(RD_RS(RS(pos)), hpt37x))->order;
 }
 
+/* Magic check. */
+static int check_magic(void *meta)
+{
+	struct hpt37x *hpt = meta;
+
+	return (hpt->magic == HPT37X_MAGIC_OK ||
+		hpt->magic == HPT37X_MAGIC_BAD) &&
+		hpt->disk_number < 8;
+}
+
 /*
  * Read a Highpoint 37X RAID device.
  */
@@ -113,7 +123,6 @@ static int set_sort(struct list_head *pos, struct list_head *new)
 static void to_cpu(void *meta)
 {
 	struct hpt37x *hpt = meta;
-	struct hpt37x_errorlog *l;
 
 	CVT32(hpt->magic);
 	CVT32(hpt->magic_0);
@@ -123,23 +132,25 @@ static void to_cpu(void *meta)
 	CVT32(hpt->disk_mode);
 	CVT32(hpt->boot_mode);
 
-	for (l = hpt->errorlog;
-	     l < hpt->errorlog + hpt->error_log_entries;
-	     l++) {
-		CVT32(l->timestamp);
-		CVT32(l->lba);
+	/* Only convert error log entries in case we discover proper magic */
+	if (check_magic(meta)) {
+		struct hpt37x_errorlog *l;
+
+		for (l = hpt->errorlog;
+		     l < hpt->errorlog +
+			 min(hpt->error_log_entries, HPT37X_MAX_ERRORLOG);
+		     l++) {
+			CVT32(l->timestamp);
+			CVT32(l->lba);
+		}
 	}
 }
 #endif
 
-/* Magic check. */
+/* Use magic check to tell, if this is Highpoint 37x */
 static int is_hpt37x(struct lib_context *lc, struct dev_info *di, void *meta)
 {
-	struct hpt37x *hpt = meta;
-
-	return (hpt->magic == HPT37X_MAGIC_OK ||
-		hpt->magic == HPT37X_MAGIC_BAD) &&
-		hpt->disk_number < 8;
+	return check_magic(meta);
 }
 
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,

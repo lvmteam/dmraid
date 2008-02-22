@@ -506,7 +506,7 @@ static struct type_handler *handler(struct raid_set *rs)
 	do {
 		if (rs->type == th->type)
 			return th;
-	} while (th++ < ARRAY_END(type_handler));
+	} while (++th < ARRAY_END(type_handler));
 
 	return type_handler;
 }
@@ -570,6 +570,65 @@ static int register_devices(struct lib_context *lc, struct raid_set *rs)
 static int unregister_devices(struct lib_context *lc, struct raid_set *rs)
 {
 	return do_device(lc, rs, dm_unregister_for_event);
+}
+
+/* Reload a single set. */
+static int reload_subset(struct lib_context *lc, struct raid_set *rs)
+{
+	int ret = 0;
+	char *table = NULL;
+
+	if (T_GROUP(rs))
+		return 1;
+
+	/* Suspend device */
+	if (!(ret = dm_suspend(lc, rs)))
+		LOG_ERR(lc, ret, "Device suspend failed.");
+
+	/* Call type handler */
+	if ((ret = (handler(rs))->f(lc, &table, rs))) {
+		if (OPT_TEST(lc))
+			display_table(lc, rs->name, table);
+		else
+			ret = dm_reload(lc, rs, table);
+	} else
+		log_err(lc, "no mapping possible for RAID set %s", rs->name);
+
+	free_string(lc, &table);
+
+	/* Try to resume */
+	if (ret)
+		dm_resume(lc, rs);
+	else
+		if (!(ret = dm_resume(lc, rs)))
+			LOG_ERR(lc, ret, "Device resume failed.");
+
+	return ret;
+}
+
+/* Reload a RAID set recursively (eg, RAID1 on top of RAID0). */
+static int reload_set(struct lib_context *lc, struct raid_set *rs)
+{
+	struct raid_set *r;
+
+	/* FIXME: Does it matter if the set is (in)active? */
+#if 0
+	if (!OPT_TEST(lc) &&
+	    what == DM_ACTIVATE &&
+	    dm_status(lc, rs)) {
+		log_print(lc, "RAID set \"%s\" already active", rs->name);
+		return 1;
+	}
+#endif
+
+	/* Recursively walk down the chain of stacked RAID sets */
+	list_for_each_entry(r, &rs->sets, list) {
+		/* Activate set below this one */
+		if (!reload_set(lc, r) && !T_GROUP(rs))
+			return 0;
+	}
+
+	return reload_subset(lc, rs);
 }
 
 /* Activate a single set. */
@@ -683,6 +742,11 @@ int change_set(struct lib_context *lc, enum activate_type what, void *v)
 	case A_DEACTIVATE:
 		ret = deactivate_set(lc, rs, DM_REGISTER) &&
 		      deactivate_set(lc, rs, DM_ACTIVATE);
+		break;
+
+	case A_RELOAD:
+		ret = reload_set(lc, rs);
+		break;
 	}
 
 	return ret;

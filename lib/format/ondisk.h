@@ -18,7 +18,8 @@
 #include "ataraid/pdc.h"
 #include "ataraid/via.h"
 #include "ataraid/sil.h"
-#include "ataraid/asr.h"
+
+#include "ddf/ddf1.h"
 
 #include "partition/dos.h"
 
