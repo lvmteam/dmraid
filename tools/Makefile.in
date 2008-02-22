@@ -1,0 +1,75 @@
+#
+# Copyright (C) 2004-2005  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
+#
+# See file LICENSE at the top of this source tree for license information.
+#
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+DIETLIBC = @DIETLIBC@
+KIBC = @KLIBC@
+
+INCLUDES += -I $(src_dir)
+
+SOURCES=\
+	dmraid.c \
+	commands.c \
+	toollib.c
+
+TARGETS=\
+	dmraid
+
+DMRAIDLIBS=-ldmraid
+
+include $(top_srcdir)/make.tmpl
+
+ifeq ("@KLIBC@", "yes")
+	DMRAIDLIBS += -ldevmapper_klibc
+else
+	ifeq ("@DIETLIBC@", "yes")
+		DMRAIDLIBS += -ldevmapper_dietc
+	else
+		DMRAIDLIBS += -ldevmapper
+	endif
+
+	ifeq ("@LIBSELINUX@", "yes")
+		DMRAIDLIBS += -lselinux
+	endif
+
+	ifeq ("@LIBSEPOL@", "yes")
+		DMRAIDLIBS += -lsepol
+	endif
+endif
+
+# We just link klibc static and get it over with
+ifeq ("@KLIBC@", "no")
+	ifeq ("@STATIC_LINK@", "no")
+		LDFLAGS += -rdynamic
+	else
+		LDFLAGS += -static
+	endif
+endif
+
+
+.PHONY: install_dmraid_tools remove_dmraid_tools
+
+dmraid:	$(OBJECTS) $(top_srcdir)/lib/libdmraid.a
+	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) -L$(top_srcdir)/lib \
+	      -L$(DESTDIR)/lib $(DMRAIDLIBS) $(LIBS)
+
+install_dmraid_tools: $(TARGETS)
+	@echo "Installing $(TARGETS) in $(sbindir)"; \
+	mkdir -p $(sbindir); \
+	$(INSTALL) $(STRIP) $(TARGETS) $(sbindir)
+
+install: install_dmraid_tools
+
+remove_dmraid_tools:
+	@echo "Removing $(TARGETS) from $(sbindir)"; \
+	for f in $(TARGETS); \
+	do \
+		rm -f $(sbindir)/$$f; \
+	done
+
+remove:	remove_dmraid_tools

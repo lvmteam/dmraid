@@ -1,0 +1,89 @@
+#
+# Copyright (C) 2004-2005  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
+#
+# See file LICENSE at the top of this source tree for license information.
+#
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+
+SOURCES=\
+	activate/activate.c \
+	activate/devmapper.c \
+	device/ata.c \
+	device/scan.c \
+	device/scsi.c \
+	display/display.c \
+	format/format.c \
+	locking/locking.c \
+	log/log.c \
+	metadata/metadata.c \
+	misc/file.c \
+	misc/init.c \
+	misc/lib_context.c \
+	misc/misc.c \
+	misc/workaround.c \
+	mm/dbg_malloc.c \
+	format/ataraid/asr.c \
+	format/ataraid/hpt37x.c \
+	format/ataraid/hpt45x.c \
+	format/ataraid/isw.c \
+	format/ataraid/jm.c \
+	format/ataraid/lsi.c \
+	format/ataraid/nv.c \
+	format/ataraid/pdc.c \
+	format/ataraid/sil.c \
+	format/ataraid/via.c \
+	format/ataraid/asr.c \
+	format/partition/dos.c
+
+OBJECTS=$(SOURCES:%.c=%.o)
+
+LIB_STATIC=$(top_srcdir)/lib/libdmraid.a
+
+TARGETS=$(LIB_STATIC)
+INSTALL_TARGETS= $(LIB_STATIC)
+
+ifeq ("@KLIBC@", "no")
+  ifeq ("@LIB_SO@", "yes")
+    LIB_SHARED=$(top_srcdir)/lib/libdmraid.so
+    TARGETS += $(LIB_SHARED)
+    INSTALL_TARGETS += $(LIB_SHARED)
+  endif
+endif
+
+all:
+	@echo "$(TARGETS) $(INSTALL_TARGETS)"
+
+include $(top_srcdir)/make.tmpl
+
+.PHONY: install_dmraid_libs remove_dmraid_libs
+
+install_dmraid_libs: $(INSTALL_TARGETS)
+	@echo "Installing $(INSTALL_TARGETS) in $(libdir)"; \
+	mkdir -p $(libdir); \
+	for f in $(INSTALL_TARGETS); \
+	do \
+		n=$$(basename $${f}) ; \
+		if [[ "$$n" =~ '.so$$' ]]; then \
+			$(INSTALL) -m 555 $(STRIP) \
+				$$f $(libdir)/$${n}.@DMRAID_LIB_VERSION@; \
+			$(LN_S) -f $${n}.@DMRAID_LIB_VERSION@ $(libdir)/$${n}; \
+		else \
+			$(INSTALL) -m 555 $(STRIP) $$f $(libdir)/$${n}; \
+		fi \
+	done
+
+install: install_dmraid_libs
+
+remove_dmraid_libs:
+	@echo "Removing $(INSTALL_TARGETS) from $(libdir)"; \
+	for f in $(INSTALL_TARGETS); \
+	do \
+		n=$$(basename $${f}) ; \
+		rm -f $(libdir)/$${n}.@DMRAID_LIB_VERSION@; \
+		rm -f $(libdir)/$${n}; \
+	done
+
+remove:	remove_dmraid_libs
