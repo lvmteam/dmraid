@@ -29,8 +29,11 @@ static size_t _name(struct lib_context *lc, struct raid_dev *rd,
 		    unsigned short partition, char *str, size_t len,
 		    unsigned char type)
 {
-	return snprintf(str, len, type ? "%s%u" : "%s",
-			get_basename(lc, rd->di->path), partition);
+	const char *base = get_basename(lc, rd->di->path);
+
+	return type ? snprintf(str, len, "%s%s%u", base, OPT_STR_PARTCHAR(lc),
+			       partition) :
+		      snprintf(str, len, "%s", base);
 }
 
 static char *name(struct lib_context *lc, struct raid_dev *rd,

@@ -6,7 +6,7 @@
 
 Summary: dmraid (Device-mapper RAID tool and library)
 Name: dmraid
-Version: 1.0.0.rc11
+Version: 1.0.0.rc15-pre
 Release: 1
 License: GPL
 Group: System Environment/Base

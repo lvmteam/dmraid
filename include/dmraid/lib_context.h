@@ -38,7 +38,8 @@ enum lc_options {
 	LC_VERBOSE,
 	LC_IGNORELOCKING,
 	LC_SEPARATOR,
-	LC_DEVICES,	  /* Add new options below this one ! */
+	LC_DEVICES,
+	LC_PARTCHAR,	  /* Add new options below this one ! */
 	LC_OPTIONS_SIZE,  /* Must be the last enumerator. */
 };
 
@@ -55,12 +56,14 @@ enum lc_options {
 #define	OPT_SETS(lc)		(lc_opt(lc, LC_SETS))
 #define	OPT_TEST(lc)		(lc_opt(lc, LC_TEST))
 #define	OPT_VERBOSE(lc)		(lc_opt(lc, LC_VERBOSE))
+#define	OPT_PARTCHAR(lc)	(lc_opt(lc, LC_PARTCHAR))
 
 /* Return option value. */
 #define	OPT_STR(lc, o)		(lc->options[o].arg.str)
 #define	OPT_STR_COLUMN(lc)	OPT_STR(lc, LC_COLUMN)
 #define	OPT_STR_FORMAT(lc)	OPT_STR(lc, LC_FORMAT)
 #define	OPT_STR_SEPARATOR(lc)	OPT_STR(lc, LC_SEPARATOR)
+#define	OPT_STR_PARTCHAR(lc)	OPT_STR(lc, LC_PARTCHAR)
 
 struct lib_version {
 	const char *text;

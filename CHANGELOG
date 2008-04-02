@@ -1,4 +1,21 @@
 
+Changelog from dmraid 1.0.0.rc14 to 1.0.0.rc15		2007.08.22
+
+FIXES:
+------
+o jm.c: fixed name handling, when whitespace added to end of name
+o nv.c: fixed endian bug (Bryn Reeves)
+
+
+FEATURES:
+---------
+
+
+MISCELANIOUS:
+-------------
+
+
+
 Changelog from dmraid 1.0.0.rc13 to 1.0.0.rc14		2006.11.08
 
 FIXES:

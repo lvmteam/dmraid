@@ -24,7 +24,7 @@ enum action action = UNDEF;
 /*
  * Command line options.
  */
-static char const *short_opts = "a:hip"
+static char const *short_opts = "a:hipP:"
 #ifndef	DMRAID_MINI
 				"bc::dDEf:gl"
 #ifdef	DMRAID_NATIVE_LOG
@@ -38,6 +38,7 @@ static char const *short_opts = "a:hip"
 static struct option long_opts[] = {
 	{"activate", required_argument, NULL, 'a'},
 	{"format", required_argument, NULL, 'f'},
+	{"partchar", required_argument, NULL, 'P'},
 	{"no_partitions", no_argument, NULL, 'p'},
 # ifndef DMRAID_MINI
 	{"block_devices", no_argument, NULL, 'b'},
@@ -148,6 +149,14 @@ static int check_separator(struct lib_context *lc, int arg)
 }
 #endif
 
+/* Check and store option for partition separator. */
+static int check_part_separator(struct lib_context *lc, int arg)
+{
+	/* We're not actually checking that it's only one character... if
+	   somebody wants to use more, it shouldn't hurt anything. */
+	return lc_stralloc_opt(lc, LC_PARTCHAR, optarg) ? 1 : 0;
+}
+
 /* Display help information */
 static int help(struct lib_context *lc, int arg)
 {
@@ -158,6 +167,7 @@ static int help(struct lib_context *lc, int arg)
 		  "[Early Boot Version]\n", c);
 	log_print(lc, "%s\t{-a|--activate} {y|n|yes|no} [-i|--ignorelocking]\n"
 		  "\t[-f|--format FORMAT[,FORMAT...]]\n"
+		  "\t[-P|--partchar CHAR]\n"
 		  "\t[-p|--no_partitions]\n"
 		  "\t[--separator SEPARATOR]\n"
 		  "\t[RAID-set...]\n", c);
@@ -168,6 +178,7 @@ static int help(struct lib_context *lc, int arg)
 	log_print(lc, "* = [-d|--debug]... [-v|--verbose]... [-i|--ignorelocking]\n");
 	log_print(lc, "%s\t{-a|--activate} {y|n|yes|no} *\n"
 		  "\t[-f|--format FORMAT[,FORMAT...]]\n"
+		  "\t[-P|--partchar CHAR]\n"
 		  "\t[-p|--no_partitions]\n"
 		  "\t[--separator SEPARATOR]\n"
 		  "\t[-t|--test]\n"
@@ -247,6 +258,19 @@ static struct actions actions[] = {
 	  NULL,
 #endif
 	  LC_FORMAT,
+	},
+
+	/* Partition separator. */
+	{ 'P',
+	  PARTCHAR,
+	  ACTIVATE|DEACTIVATE,
+	  FORMAT|HELP|IGNORELOCKING|SEPARATOR
+#ifndef DMRAID_MINI
+	  |DBG|TEST|VERBOSE
+#endif
+	  , ARGS,
+	  check_part_separator,
+	  0,
 	},
 
 	/* Partition option. */

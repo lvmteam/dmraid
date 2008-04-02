@@ -799,8 +799,21 @@ static void want_set(struct lib_context *lc, struct raid_set *rs, char *name)
 
 		if (len2 > len1 ||
 		    strncmp(rs->name, name, min(len1, len2))) {
+			struct dmraid_format *fmt = get_format(rs);
+
 			log_notice(lc, "dropping unwanted RAID set \"%s\"",
 				   rs->name);
+
+			/*
+			 * ddf1 carries a private pointer to it's contianing
+			 * set which is cleared as part of the check. So we
+			 * must call it's check method before freeing the
+			 * set. Whats more, it looks like ddf1 check can
+			 * only be called once, yoweee !!!!
+			 */
+			if (fmt)
+				fmt->check(lc, rs);
+
 			free_raid_set(lc, rs);
 		}
 	}
@@ -838,6 +851,7 @@ static void check_raid_sets(struct lib_context *lc)
 	struct dmraid_format *fmt;
 
 	list_for_each_safe(elem, tmp, LC_RS(lc)) {
+		/* Some metadata format handlers may not have a check method. */
 		if (!(fmt = get_format((rs = RS(elem)))))
 			continue;
 
@@ -864,11 +878,13 @@ int group_set(struct lib_context *lc, char *name)
 {
 	struct raid_dev *rd;
 	struct raid_set *rs;
+	struct list_head *elem, *tmp;
 
 	if (name && find_set(lc, NULL, name, FIND_TOP))
 		LOG_ERR(lc, 0, "RAID set %s already exists", name);
 
-	list_for_each_entry(rd, LC_RD(lc), list) {
+	list_for_each_safe(elem, tmp, LC_RD(lc)) {
+		rd = list_entry(elem, struct raid_dev, list);
 		/* FIXME: optimize dropping of unwanted RAID sets. */
 		if ((rs = dmraid_group(lc, rd))) {
 			log_notice(lc, "added %s to RAID set \"%s\"",
@@ -1039,22 +1055,20 @@ void list_add_sorted(struct lib_context *lc,
  * File RAID metadata and offset on device for analysis.
  */
 /* FIXME: all files into one directory ? */
-static size_t __name(struct lib_context *lc, char *str, size_t len, char *path,
-		     const char *suffix, const char *handler)
+static size_t __name(struct lib_context *lc, char *str, size_t len,
+		     const char *path, const char *suffix)
 {
-	return snprintf(str, len, "%s_%s.%s",
-			get_basename(lc, path), handler, suffix) + 1;
+	return snprintf(str, len, "%s.%s",
+			get_basename(lc, (char*) path), suffix) + 1;
 }
 
-static char *_name(struct lib_context *lc, char *path,
-		  const char *suffix, const char *handler)
+static char *_name(struct lib_context *lc, const char *path, const char *suffix)
 {
 	size_t len;
 	char *ret;
 
-	if ((ret = dbg_malloc((len = __name(lc, NULL, 0, path,
-					    suffix, handler)))))
-		__name(lc, ret, len, path, suffix, handler);
+	if ((ret = dbg_malloc((len = __name(lc, NULL, 0, path, suffix)))))
+		__name(lc, ret, len, path, suffix);
 	else
 		log_alloc_err(lc, __func__);
 
@@ -1067,7 +1081,7 @@ static int file_data(struct lib_context *lc, const char *handler,
 	int ret = 0;
 	char *name;
 
-	if ((name = _name(lc, path, "dat", handler))) {
+	if ((name = _name(lc, path, "dat"))) {
 		log_notice(lc, "writing metadata file \"%s\"", name);
 		ret = write_file(lc, handler, name, data, size, 0);
 		dbg_free(name);
@@ -1081,14 +1095,43 @@ static void file_number(struct lib_context *lc, const char *handler,
 {
 	char *name, s_number[32];
 	
-	if ((name = _name(lc, path, suffix, handler))) {
+	if ((name = _name(lc, path, suffix))) {
 		log_notice(lc, "writing %s to file \"%s\"", suffix, name);
 		write_file(lc, handler, name, (void*) s_number,
 		           snprintf(s_number, sizeof(s_number),
-			   "%" PRIu64 "\n", number),
-				 0);
+			   "%" PRIu64 "\n", number), 0);
 		dbg_free(name);
 	}
+}
+
+static int _chdir(struct lib_context *lc, const char *dir)
+{
+	if (chdir(dir)) {
+		log_err(lc, "changing directory to %s", dir);
+		return -EFAULT;
+	}
+
+	return 0;
+}
+
+static char *_dir(struct lib_context *lc, const char *handler)
+{
+	char *dir = _name(lc, lc->cmd, handler);
+
+	if (!dir) {
+		log_err(lc, "allocating directory name for %s", handler);
+		return NULL;
+	}
+
+	if (!mk_dir(lc, dir))
+		goto out;
+
+	if (!_chdir(lc, dir))
+		return dir;
+
+   out:
+	dbg_free(dir);
+	return NULL;
 }
 
 /*
@@ -1097,9 +1140,19 @@ static void file_number(struct lib_context *lc, const char *handler,
 void file_metadata(struct lib_context *lc, const char *handler,
 		   char *path, void *data, size_t size, uint64_t offset)
 {
-	if (OPT_DUMP(lc) &&
-	    file_data(lc, handler, path, data, size))
-		file_number(lc, handler, path, offset, "offset");
+	if (OPT_DUMP(lc)) {
+		char *dir = _dir(lc, handler);
+
+		if (dir)
+			dbg_free(dir);
+		else
+			return;
+
+		if (file_data(lc, handler, path, data, size))
+			file_number(lc, handler, path, offset, "offset");
+
+		_chdir(lc, "..");
+	}
 }
 
 /*
@@ -1108,6 +1161,15 @@ void file_metadata(struct lib_context *lc, const char *handler,
 void file_dev_size(struct lib_context *lc, const char *handler,
 		   struct dev_info *di)
 {
-	if (OPT_DUMP(lc))
+	if (OPT_DUMP(lc)) {
+		char *dir = _dir(lc, handler);
+
+		if (dir)
+			dbg_free(dir);
+		else
+			return;
+
 		file_number(lc, handler, di->path, di->sectors, "size");
+		_chdir(lc, "..");
+	}
 }

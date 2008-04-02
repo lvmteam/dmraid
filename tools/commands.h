@@ -46,6 +46,7 @@ enum action {
 #endif
 	VERSION		= 0x100000,
 	IGNORELOCKING	= 0x200000,
+	PARTCHAR	= 0x400000,
 };
 
 #define	ALL_FLAGS	((enum action) -1)

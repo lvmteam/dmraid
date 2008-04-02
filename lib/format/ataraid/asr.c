@@ -49,11 +49,12 @@ static enum status disk_status(struct asr_raid_configline *disk) {
 /* Extract config line from metadata */
 static struct asr_raid_configline *get_config(struct asr *asr, uint32_t magic)
 {
-	unsigned int i = asr->rt->elmcnt;
+	struct asr_raidtable *rt = asr->rt;
+	struct asr_raid_configline *cl = rt->ent + rt->elmcnt;
 	
-	while (i--) {
-		if (asr->rt->ent[i].raidmagic == magic)
-			return asr->rt->ent + i;
+	while (cl-- > rt->ent) {
+		if (cl->raidmagic == magic)
+			return cl;
 	}
 
 	return NULL;
@@ -92,7 +93,7 @@ static char *name(struct lib_context *lc, struct asr *asr)
 }
 
 /* Stride size */
-static inline unsigned int stride(struct asr_raid_configline *cl)
+static inline unsigned stride(struct asr_raid_configline *cl)
 {
 	return cl ? cl->strpsize: 0;
 }
@@ -114,8 +115,7 @@ static enum type type(struct asr_raid_configline *cl)
 		{ 0, t_undef},
 	};
 
-printf("cl->raidtype=%d rd_type=%d\n", cl->raidtype, rd_type(types, (unsigned int) cl->raidtype));
-	return cl ? rd_type(types, (unsigned int) cl->raidtype) : t_undef;
+	return cl ? rd_type(types, (unsigned) cl->raidtype) : t_undef;
 }
 
 /*
@@ -141,11 +141,12 @@ static void cvt_configline(struct asr_raid_configline *cl)
 	CVT32(cl->appBurstCount);
 }
 
-static void to_cpu(void *meta, unsigned int cvt)
+static void to_cpu(void *meta, unsigned cvt)
 {
 	struct asr *asr = meta;
-	unsigned int i, elmcnt = asr->rt->elmcnt,
-		     use_old_elmcnt = (asr->rt->ridcode == RVALID2);
+	struct asr_raidtable *rt = asr->rt;
+	unsigned i, elmcnt = rt->elmcnt,
+		     use_old_elmcnt = (rt->ridcode == RVALID2);
 
 	if (cvt & ASR_BLOCK) {
 		CVT32(asr->rb.b0idcode);
@@ -161,29 +162,30 @@ static void to_cpu(void *meta, unsigned int cvt)
 	}
 
 	if (cvt & ASR_TABLE) {
-		CVT32(asr->rt->ridcode);
-		CVT32(asr->rt->rversion);
-		CVT16(asr->rt->maxelm);
-		CVT16(asr->rt->elmcnt);
+		CVT32(rt->ridcode);
+		CVT32(rt->rversion);
+		CVT16(rt->maxelm);
+		CVT16(rt->elmcnt);
 		if (!use_old_elmcnt)
-			elmcnt = asr->rt->elmcnt;
-		CVT16(asr->rt->elmsize);
-		CVT32(asr->rt->raidFlags);
-		CVT32(asr->rt->timestamp);
-		CVT16(asr->rt->rchksum);
-		CVT32(asr->rt->sparedrivemagic);
-		CVT32(asr->rt->raidmagic);
-		CVT32(asr->rt->verifyDate);
-		CVT32(asr->rt->recreateDate);
+			elmcnt = rt->elmcnt;
+
+		CVT16(rt->elmsize);
+		CVT32(rt->raidFlags);
+		CVT32(rt->timestamp);
+		CVT16(rt->rchksum);
+		CVT32(rt->sparedrivemagic);
+		CVT32(rt->raidmagic);
+		CVT32(rt->verifyDate);
+		CVT32(rt->recreateDate);
 
 		/* Convert the first seven config lines */
 		for (i = 0; i < (min(elmcnt, ASR_TBLELMCNT)); i++) 
-			cvt_configline(asr->rt->ent + i);
+			cvt_configline(rt->ent + i);
 	}
 
 	if (cvt & ASR_EXTTABLE) {
 		for (i = ASR_TBLELMCNT; i < elmcnt; i++)
-			cvt_configline(asr->rt->ent + i);
+			cvt_configline(rt->ent + i);
 	}
 }
 
@@ -192,11 +194,11 @@ static void to_cpu(void *meta, unsigned int cvt)
 #endif
 
 /* Compute the checksum of RAID metadata */
-static unsigned int compute_checksum(struct asr *asr)
+static unsigned compute_checksum(struct asr *asr)
 {
-	uint8_t *ptr = (uint8_t*) asr->rt->ent;
-	unsigned int checksum = 0,
-		     end = sizeof(*asr->rt->ent) * asr->rt->elmcnt;
+	struct asr_raidtable *rt = asr->rt;
+	uint8_t *ptr = (uint8_t*) rt->ent;
+	unsigned checksum = 0, end = sizeof(*rt->ent) * rt->elmcnt;
 
 	/* Compute checksum. */
 	while (end--)
@@ -209,7 +211,7 @@ static unsigned int compute_checksum(struct asr *asr)
 enum truncate { TRUNCATE, UNTRUNCATE };
 static void handle_white_space(uint8_t *p, enum truncate truncate)
 {
-	unsigned int j = ASR_NAMELEN;
+	unsigned j = ASR_NAMELEN;
 	uint8_t c = truncate == TRUNCATE ? 0 : ' ';
 
 	while (j-- && (truncate == TRUNCATE ? isspace(p[j]) : !p[j]))
@@ -220,12 +222,13 @@ static void handle_white_space(uint8_t *p, enum truncate truncate)
 static int read_extended(struct lib_context *lc, struct dev_info *di,
 			 struct asr *asr)
 {
-	unsigned int remaining, i, chk;
+	unsigned remaining, i, chk;
+	struct asr_raidtable *rt = asr->rt;
 
 	log_notice(lc, "%s: reading extended data on %s", handler, di->path);
 	
 	/* Read the RAID table. */
-	if (!read_file(lc, handler, di->path, asr->rt, ASR_DISK_BLOCK_SIZE,
+	if (!read_file(lc, handler, di->path, rt, ASR_DISK_BLOCK_SIZE,
 		       (uint64_t) asr->rb.raidtbl * ASR_DISK_BLOCK_SIZE))
 		LOG_ERR(lc, 0, "%s: Could not read metadata off %s",
 			handler, di->path);
@@ -234,25 +237,25 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	to_cpu(asr, ASR_TABLE);
 	
 	/* Is this ok? */
-	if (asr->rt->ridcode != RVALID2)
+	if (rt->ridcode != RVALID2)
 		LOG_ERR(lc, 0, "%s: Invalid magic number in RAID table; "
 			"saw 0x%X, expected 0x%X on %s",
-			handler, asr->rt->ridcode, RVALID2, di->path);
+			handler, rt->ridcode, RVALID2, di->path);
 
 	/* Have we a valid element count? */
-	if (asr->rt->elmcnt >= asr->rt->maxelm || asr->rt->elmcnt == 0)
+	if (rt->elmcnt >= rt->maxelm || rt->elmcnt == 0)
 		LOG_ERR(lc, 0, "%s: Invalid RAID config table count on %s",
 			handler, di->path);
 
 	/* Is each element the right size? */
-	if (asr->rt->elmsize != sizeof(*asr->rt->ent))
+	if (rt->elmsize != sizeof(*rt->ent))
 		LOG_ERR(lc, 0, "%s: Wrong RAID config line size on %s",
 			handler, di->path);
 
 	/* Figure out how much else we need to read. */
-	if (asr->rt->elmcnt > ASR_TBLELMCNT) {
-		remaining = asr->rt->elmsize * (asr->rt->elmcnt - 7);
-		if (!read_file(lc, handler, di->path, asr->rt->ent + 7,
+	if (rt->elmcnt > ASR_TBLELMCNT) {
+		remaining = rt->elmsize * (rt->elmcnt - 7);
+		if (!read_file(lc, handler, di->path, rt->ent + 7,
 			       remaining, (uint64_t)(asr->rb.raidtbl + 1) *
 			       ASR_DISK_BLOCK_SIZE))
 			return 0;
@@ -260,14 +263,16 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 		to_cpu(asr, ASR_EXTTABLE);
 	}
 
-	chk = compute_checksum(asr);
-	if (chk != asr->rt->rchksum)
-		LOG_ERR(lc, 0,"%s: Invalid RAID config table checksum "
-			       "(0x%X vs. 0x%X) on %s",
-			handler, chk, asr->rt->rchksum, di->path);
+	/* Checksum only valid for raid table version 1. */
+	if (rt->rversion < 2) {
+		if ((chk = compute_checksum(asr)) != rt->rchksum)
+			log_err(lc, "%s: Invalid RAID config table checksum "
+				       "(0x%X vs. 0x%X) on %s",
+				handler, chk, rt->rchksum, di->path);
+	}
 	
 	/* Process the name of each line of the config line. */
-	for (i = 0; i < asr->rt->elmcnt; i++) {
+	for (i = 0; i < rt->elmcnt; i++) {
 		/* 
 		 * Weird quirks of the name field of the config line:
 		 *
@@ -290,11 +295,13 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 		 *
 		 * This is nuts.
 		 */
-		if (!asr->rt->ent[i].name)
-			memcpy(asr->rt->ent[i].name, asr->rt->ent[0].name, 16);
+		if (!*rt->ent[i].name)
+			strncpy((char*) rt->ent[i].name,
+				(char*) rt->ent->name,
+				ASR_NAMELEN);
 
 		/* Now truncate trailing whitespace in the name. */
-		handle_white_space(asr->rt->ent[i].name, TRUNCATE);
+		handle_white_space(rt->ent[i].name, TRUNCATE);
 	}
 
 	return 1;
@@ -479,11 +486,12 @@ static int dev_sort(struct list_head *pos, struct list_head *new)
 static int find_toplevel(struct lib_context *lc, struct asr *asr)
 {
 	int i, toplevel = -1;
+	struct asr_raidtable *rt = asr->rt;
 
-	for (i = 0; i < asr->rt->elmcnt; i++) {
-		if (asr->rt->ent[i].raidlevel == FWL)
+	for (i = 0; i < rt->elmcnt; i++) {
+		if (rt->ent[i].raidlevel == FWL)
 			toplevel = i;
-		else if (asr->rt->ent[i].raidlevel == FWL_2) {
+		else if (rt->ent[i].raidlevel == FWL_2) {
 			toplevel = i;
 			break;
 		}
@@ -499,13 +507,14 @@ static int find_toplevel(struct lib_context *lc, struct asr *asr)
 static struct asr_raid_configline *find_logical(struct asr *asr)
 {
 	int i, j;
+	struct asr_raidtable *rt = asr->rt;
 
 	/* This MUST be done backwards! */
-	for (i = asr->rt->elmcnt - 1; i > -1; i--) {
-		if (asr->rt->ent[i].raidmagic == asr->rb.drivemagic) {
+	for (i = rt->elmcnt - 1; i > -1; i--) {
+		if (rt->ent[i].raidmagic == asr->rb.drivemagic) {
 			for (j = i - 1; j > -1; j--) {
-				if (asr->rt->ent[j].raidlevel == FWL)
-					return asr->rt->ent + j;
+				if (rt->ent[j].raidlevel == FWL)
+					return rt->ent + j;
 			}
 		}
 	}
@@ -526,7 +535,7 @@ static struct raid_dev *find_spare(struct lib_context *lc) {
 
 /* Wrapper for name() */
 static char *js_name(struct lib_context *lc, struct raid_dev *rd,
-		     unsigned int subset)
+		     unsigned subset)
 {
 	return name(lc, META(rd, asr));
 }
@@ -694,10 +703,11 @@ static struct raid_set *asr_group(struct lib_context *lc, struct raid_dev *rd)
 static void delete_configline(struct asr *asr, int index)
 {
 	struct asr_raid_configline *cl, *end;
+	struct asr_raidtable *rt = asr->rt;
 
-	asr->rt->elmcnt--;
-	cl = asr->rt->ent + index;
-	end = asr->rt->ent + asr->rt->elmcnt;
+	rt->elmcnt--;
+	cl = rt->ent + index;
+	end = rt->ent + rt->elmcnt;
 	while (cl < end) {
 		memcpy(cl, cl + 1, sizeof(*cl));
 		++cl;
@@ -707,19 +717,19 @@ static void delete_configline(struct asr *asr, int index)
 /* Find the newest configline entry in raid set and return a pointer to it. */
 static struct raid_dev *find_newest_drive(struct raid_set *rs)
 {
-	struct asr *asr;
+	struct asr_raidtable *rt;
 	struct raid_dev *device, *newest = NULL;
 	uint16_t newest_raidseq = 0;
         int i;
 	
 	list_for_each_entry(device, &rs->devs, devs) {
-		asr = META(device, asr);
+		rt = META(device, asr)->rt;
 		// FIXME: We should be able to assume each configline
 		// in a single drive has the same raidseq as the rest
 		// in that drive. We're doing too much work here.
-		for (i = 0; i < asr->rt->elmcnt; ++i) {
-			if (asr->rt->ent[i].raidseq >= newest_raidseq) {
-				newest_raidseq = asr->rt->ent[i].raidseq;
+		for (i = 0; i < rt->elmcnt; i++) {
+			if (rt->ent[i].raidseq >= newest_raidseq) {
+				newest_raidseq = rt->ent[i].raidseq;
 				newest = device;
 			}
 		}
@@ -830,24 +840,25 @@ static int cleanup_configlines(struct raid_dev *rd, struct raid_set *rs)
 static int create_configline(struct raid_set *rs, struct asr *asr,
 		             struct asr *a, struct raid_dev* newest)
 {
-	if (asr->rt->elmcnt >= RCTBL_MAX_ENTRIES) {
-		return 0;
-	}
-
-	struct asr *newest_asr;
+	struct asr *newest_asr = META(newest, asr);
 	struct asr_raid_configline *cl;
 	
-	newest_asr = META(newest, asr);
+	if (asr->rt->elmcnt >= RCTBL_MAX_ENTRIES)
+		return 0;
 	
 	cl = asr->rt->ent + asr->rt->elmcnt;
 	asr->rt->elmcnt++;
 
-	/* Use first raidseq, below: FIXME - don't assume all CLS are
-	 * consistent */
+	/*
+	 * Use first raidseq, below: FIXME - don't
+	 * assume all CLS are consistent.
+	 */
 	cl->raidmagic = a->rb.drivemagic;
 	cl->raidseq = newest_asr->rt->ent[0].raidseq;
 	cl->strpsize = newest_asr->rt->ent[0].strpsize;
-	strcpy((char*) cl->name, &rs->name[4]); /* starts after "asr_" */
+
+	/* Starts after "asr_" */
+	strcpy((char*) cl->name, &rs->name[sizeof(HANDLER)]);
 	cl->raidcnt = 0;
 
 	/* Convert rs->type to an ASR_RAID type for the CL */
@@ -875,12 +886,13 @@ static int update_metadata(struct lib_context *lc,  struct raid_dev *rd,
 	struct asr_raid_configline *cl;
 	struct raid_dev *d, *newest;
 	struct asr *a;
+	struct asr_raidtable *rt = asr->rt;
 
 	/* Find the raid set */
 	rs = get_raid_set(lc, rd);
 	if (!rs) {
 		/* Array-less disks ... have no CLs ? */
-		asr->rt->elmcnt = 0;
+		rt->elmcnt = 0;
 		return 1;
 	}
 	
@@ -901,14 +913,14 @@ static int update_metadata(struct lib_context *lc,  struct raid_dev *rd,
 		struct asr *newest_asr = META(newest, asr);
 	
 		/* copy entire table from newest drive */	
-		asr->rt->elmcnt = newest_asr->rt->elmcnt;
-		memcpy(asr->rt->ent, newest_asr->rt->ent,
-			asr->rt->elmcnt * sizeof(*asr->rt->ent));
+		rt->elmcnt = newest_asr->rt->elmcnt;
+		memcpy(rt->ent, newest_asr->rt->ent,
+			rt->elmcnt * sizeof(*rt->ent));
 	}
 
 	/* Increment the top level CL's raid count */
 	/* Fixme: What about the the FWLs in a FWL2 setting? */
-	cl = asr->rt->ent + find_toplevel(lc, asr);
+	cl = rt->ent + find_toplevel(lc, asr);
 	cl->raidseq++;
 
 	/* For each disk in the rs */
@@ -977,7 +989,7 @@ static int asr_write(struct lib_context *lc,  struct raid_dev *rd, int erase)
  */
 
 /* Retrieve the number of devices that should be in this set. */
-static unsigned int device_count(struct raid_dev *rd, void *context)
+static unsigned device_count(struct raid_dev *rd, void *context)
 {
 	/* Get the logical drive */
 	struct asr_raid_configline *cl = find_logical(META(rd, asr));
@@ -1052,10 +1064,10 @@ static void dump_cl(struct lib_context *lc, struct asr_raid_configline *cl)
 /* Dump a raid config table */
 static void dump_rt(struct lib_context *lc, struct asr_raidtable *rt)
 {
-	unsigned int i;
+	unsigned i;
 
 	DP("ridcode:\t\t\t0x%X", rt, rt->ridcode);
-	DP("table ver:\t\t%d", rt, rt->rversion);
+	DP("rversion:\t\t%d", rt, rt->rversion);
 	DP("max configs:\t\t%d", rt, rt->maxelm);
 	DP("configs:\t\t\t%d", rt, rt->elmcnt);
 	DP("config sz:\t\t%d", rt, rt->elmsize);
@@ -1124,7 +1136,6 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	if (!cl)
 		LOG_ERR(lc, 0, "%s: Could not find current disk!", handler);		
-
 	/* We need two metadata areas */
 	if (!(ma = rd->meta_areas = alloc_meta_areas(lc, rd, handler, 2)))
 		return 0;

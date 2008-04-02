@@ -6,6 +6,7 @@ dmraid \- discover and activate software (ATA)RAID
  {-a|--activate} {y|n|yes|no} 
  [-d|--debug]... [-v|--verbose]... [-i|--ignorelocking]
  [-f|--format FORMAT[,FORMAT...]]
+ [{-P|--partchar} CHAR]
  [-p|--no_partitions]
  [--separator SEPARATOR]
  [-t|--test]
@@ -176,6 +177,10 @@ If device-path(s) is/are given on the command line, native metadata output
 is restricted to those listed.
 
 .TP
+.I [{-P|--partchar} CHAR]
+Use CHAR as the separator between the device name and the partition number.
+
+.TP
 .I {-r|--raid_devices} [device-path...]
 List all discovered RAID devices with format, RAID level, sectors used
 and data offset into the device.
@@ -187,10 +192,11 @@ If
 .B -D
 is added to
 .B -r
-the RAID metadata gets dumped into files named devicename_formatname.dat.
-The offset in sectors where the metadata is located on the device is written
-into files named devicename_formatname.offset and the size of the device
-into files named devicename_formatname.size.
+the RAID metadata gets dumped into a subdirectory named dmraid.format_name
+(eg. format_name = isw) in files named devicename.dat.
+The byte offset where the metadata is located on the device is written
+into files named devicename.offset and the size of the device in sectors
+into files named devicename.size.
 
 If 
 .B -E
@@ -214,7 +220,7 @@ for f in *.dat
 .br
 do
 .br
-	dd if=$f of=/dev/${f%%_*} \\
+	dd if=$f of=/dev/${f%%.dat} \\
 .br
 	seek=`cat ${f%%dat}offset` bs=1
 .br

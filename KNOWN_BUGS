@@ -1,4 +1,4 @@
 
-KNOWN_BUGS in dmraid 1.0.0.rc14					2005.11.08
+KNOWN_BUGS in dmraid 1.0.0.rc15					2008.04.02
 
 o "dmraid --sets[a/i]" doesn't work properly. Use the short option -s.

@@ -13,8 +13,15 @@
 
 #include <stdint.h>
 
-#define PDC_CONFIGOFFSETS	63,255,256,16,399,735
+#define PDC_CONFIGOFFSETS	63,255,256,16,399,675,735,974,991
 #define	PDC_DATAOFFSET 0
+
+/*
+ * Maximum metadata areas checked for and offset of
+ * those relative to PDC_CONFIGOFFSETS value in sectors.
+ */
+#define	PDC_MAX_META_AREAS	4
+#define	PDC_META_OFFSET		14
 
 /* Ondisk metadata for Promise Fastrack */
 struct pdc {
@@ -36,7 +43,8 @@ struct pdc {
 		uint8_t device;			/* 0x207 */
 		uint32_t magic_0;		/* 0x208 - 0x20B */
 		uint32_t unknown_1;		/* 0x20C - 0x20F */
-		uint32_t unknown_2;		/* 0x210 - 0x213 */
+		// uint32_t unknown_2;		/* 0x210 - 0x213 */
+		uint32_t start;			/* 0x210 - 0x213 */
 		uint32_t disk_secs;		/* 0x214 - 0x217 */
 		uint32_t unknown_3;		/* 0x218 - 0x21B */
 		uint16_t unknown_4;		/* 0x21C - 0x21D */

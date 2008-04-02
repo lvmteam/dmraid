@@ -94,6 +94,9 @@ static void init_options(struct lib_context *lc, void *arg)
 {
 	lc_inc_opt(lc, LC_SEPARATOR);
 	lc->options[LC_SEPARATOR].arg.str = dbg_strdup((char*) ",");
+
+	lc_inc_opt(lc, LC_PARTCHAR);
+	lc->options[LC_PARTCHAR].arg.str = dbg_strdup((char*) "p");
 }
 
 static void init_cmd(struct lib_context *lc, void *arg)

@@ -1,8 +1,8 @@
 /*
  * JMicron metadata format handler.
  *
- * Copyright (C) 2006  Heinz Mauelshagen, Red Hat GmbH.
- *                     All rights reserved.
+ * Copyright (C) 2006,2007  Heinz Mauelshagen, Red Hat GmbH.
+ *                          All rights reserved.
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -25,25 +25,27 @@ static int member(struct jm *jm);
 static char *name(struct lib_context *lc, struct raid_dev *rd,
 		  unsigned int subset)
 {
+	int i;
 	size_t len;
 	struct jm *jm = META(rd, jm);
-	char buf[2], *ret, *name = (char *) jm->name;
+	char buf[JM_NAME_LEN + 1], *ret, *name = (char *) jm->name;
 
-	/* Name always 0 terminated ? */
-	if ((len = strlen(name)) > JM_NAME_LEN)
-		len = JM_NAME_LEN;
+	/* Name always 0 terminated or whitespace at end ? */
+	strncpy(buf, name, JM_NAME_LEN);
+	len = strlen(buf);
+	i = len < JM_NAME_LEN ? len : JM_NAME_LEN;
+	buf[i] = 0;
+	while (i-- && isspace(buf[i]))
+		buf[i] = 0;
 
-	len += sizeof(HANDLER) + 2;
-	if (jm->mode == JM_T_RAID01)
-		len++;
-
+	len = strlen(buf) + sizeof(HANDLER) + (jm->mode == JM_T_RAID01 ? 3 : 2);
 	if ((ret = dbg_malloc(len))) {
 		if (jm->mode == JM_T_RAID01 && subset)
 			sprintf(buf, "-%u", member(jm) / 2);
 		else
 			*buf = 0;
 
-		sprintf(ret, "%s_%s%s", HANDLER, name, buf);
+		sprintf(ret, "%s_%s%s", handler, name, buf);
 	}
 
 	return ret;

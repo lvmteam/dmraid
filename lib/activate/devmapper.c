@@ -21,6 +21,8 @@
 #include "internal.h"
 #include "devmapper.h"
 
+#include <linux/dm-ioctl.h>
+
 /* Make up a dm path. */
 char *mkdm_path(struct lib_context *lc, const char *name)
 {
@@ -147,24 +149,48 @@ static int check_table(struct lib_context *lc, char *table)
 	return handle_table(lc, NULL, table, get_target_list());
 }
 
+/* Build a UUID for a dmraid device 
+ * Return 1 for sucess; 0 for failure*/
+static int dmraid_uuid(struct lib_context *lc, struct raid_set *rs,
+		       char *uuid, uint uuid_len) {
+	int r;
+
+	/* Clear garbage data from uuid string */
+	memset(uuid, 0, uuid_len);
+
+	/* Create UUID string from subsystem prefix and RAID set name. */
+	r = snprintf(uuid, uuid_len, "DMRAID-%s", rs->name) < uuid_len;
+	return r < 0 ? 0 : (r < uuid_len);
+}
+
 /* Create a task, set its name and run it. */
 static int run_task(struct lib_context *lc, struct raid_set *rs,
 		    char *table, int type)
 {
+	/* DM_UUID_LEN is defined in dm-ioctl.h as 129 characters;
+	 * though not all 129 must be used (md uses just 16 from 
+	 * a quick review of md.c. 
+	 * We will be using: (len vol grp name)*/ 
+	char uuid[DM_UUID_LEN];
 	int ret;
 	struct dm_task *dmt;
 
 	_init_dm();
-	ret = (dmt = dm_task_create(type)) && dm_task_set_name(dmt, rs->name);
+	ret = (dmt = dm_task_create(type)) &&
+	      dm_task_set_name(dmt, rs->name);
 	if (ret && table)
 		ret = parse_table(lc, dmt, table);
 
-	if (ret)
-		ret = dm_task_run(dmt);
+	if (ret && 
+	    DM_DEVICE_CREATE == type)
+		ret = dmraid_uuid(lc, rs, uuid, DM_UUID_LEN) &&
+		      dm_task_set_uuid(dmt, uuid) &&
+		      dm_task_run(dmt);
 
 	_exit_dm(dmt);
 	return ret;
 }
+	
 /* Create a mapped device. */
 int dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
 {

@@ -18,7 +18,7 @@
  * Comment next line out to avoid pre-registration
  * checks on metadata format handlers.
  */
-// #define	CHECK_FORMAT_HANDLER
+#define	CHECK_FORMAT_HANDLER
 #ifdef	CHECK_FORMAT_HANDLER
 /*
  * Check that mandatory members of a metadata form handler are present.
@@ -34,25 +34,25 @@
 #define offset(member)	struct_offset(dmraid_format, member)
 
 struct format_member {
-	const unsigned short offset;
-	const unsigned char flags;
 	const char *msg;
+	const unsigned short offset;
+	const unsigned short flags;
 } __attribute__ ((packed));
 
 enum { FMT_ALL = 0x01, FMT_METHOD = 0x02 } format_flags;
 #define	IS_FMT_ALL(member)	(member->flags & FMT_ALL)
 #define	IS_FMT_METHOD(member)	(member->flags & FMT_METHOD)
 static struct format_member format_member[] = {
-	{ offset(name), FMT_ALL, "name" },
-	{ offset(descr), FMT_ALL, "description" },
-	{ offset(caps), 0, "capabilities" },
-	{ offset(read), FMT_ALL|FMT_METHOD, "read" },
-	{ offset(write), FMT_METHOD, "write" },
-	{ offset(group), FMT_ALL|FMT_METHOD, "group" },
-	{ offset(check), FMT_ALL|FMT_METHOD, "check" },
-	{ offset(events), 0, "events array" },
+	{ "name", offset(name), FMT_ALL },
+	{ "description", offset(descr), FMT_ALL },
+	{ "capabilities", offset(caps), 0 },
+	{ "read", offset(read), FMT_ALL|FMT_METHOD },
+	{ "write", offset(write), FMT_METHOD },
+	{ "group", offset(group), FMT_ALL|FMT_METHOD },
+	{ "check", offset(check), FMT_ALL|FMT_METHOD },
+	{ "events array", offset(events), 0 },
 #ifdef	NATIVE_LOG
-	{ offset(log),    FMT_METHOD, "log" },
+	{ "log", offset(log), FMT_METHOD },
 #endif
 };
 #undef	offset

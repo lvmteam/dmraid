@@ -28,7 +28,8 @@ struct lsi_disk {
 	uint16_t magic_1;
 	uint8_t disk_number;
 	uint8_t set_number;
-	uint8_t unknown1[8];
+	uint8_t offline;
+	uint8_t unknown1[7];
 } __attribute__ ((packed));
 
 struct lsi {
@@ -47,8 +48,10 @@ struct lsi {
 	uint8_t dummy4;		/* 0x11 */
 	uint16_t stride;		/* 0x12 - 0x13 */
 	uint8_t filler[0x20-0x14];	/* 0x14 - 0x1F */
+
 #define	LSI_MAX_DISKS	4
 	struct lsi_disk disks[LSI_MAX_DISKS];/* 0x20 - 0x5F */
+
 #define	LSI_DISK(lsi)		(lsi->set_number * 2 + lsi->disk_number)
 #define LSI_MAGIC_0(lsi)	(lsi->disks[LSI_DISK(lsi)].magic_0)
 #define LSI_MAGIC_1(lsi)	(lsi->disks[LSI_DISK(lsi)].magic_1)

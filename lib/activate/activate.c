@@ -398,7 +398,11 @@ static int dm_raid1(struct lib_context *lc, char **table, struct raid_set *rs)
 			goto err;
 	}
 
-	return 1;
+	/* Append the flag/feature required for dmraid1 
+	 * event handling in the kernel driver 
+	 */
+	if(p_fmt(lc, table, " 1 handle_errors"))
+		return 1;
 
    err:
 	return log_alloc_err(lc, __func__);

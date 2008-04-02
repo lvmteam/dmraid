@@ -19,6 +19,18 @@
 #include "ddf1_cvt.h"
 #include "ddf1_dump.h"
 
+#define GRP_RD(rd) \
+	(((struct ddf1_group_info *) (rd)->private.ptr)->rd_group)
+
+/*
+ * Helper struct to squirrel a group set reference to the check method
+ * in order to avoid, that premature deallocation in metadata.c
+ * removes the group set.
+ */
+struct ddf1_group_info {
+	struct raid_dev *rd_group;
+};
+
 static const char *handler = HANDLER;
 
 #define	DDF1_SPARES	".ddf1_spares"
@@ -595,8 +607,10 @@ static int no_sort(struct list_head *pos, struct list_head *new)
 /* Sort DDF1 devices by offset entry within a RAID set. */
 static int dev_sort(struct list_head *pos, struct list_head *new)
 {
-	return compose_id(META(RD(new)->private.ptr, ddf1), RD(new)) <
-	       compose_id(META(RD(pos)->private.ptr, ddf1), RD(pos));
+	struct raid_dev *rd_pos = RD(pos), *rd_new = RD(new);
+
+	return compose_id(META(GRP_RD(rd_new), ddf1), rd_new) <
+	       compose_id(META(GRP_RD(rd_pos), ddf1), rd_pos);
 }
 
 /*
@@ -705,6 +719,7 @@ static struct raid_set *group_rd(struct lib_context *lc,
 	struct raid_dev *rd;
 	struct ddf1_config_record *cr;
 	struct ddf1_phys_drive *pd;
+	struct ddf1_group_info *gi;
 	unsigned int devs, i;
 	
 	if (!(pd = get_phys_drive(ddf1)))
@@ -746,8 +761,14 @@ static struct raid_set *group_rd(struct lib_context *lc,
 			return NULL;
 		}
 
+		if (!(gi = alloc_private(lc, handler, sizeof(*gi)))) {
+			free_raid_dev(lc, &rd);
+			return NULL;
+		}
+
 		/* Keep reference to the entire device for ddf1_check() */
-		rd->private.ptr = rd_group;
+		rd->private.ptr = gi;
+		GRP_RD(rd) = rd_group;
 
 		/* Add rest of subset state */
 		rs->stride = stride(cr);
@@ -825,13 +846,8 @@ static unsigned int device_count(struct raid_dev *rd, void *context)
 {
 	/* Get the logical drive */
 	struct ddf1_config_record *cr =
-		get_this_config(META(rd->private.ptr, ddf1), rd->offset);
+		get_this_config(META(GRP_RD(rd), ddf1), rd->offset);
 
-	/*
-	 * Release reference after check, so that core
-	 * doesn't try to free it multiple times.
-	 */
-	rd->private.ptr = NULL;
 	return cr ? cr->primary_element_count : 0;
 }
 

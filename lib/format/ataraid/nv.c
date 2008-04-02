@@ -155,7 +155,7 @@ static void to_cpu(void *meta)
 	CVT32(nv->unitFlags);
 	CVT32(array->version);
 
-	while (i--);
+	while (i--)
 		CVT32(array->signature[i]);
 
 	CVT32(array->raidLevel);

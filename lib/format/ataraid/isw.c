@@ -364,21 +364,26 @@ static int isw_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 {
 	int ret;
 	struct isw *isw = META(rd, isw);
+	int large = div_up(isw->mpb_size, ISW_DISK_BLOCK_SIZE) > 1;
 
 	to_disk(isw, FULL);
 
-	/*
-	 * Copy 1st metadata sector to after the extended ones
-	 * and increment metadata area pointer by one block, so
-	 * that the metadata is filed in the proper sequence.
-	 */
-	memcpy((void*) isw + rd->meta_areas->size, isw, ISW_DISK_BLOCK_SIZE);
-	rd->meta_areas->area += ISW_DISK_BLOCK_SIZE;
+	if (large) {
+		/*
+		 * Copy 1st metadata sector to after the extended ones
+		 * and increment metadata area pointer by one block, so
+		 * that the metadata is filed in the proper sequence.
+		 */
+		memcpy((void*) isw + rd->meta_areas->size, isw,
+		       ISW_DISK_BLOCK_SIZE);
+		rd->meta_areas->area += ISW_DISK_BLOCK_SIZE;
+	}
 
 	ret = write_metadata(lc, handler, rd, -1, erase);
 
 	/* Correct metadata area pointer. */
-	rd->meta_areas->area -= ISW_DISK_BLOCK_SIZE;
+	if (large)
+		rd->meta_areas->area -= ISW_DISK_BLOCK_SIZE;
 
 	to_cpu(isw, FULL);
 
@@ -504,7 +509,7 @@ static struct raid_set *group_rd(struct lib_context *lc,
 
 /* Add an Intel SW RAID device to a set */
 static struct raid_set *isw_group(struct lib_context *lc,
-				    struct raid_dev *rd_meta)
+				  struct raid_dev *rd_meta)
 {
 	struct raid_set *rs_group;
 
@@ -744,7 +749,7 @@ static void isw_log(struct lib_context *lc, struct raid_dev *rd)
 static struct dmraid_format isw_format = {
 	.name	= HANDLER,
 	.descr	= "Intel Software RAID",
-	.caps	= "0,1",
+	.caps	= "0,1,5",
 	.format = FMT_RAID,
 	.read	= isw_read,
 	.write	= isw_write,
