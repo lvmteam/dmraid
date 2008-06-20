@@ -15,7 +15,7 @@
 #define	xx(type)	{ register_ ## type },
 
 	/* Metadata format handlers. */
-	xx(asr)
+xx(asr)
 	xx(ddf1)
 	xx(hpt37x)
 	xx(hpt45x)
@@ -29,6 +29,5 @@
 
 	/* DOS partition type handler. */
 	xx(dos)
-
 #undef	xx
 #endif

@@ -1,7 +1,7 @@
 /*
  * Highpoint 37X ATARAID series metadata format handler.
  *
- * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
  * See file LICENSE at the top of this source tree for license information.
@@ -26,16 +26,16 @@ static const char *handler = HANDLER;
 
 /* Make up RAID set name from magic_[01] numbers */
 /* FIXME: better name ? */
-static size_t _name(struct hpt37x *hpt, char *str, size_t len,
-		    unsigned int subset)
+static size_t
+_name(struct hpt37x *hpt, char *str, size_t len, unsigned int subset)
 {
 	const char *fmt;
 
 	if (hpt->magic_0)
 		fmt = (subset &&
 		       (hpt->type == HPT37X_T_RAID01_RAID0 ||
-		        hpt->type == HPT37X_T_RAID01_RAID1)) ?
-		       "hpt37x_%u-%u" : "hpt37x_%u";
+			hpt->type == HPT37X_T_RAID01_RAID1)) ?
+			"hpt37x_%u-%u" : "hpt37x_%u";
 	else
 		fmt = "hpt37x_SPARE";
 
@@ -44,8 +44,8 @@ static size_t _name(struct hpt37x *hpt, char *str, size_t len,
 			hpt->magic_1 ? hpt->magic_1 : hpt->magic_0, hpt->order);
 }
 
-static char *name(struct lib_context *lc, struct raid_dev *rd,
-		  unsigned int subset)
+static char *
+name(struct lib_context *lc, struct raid_dev *rd, unsigned int subset)
 {
 	size_t len;
 	char *ret;
@@ -65,52 +65,57 @@ static char *name(struct lib_context *lc, struct raid_dev *rd,
  * Retrieve status of device.
  * FIXME: is this sufficient to cover all state ?
  */
-static enum status status(struct hpt37x *hpt)
+static enum status
+status(struct hpt37x *hpt)
 {
 	return hpt->magic == HPT37X_MAGIC_BAD ? s_broken : s_ok;
 }
 
 /* Neutralize disk type. */
-static enum type type(struct hpt37x *hpt)
+static enum type
+type(struct hpt37x *hpt)
 {
 	/* Mapping of HPT 37X types to generic types. */
 	static struct types types[] = {
-		{ HPT37X_T_SINGLEDISK, t_linear},
-		{ HPT37X_T_SPAN, t_linear},
-		{ HPT37X_T_RAID0, t_raid0},
-		{ HPT37X_T_RAID1, t_raid1},
-		{ HPT37X_T_RAID01_RAID0, t_raid0},
-		{ HPT37X_T_RAID01_RAID1, t_raid1},
+		{ HPT37X_T_SINGLEDISK, t_linear },
+		{ HPT37X_T_SPAN, t_linear },
+		{ HPT37X_T_RAID0, t_raid0 },
+		{ HPT37X_T_RAID1, t_raid1 },
+		{ HPT37X_T_RAID01_RAID0, t_raid0 },
+		{ HPT37X_T_RAID01_RAID1, t_raid1 },
 		/* FIXME: support RAID 3+5 */
-		{ 0, t_undef},
+		{ 0, t_undef },
 	};
 
 	return hpt->magic_0 ?
-	       rd_type(types, (unsigned int) hpt->type) : t_spare;
+		rd_type(types, (unsigned int) hpt->type) : t_spare;
 }
 
 /* Decide about ordering sequence of RAID device. */
-static int dev_sort(struct list_head *pos, struct list_head *new)
+static int
+dev_sort(struct list_head *pos, struct list_head *new)
 {
-	return (META(RD(new), hpt37x))->disk_number <
-	       (META(RD(pos), hpt37x))->disk_number;
+	return META(RD(new), hpt37x)->disk_number <
+	       META(RD(pos), hpt37x)->disk_number;
 }
 
 /* Decide about ordering sequence of RAID subset. */
-static int set_sort(struct list_head *pos, struct list_head *new)
+static int
+set_sort(struct list_head *pos, struct list_head *new)
 {
-	return (META(RD_RS(RS(new)), hpt37x))->order <
-	       (META(RD_RS(RS(pos)), hpt37x))->order;
+	return META(RD_RS(RS(new)), hpt37x)->order <
+	       META(RD_RS(RS(pos)), hpt37x)->order;
 }
 
 /* Magic check. */
-static int check_magic(void *meta)
+static int
+check_magic(void *meta)
 {
 	struct hpt37x *hpt = meta;
 
 	return (hpt->magic == HPT37X_MAGIC_OK ||
 		hpt->magic == HPT37X_MAGIC_BAD) &&
-		hpt->disk_number < 8;
+	       hpt->disk_number < 8;
 }
 
 /*
@@ -120,7 +125,8 @@ static int check_magic(void *meta)
 #if	BYTE_ORDER == LITTLE_ENDIAN
 #  define	to_cpu	NULL
 #else
-static void to_cpu(void *meta)
+static void
+to_cpu(void *meta)
 {
 	struct hpt37x *hpt = meta;
 
@@ -138,8 +144,7 @@ static void to_cpu(void *meta)
 
 		for (l = hpt->errorlog;
 		     l < hpt->errorlog +
-			 min(hpt->error_log_entries, HPT37X_MAX_ERRORLOG);
-		     l++) {
+		     min(hpt->error_log_entries, HPT37X_MAX_ERRORLOG); l++) {
 			CVT32(l->timestamp);
 			CVT32(l->lba);
 		}
@@ -148,14 +153,16 @@ static void to_cpu(void *meta)
 #endif
 
 /* Use magic check to tell, if this is Highpoint 37x */
-static int is_hpt37x(struct lib_context *lc, struct dev_info *di, void *meta)
+static int
+is_hpt37x(struct lib_context *lc, struct dev_info *di, void *meta)
 {
 	return check_magic(meta);
 }
 
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 		    struct dev_info *di, void *meta, union read_info *info);
-static struct raid_dev *hpt37x_read(struct lib_context *lc, struct dev_info *di)
+static struct raid_dev *
+hpt37x_read(struct lib_context *lc, struct dev_info *di)
 {
 	return read_raid_dev(lc, di, NULL,
 			     sizeof(struct hpt37x), HPT37X_CONFIGOFFSET,
@@ -165,8 +172,8 @@ static struct raid_dev *hpt37x_read(struct lib_context *lc, struct dev_info *di)
 /*
  * Write a Highpoint 37X RAID device.
  */
-static int hpt37x_write(struct lib_context *lc,
-			struct raid_dev *rd, int erase)
+static int
+hpt37x_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 {
 	int ret;
 #if	BYTE_ORDER != LITTLE_ENDIAN
@@ -188,28 +195,32 @@ static int hpt37x_write(struct lib_context *lc,
  * Check device hierarchy and create sub sets appropriately.
  *
  */
-static unsigned int stride(struct hpt37x *hpt)
+static unsigned int
+stride(struct hpt37x *hpt)
 {
 	return hpt->raid0_shift ? 1 << hpt->raid0_shift : 0;
 }
 
-static int mismatch(struct lib_context *lc, struct raid_dev *rd, char magic)
+static int
+mismatch(struct lib_context *lc, struct raid_dev *rd, char magic)
 {
 	LOG_ERR(lc, 0, "%s: magic_%c mismatch on %s",
 		handler, magic, rd->di->path);
 }
 
-static void super_created(struct raid_set *ss, void *private)
+static void
+super_created(struct raid_set *ss, void *private)
 {
 	struct hpt37x *hpt = META(private, hpt37x);
 
-	ss->type   = hpt->type == HPT37X_T_RAID01_RAID0 ? t_raid1 : t_raid0;
+	ss->type = hpt->type == HPT37X_T_RAID01_RAID0 ? t_raid1 : t_raid0;
 	ss->stride = stride(hpt);
 }
 
 /* FIXME: handle spares in mirrors and check that types are correct. */
-static int group_rd(struct lib_context *lc, struct raid_set *rs,
-		    struct raid_set **ss, struct raid_dev *rd)
+static int
+group_rd(struct lib_context *lc, struct raid_set *rs,
+	 struct raid_set **ss, struct raid_dev *rd)
 {
 	struct hpt37x *h, *hpt = META(rd, hpt37x);
 
@@ -248,8 +259,8 @@ static int group_rd(struct lib_context *lc, struct raid_set *rs,
 /*
  * Add a Highpoint RAID device to a set.
  */
-static struct raid_set *hpt37x_group(struct lib_context *lc,
-				       struct raid_dev *rd)
+static struct raid_set *
+hpt37x_group(struct lib_context *lc, struct raid_dev *rd)
 {
 	struct raid_set *rs, *ss = NULL;
 
@@ -268,22 +279,25 @@ static struct raid_set *hpt37x_group(struct lib_context *lc,
  *
  * FIXME: more sanity checks.
  */
-static unsigned int devices(struct raid_dev *rd, void *context)
+static unsigned int
+devices(struct raid_dev *rd, void *context)
 {
-	return (META(rd, hpt37x))->raid_disks;
+	return META(rd, hpt37x)->raid_disks;
 }
 
-static int check_rd(struct lib_context *lc, struct raid_set *rs,
-		    struct raid_dev *rd, void *context)
+static int
+check_rd(struct lib_context *lc, struct raid_set *rs,
+	 struct raid_dev *rd, void *context)
 {
 	/*
 	 * FIXME: raid_disks member wrong ?
-	 *	  (eg, Peter Jonas RAID1 metadata, 2 disks and raid_disks = 1)
+	 *        (eg, Peter Jonas RAID1 metadata, 2 disks and raid_disks = 1)
 	 */
 	return T_RAID1(rd);
 }
 
-static int hpt37x_check(struct lib_context *lc, struct raid_set *rs)
+static int
+hpt37x_check(struct lib_context *lc, struct raid_set *rs)
 {
 	return check_raid_set(lc, rs, devices, NULL, check_rd, NULL, handler);
 }
@@ -291,7 +305,8 @@ static int hpt37x_check(struct lib_context *lc, struct raid_set *rs)
 /*
  * IO error event handler.
  */
-static int event_io(struct lib_context *lc, struct event_io *e_io)
+static int
+event_io(struct lib_context *lc, struct event_io *e_io)
 {
 	struct raid_dev *rd = e_io->rd;
 	struct hpt37x *hpt = META(rd, hpt37x);
@@ -301,20 +316,20 @@ static int event_io(struct lib_context *lc, struct event_io *e_io)
 		return 0;
 
 	hpt->magic = HPT37X_MAGIC_BAD;
-
 	return 1;
 }
 
 static struct event_handlers hpt37x_event_handlers = {
 	.io = event_io,
-	.rd = NULL,	/* FIXME: no device add/remove event handler yet. */
+	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
 };
 
 #ifdef DMRAID_NATIVE_LOG
 /*
  * Log native information about an HPT37X RAID device.
  */
-static void hpt37x_log(struct lib_context *lc, struct raid_dev *rd)
+static void
+hpt37x_log(struct lib_context *lc, struct raid_dev *rd)
 {
 	struct hpt37x *hpt = META(rd, hpt37x);
 	struct hpt37x_errorlog *el;
@@ -348,33 +363,35 @@ static void hpt37x_log(struct lib_context *lc, struct raid_dev *rd)
 		DP("status: %u", hpt, el->status);
 		DP("sectors: %u", hpt, el->sectors);
 		DP("lba: %u", hpt, el->lba);
-       };
+	};
 }
 #endif
 
 static struct dmraid_format hpt37x_format = {
-	.name	= HANDLER,
-	.descr	= "Highpoint HPT37X",
-	.caps	= "S,0,1,10,01",
+	.name = HANDLER,
+	.descr = "Highpoint HPT37X",
+	.caps = "S,0,1,10,01",
 	.format = FMT_RAID,
-	.read	= hpt37x_read,
-	.write	= hpt37x_write,
-	.group	= hpt37x_group,
-	.check	= hpt37x_check,
-	.events	= &hpt37x_event_handlers,
+	.read = hpt37x_read,
+	.write = hpt37x_write,
+	.group = hpt37x_group,
+	.check = hpt37x_check,
+	.events = &hpt37x_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
-	.log	= hpt37x_log,
+	.log = hpt37x_log,
 #endif
 };
 
 /* Register this format handler with the format core. */
-int register_hpt37x(struct lib_context *lc)
+int
+register_hpt37x(struct lib_context *lc)
 {
 	return register_format_handler(lc, &hpt37x_format);
 }
 
 /* Calculate RAID device size in sectors depending on RAID type. */
-static uint64_t sectors(struct raid_dev *rd, struct hpt37x *hpt)
+static uint64_t
+sectors(struct raid_dev *rd, struct hpt37x *hpt)
 {
 	uint64_t ret = 0;
 	struct dev_info *di = rd->di;
@@ -397,8 +414,9 @@ static uint64_t sectors(struct raid_dev *rd, struct hpt37x *hpt)
 }
 
 /* Derive the RAID device contents from the Highpoint ones. */
-static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
-		    struct dev_info *di, void *meta, union read_info *info)
+static int
+setup_rd(struct lib_context *lc, struct raid_dev *rd,
+	 struct dev_info *di, void *meta, union read_info *info)
 {
 	struct hpt37x *hpt = meta;
 
@@ -407,18 +425,18 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	rd->meta_areas->offset = HPT37X_CONFIGOFFSET >> 9;
 	rd->meta_areas->size = sizeof(*hpt);
-	rd->meta_areas->area = (void*) hpt;
+	rd->meta_areas->area = (void *) hpt;
 
-	rd->di  = di;
+	rd->di = di;
 	rd->fmt = &hpt37x_format;
 
 	rd->status = status(hpt);
-	rd->type   = type(hpt);
+	rd->type = type(hpt);
 
 	/* Data offset from start of device; first device is special */
-	rd->offset  = hpt->disk_number ? HPT37X_DATAOFFSET : 0;
-        if (!(rd->sectors = sectors(rd, hpt)))
+	rd->offset = hpt->disk_number ? HPT37X_DATAOFFSET : 0;
+	if (!(rd->sectors = sectors(rd, hpt)))
 		return log_zero_sectors(lc, di->path, handler);
 
-        return (rd->name = name(lc, rd, 1)) ? 1 : 0;
+	return (rd->name = name(lc, rd, 1)) ? 1 : 0;
 }

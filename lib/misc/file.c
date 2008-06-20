@@ -8,17 +8,18 @@
 #include "internal.h"
 
 /* Create directory recusively. */
-static int mk_dir_recursive(struct lib_context *lc, const char *dir)
+static int
+mk_dir_recursive(struct lib_context *lc, const char *dir)
 {
 	int ret = 1;
-        char *orig, *s;
+	char *orig, *s;
 	const char delim = '/';
 
-        if (!(orig = s = dbg_strdup((char*) dir)))
+	if (!(orig = s = dbg_strdup((char *) dir)))
 		return log_alloc_err(lc, __func__);
 
-        /* Create parent directories */
-        log_notice(lc, "creating directory %s", dir);
+	/* Create parent directories */
+	log_notice(lc, "creating directory %s", dir);
 	do {
 		s = remove_delimiter(s + 1, delim);
 		if (mkdir(orig, 0777) && errno != EEXIST) {
@@ -32,11 +33,12 @@ static int mk_dir_recursive(struct lib_context *lc, const char *dir)
 
 	dbg_free(orig);
 
-        return ret;
+	return ret;
 }
 
 /* Create directory. */
-int mk_dir(struct lib_context *lc, const char *dir)
+int
+mk_dir(struct lib_context *lc, const char *dir)
 {
 	struct stat info;
 
@@ -50,18 +52,19 @@ int mk_dir(struct lib_context *lc, const char *dir)
 	LOG_ERR(lc, 0, "directory %s not found", dir);
 }
 
-static int rw_file(struct lib_context *lc, const char *who, int flags,
-		   char *path, void *buffer, size_t size, loff_t offset)
+static int
+rw_file(struct lib_context *lc, const char *who, int flags,
+	char *path, void *buffer, size_t size, loff_t offset)
 {
 	int fd, ret = 0;
 	loff_t o;
 	struct {
-		ssize_t (*func)();
+		ssize_t(*func) ();
 		const char *what;
 	} rw_spec[] = {
-		{ read,  "read" },
-		{ write, "writ" },
-	}, *rw = rw_spec + ((flags & O_WRONLY) ? 1 : 0);
+		{
+		read, "read"}, {
+	write, "writ"},}, *rw = rw_spec + ((flags & O_WRONLY) ? 1 : 0);
 
 	if ((fd = open(path, flags, lc->mode)) == -1)
 		LOG_ERR(lc, 0, "opening \"%s\"", path);
@@ -71,7 +74,7 @@ static int rw_file(struct lib_context *lc, const char *who, int flags,
 #else
 #define	DMRAID_LSEEK	lseek64
 #endif
-	if (offset && (o = DMRAID_LSEEK(fd, offset, SEEK_SET)) == (loff_t) -1)
+	if (offset && (o = DMRAID_LSEEK(fd, offset, SEEK_SET)) == (loff_t) - 1)
 		log_err(lc, "%s: seeking device \"%s\" to %" PRIu64,
 			who, path, offset);
 	else if (rw->func(fd, buffer, size) != size)
@@ -85,16 +88,18 @@ static int rw_file(struct lib_context *lc, const char *who, int flags,
 	return ret;
 }
 
-int read_file(struct lib_context *lc, const char *who, char *path,
-	      void *buffer, size_t size, loff_t offset)
+int
+read_file(struct lib_context *lc, const char *who, char *path,
+	  void *buffer, size_t size, loff_t offset)
 {
 	return rw_file(lc, who, O_RDONLY, path, buffer, size, offset);
 }
 
-int write_file(struct lib_context *lc, const char *who, char *path,
-	       void *buffer, size_t size, loff_t offset)
+int
+write_file(struct lib_context *lc, const char *who, char *path,
+	   void *buffer, size_t size, loff_t offset)
 {
 	/* O_CREAT|O_TRUNC are noops on a devnode. */
-	return rw_file(lc, who, O_WRONLY|O_CREAT|O_TRUNC, path,
+	return rw_file(lc, who, O_WRONLY | O_CREAT | O_TRUNC, path,
 		       buffer, size, offset);
 }

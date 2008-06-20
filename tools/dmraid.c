@@ -14,7 +14,8 @@
 #include "toollib.h"
 #include "version.h"
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	int ret = 0;
 	struct lib_context *lc;
@@ -32,13 +33,12 @@ int main(int argc, char **argv)
 		 * If both are ok -> perform the required action.
 		 */
 		ret = handle_args(lc, argc, &argv) &&
-		      init_locking(lc) &&
-		      perform(lc, argv);
+			init_locking(lc) && perform(lc, argv);
 
 		/* Cleanup the library context. */
 		libdmraid_exit(lc);
 	}
 
 	/* Set standard exit code. */
-	exit (ret ? EXIT_SUCCESS : EXIT_FAILURE);
+	exit(ret ? EXIT_SUCCESS : EXIT_FAILURE);
 }

@@ -9,15 +9,15 @@
 #define _DISPLAY_H_
 
 enum dev_type {
-	DEVICE = 0x01,	/* ALL devices */
-	RAID   = 0x02,	/* RAID devices */
-	NATIVE = 0x04,	/* Native metadata of RAID devices */
-	SET    = 0x08,	/* RAID sets */
+	DEVICE = 0x01,		/* ALL devices */
+	RAID = 0x02,		/* RAID devices */
+	NATIVE = 0x04,		/* Native metadata of RAID devices */
+	SET = 0x08,		/* RAID sets */
 };
 
 enum active_type {
-	D_ALL      = 0x01,	/* All devices */
-	D_ACTIVE   = 0x02,	/* Active devices only */
+	D_ALL = 0x01,		/* All devices */
+	D_ACTIVE = 0x02,	/* Active devices only */
 	D_INACTIVE = 0x04,	/* Inactive devices only */
 };
 

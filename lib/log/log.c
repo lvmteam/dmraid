@@ -18,19 +18,21 @@ static const char *_prefixes[] = {
 	"FATAL",
 };
 
-static const char *_prefix(int level)
+static const char *
+_prefix(int level)
 {
 	return level < ARRAY_SIZE(_prefixes) ? _prefixes[level] : "UNDEF";
 }
 
-void plog(struct lib_context *lc, int level, int lf, const char *file,
-	  int line, const char *format, ...)
+void
+plog(struct lib_context *lc, int level, int lf, const char *file,
+     int line, const char *format, ...)
 {
 	int o = LC_VERBOSE, l = level;
 	FILE *f = stdout;
 	va_list ap;
 
- 	if (level == _PLOG_DEBUG) {
+	if (level == _PLOG_DEBUG) {
 		o = LC_DEBUG;
 		l -= _PLOG_WARN;
 	}
@@ -53,7 +55,8 @@ void plog(struct lib_context *lc, int level, int lf, const char *file,
 }
 
 /* This is used so often in the metadata format handlers and elsewhere. */
-int log_alloc_err(struct lib_context *lc, const char *who)
+int
+log_alloc_err(struct lib_context *lc, const char *who)
 {
 	LOG_ERR(lc, 0, "%s: allocating", who);
 }

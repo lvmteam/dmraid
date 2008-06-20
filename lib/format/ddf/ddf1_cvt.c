@@ -20,7 +20,8 @@
 #include <datastruct/byteorder.h>
 
 /* Convert a DDF header */
-void ddf1_cvt_header(struct ddf1 *ddf1, struct ddf1_header *hdr)
+void
+ddf1_cvt_header(struct ddf1 *ddf1, struct ddf1_header *hdr)
 {
 	if (BYTE_ORDER == ddf1->disk_format)
 		return;
@@ -57,7 +58,8 @@ void ddf1_cvt_header(struct ddf1 *ddf1, struct ddf1_header *hdr)
 }
 
 /* Convert DDF adapter data */
-void ddf1_cvt_adapter(struct ddf1 *ddf1, struct ddf1_adapter *hdr)
+void
+ddf1_cvt_adapter(struct ddf1 *ddf1, struct ddf1_adapter *hdr)
 {
 	if (BYTE_ORDER == ddf1->disk_format)
 		return;
@@ -71,7 +73,8 @@ void ddf1_cvt_adapter(struct ddf1 *ddf1, struct ddf1_adapter *hdr)
 }
 
 /* Convert physical disk data */
-void ddf1_cvt_disk_data(struct ddf1 *ddf1, struct ddf1_disk_data *hdr)
+void
+ddf1_cvt_disk_data(struct ddf1 *ddf1, struct ddf1_disk_data *hdr)
 {
 	if (BYTE_ORDER == ddf1->disk_format)
 		return;
@@ -82,7 +85,8 @@ void ddf1_cvt_disk_data(struct ddf1 *ddf1, struct ddf1_disk_data *hdr)
 }
 
 /* Convert physical drive header data */
-void ddf1_cvt_phys_drive_header(struct ddf1 *ddf1, struct ddf1_phys_drives *hdr)
+void
+ddf1_cvt_phys_drive_header(struct ddf1 *ddf1, struct ddf1_phys_drives *hdr)
 {
 	if (BYTE_ORDER == ddf1->disk_format)
 		return;
@@ -94,7 +98,8 @@ void ddf1_cvt_phys_drive_header(struct ddf1 *ddf1, struct ddf1_phys_drives *hdr)
 }
 
 /* Convert physical drive data */
-void ddf1_cvt_phys_drive(struct ddf1 *ddf1, struct ddf1_phys_drive *hdr)
+void
+ddf1_cvt_phys_drive(struct ddf1 *ddf1, struct ddf1_phys_drive *hdr)
 {
 	if (BYTE_ORDER == ddf1->disk_format)
 		return;
@@ -106,7 +111,8 @@ void ddf1_cvt_phys_drive(struct ddf1 *ddf1, struct ddf1_phys_drive *hdr)
 }
 
 /* Convert virtual drive header data */
-void ddf1_cvt_virt_drive_header(struct ddf1 *ddf1, struct ddf1_virt_drives *hdr)
+void
+ddf1_cvt_virt_drive_header(struct ddf1 *ddf1, struct ddf1_virt_drives *hdr)
 {
 	if (BYTE_ORDER == ddf1->disk_format)
 		return;
@@ -118,7 +124,8 @@ void ddf1_cvt_virt_drive_header(struct ddf1 *ddf1, struct ddf1_virt_drives *hdr)
 }
 
 /* Convert virtual drive data */
-void ddf1_cvt_virt_drive(struct ddf1 *ddf1, struct ddf1_virt_drive *hdr)
+void
+ddf1_cvt_virt_drive(struct ddf1 *ddf1, struct ddf1_virt_drive *hdr)
 {
 	if (BYTE_ORDER == ddf1->disk_format)
 		return;
@@ -128,8 +135,9 @@ void ddf1_cvt_virt_drive(struct ddf1 *ddf1, struct ddf1_virt_drive *hdr)
 }
 
 /* Convert config record data */
-int ddf1_cvt_config_record(struct lib_context *lc, struct dev_info *di,
-			   struct ddf1 *ddf1, int idx)
+int
+ddf1_cvt_config_record(struct lib_context *lc, struct dev_info *di,
+		       struct ddf1 *ddf1, int idx)
 {
 	unsigned int i;
 	uint16_t max_pds;
@@ -148,7 +156,8 @@ int ddf1_cvt_config_record(struct lib_context *lc, struct dev_info *di,
 	if (ddf1->primary->signature == DDF1_HEADER_BACKWARDS)
 		CVT32(x);
 
-	off = ((uint64_t*) (((uint8_t*) hdr) + sizeof(*hdr) + (x * sizeof(x))));
+	off = ((uint64_t *) (((uint8_t *) hdr) + sizeof(*hdr) +
+			     (x * sizeof(x))));
 
 	CVT32(hdr->signature);
 	CVT32(hdr->crc);
@@ -172,8 +181,9 @@ int ddf1_cvt_config_record(struct lib_context *lc, struct dev_info *di,
 }
 
 /* Convert spare records */
-int ddf1_cvt_spare_record(struct lib_context *lc, struct dev_info *di,
-			  struct ddf1 *ddf1, int idx)
+int
+ddf1_cvt_spare_record(struct lib_context *lc, struct dev_info *di,
+		      struct ddf1 *ddf1, int idx)
 {
 	uint16_t x, i;
 	struct ddf1_spare_header *sh = SR(ddf1, idx);
@@ -196,7 +206,8 @@ int ddf1_cvt_spare_record(struct lib_context *lc, struct dev_info *di,
 	return 1;
 }
 
-void ddf1_cvt_records(struct lib_context *lc, struct dev_info *di,
+void
+ddf1_cvt_records(struct lib_context *lc, struct dev_info *di,
 		 struct ddf1 *ddf1, int in_cpu_format)
 {
 	static struct ddf1_record_handler handlers = {
@@ -208,8 +219,8 @@ void ddf1_cvt_records(struct lib_context *lc, struct dev_info *di,
 }
 
 /* Convert endianness of all metadata */
-void ddf1_cvt_all(struct lib_context *lc, struct ddf1 *ddf1,
-		  struct dev_info *di)
+void
+ddf1_cvt_all(struct lib_context *lc, struct ddf1 *ddf1, struct dev_info *di)
 {
 	int i;
 	uint16_t pds = 0, vds = 0;

@@ -22,19 +22,20 @@ static const char *handler = HANDLER;
 
 /* Make up RAID device name from some 'magic' numbers */
 /* FIXME: better name ? */
-static size_t _name(struct sil *sil, char *str, size_t len, unsigned int subset)
+static size_t
+_name(struct sil *sil, char *str, size_t len, unsigned int subset)
 {
 	return snprintf(str, len,
 			subset ? "sil_%02u%02u%02u%02u%02u%02u-%u" :
-				 "sil_%02u%02u%02u%02u%02u%02u",
+			"sil_%02u%02u%02u%02u%02u%02u",
 			sil->year, sil->month, sil->day,
 			sil->hour, sil->minutes % 60, sil->seconds % 60,
 			sil->type == SIL_T_RAID1 ? sil->mirrored_set_number :
-						   sil->striped_set_number);
+			sil->striped_set_number);
 }
 
-static char *name(struct lib_context *lc, struct raid_dev *rd,
-		  unsigned int subset)
+static char *
+name(struct lib_context *lc, struct raid_dev *rd, unsigned int subset)
 {
 	size_t len;
 	char *ret;
@@ -45,7 +46,8 @@ static char *name(struct lib_context *lc, struct raid_dev *rd,
 		_name(sil, ret, len, subset);
 		mk_alpha(lc, ret + HANDLER_LEN, len - HANDLER_LEN -
 			 (strrchr(ret, '-') ? 3 : 1));
-	} else
+	}
+	else
 		log_alloc_err(lc, handler);
 
 	return ret;
@@ -55,43 +57,46 @@ static char *name(struct lib_context *lc, struct raid_dev *rd,
  * Retrieve status of device.
  * FIXME: is this sufficient to cover all state ?
  */
-static enum status status(struct sil *sil)
+static enum status
+status(struct sil *sil)
 {
 	struct states states[] = {
-		{ SIL_OK, s_ok },
-		{ SIL_MIRROR_SYNC, s_ok },
-		{ SIL_MIRROR_NOSYNC, s_nosync },
-		{ 0, s_broken },
+		{SIL_OK, s_ok},
+		{SIL_MIRROR_SYNC, s_ok},
+		{SIL_MIRROR_NOSYNC, s_nosync},
+		{0, s_broken},
 	};
 
 	return rd_status(states, sil->mirrored_set_state, EQUAL);
 }
 
 /* Neutralize disk type */
-static enum type type(struct sil *sil)
+static enum type
+type(struct sil *sil)
 {
 	/* Mapping of SIL 680 types to generic types */
 	static struct types types[] = {
-	        { SIL_T_SPARE,  t_spare},
-	        { SIL_T_JBOD,   t_linear},
-	        { SIL_T_RAID0,  t_raid0},
-	        { SIL_T_RAID5, 	t_raid5_ls},
-	        { SIL_T_RAID1,  t_raid1},
-	        { SIL_T_RAID10, t_raid0},
-	        { 0,            t_undef}
+		{SIL_T_SPARE, t_spare},
+		{SIL_T_JBOD, t_linear},
+		{SIL_T_RAID0, t_raid0},
+		{SIL_T_RAID5, t_raid5_ls},
+		{SIL_T_RAID1, t_raid1},
+		{SIL_T_RAID10, t_raid0},
+		{0, t_undef}
 	};
 
 	return rd_type(types, (unsigned int) sil->type);
 }
 
 /* Calculate checksum on metadata */
-static int checksum(struct sil *sil)
+static int
+checksum(struct sil *sil)
 {
 	int sum = 0;
-	unsigned int count = struct_offset(sil, checksum1) / 2;
-	uint16_t *p = (uint16_t*) sil;
+	unsigned short count = struct_offset(sil, checksum1) / 2;
+	uint16_t *p = (uint16_t *) sil;
 
-        while (count--)
+	while (count--)
 		sum += *p++;
 
 	return (-sum & 0xFFFF) == sil->checksum1;
@@ -104,7 +109,8 @@ static int checksum(struct sil *sil)
 #if	BYTE_ORDER == LITTLE_ENDIAN
 #  define	to_cpu	NULL
 #else
-static void to_cpu(void *meta)
+static void
+to_cpu(void *meta)
 {
 	struct sil *sil = meta;
 
@@ -128,13 +134,15 @@ static void to_cpu(void *meta)
 #define	AREAS	4
 #define SIL_META_AREA(i)	(SIL_CONFIGOFFSET - (i * 512 << 9))
 
-static inline int is_sil(struct sil *sil)
+static inline int
+is_sil(struct sil *sil)
 {
 	return SIL_MAGIC_OK(sil) && sil->disk_number < 8;
 }
 
-static int sil_valid(struct lib_context *lc, struct dev_info *di,
-		     void *meta, unsigned int area)
+static int
+sil_valid(struct lib_context *lc, struct dev_info *di,
+	  void *meta, unsigned int area)
 {
 	struct sil *sil = meta;
 
@@ -158,7 +166,8 @@ static int sil_valid(struct lib_context *lc, struct dev_info *di,
 	return 1;
 }
 
-static void free_sils(struct sil **sils, unsigned int i)
+static void
+free_sils(struct sil **sils, unsigned int i)
 {
 	for (; i < AREAS; i++)
 		dbg_free(sils[i]);
@@ -166,9 +175,9 @@ static void free_sils(struct sil **sils, unsigned int i)
 	dbg_free(sils);
 }
 
-static void *sil_read_metadata(struct lib_context *lc, struct dev_info *di,
-			       size_t *size, uint64_t *offset,
-			       union read_info *info)
+static void *
+sil_read_metadata(struct lib_context *lc, struct dev_info *di,
+		  size_t * size, uint64_t * offset, union read_info *info)
 {
 	unsigned int i, valid;
 	char str[9] = { 0, };
@@ -190,8 +199,9 @@ static void *sil_read_metadata(struct lib_context *lc, struct dev_info *di,
 		if (sil_valid(lc, di, sil, i + 1)) {
 			sils[valid] = sil;
 			sprintf(&str[strlen(str)], "%s%u",
-			        valid++ ? "," : "", i + 1);
-		} else
+				valid++ ? "," : "", i + 1);
+		}
+		else
 			dbg_free(sil);
 	}
 
@@ -201,21 +211,23 @@ static void *sil_read_metadata(struct lib_context *lc, struct dev_info *di,
 			   valid == 1 ? "is" : "are");
 		goto out;
 	}
-	
-   bad:
+
+      bad:
 	free_sils(sils, 0);
 	sils = NULL;
 
-   out:
-	return (void*) sils;
+      out:
+	return (void *) sils;
 }
 
-static int _file_name(char *str, size_t len, char *n, int i)
+static int
+_file_name(char *str, size_t len, char *n, int i)
 {
 	return snprintf(str, len, "%s_%d", n, i) + 1;
 }
 
-static char *file_name(struct lib_context *lc, char *n, int i)
+static char *
+file_name(struct lib_context *lc, char *n, int i)
 {
 	size_t len;
 	char *ret;
@@ -229,13 +241,13 @@ static char *file_name(struct lib_context *lc, char *n, int i)
 }
 
 /* File all metadata areas. */
-static void sil_file_metadata(struct lib_context *lc, struct dev_info *di,
-			      void *meta)
+static void
+sil_file_metadata(struct lib_context *lc, struct dev_info *di, void *meta)
 {
 	unsigned int i;
 	char *n;
 	struct sil **sils = meta;
-	
+
 	for (i = 0; i < AREAS; i++) {
 		if (!(n = file_name(lc, di->path, i)))
 			break;
@@ -250,7 +262,8 @@ static void sil_file_metadata(struct lib_context *lc, struct dev_info *di,
 
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 		    struct dev_info *di, void *meta, union read_info *info);
-static struct raid_dev *sil_read(struct lib_context *lc, struct dev_info *di)
+static struct raid_dev *
+sil_read(struct lib_context *lc, struct dev_info *di)
 {
 	return read_raid_dev(lc, di, sil_read_metadata, 0, 0, NULL, NULL,
 			     sil_file_metadata, setup_rd, handler);
@@ -260,7 +273,8 @@ static struct raid_dev *sil_read(struct lib_context *lc, struct dev_info *di)
 /*
  * Write a Silicon Image RAID device.
  */
-static int sil_write(struct lib_context *lc, struct raid_dev *rd, int erase)
+static int
+sil_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 {
 	int ret;
 #if	BYTE_ORDER != LITTLE_ENDIAN
@@ -276,17 +290,19 @@ static int sil_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 }
 
 /* Decide about ordering sequence of RAID device. */
-static int dev_sort(struct list_head *pos, struct list_head *new)
+static int
+dev_sort(struct list_head *pos, struct list_head *new)
 {
 	return (META(RD(new), sil))->disk_number <
-	       (META(RD(pos), sil))->disk_number;
+		(META(RD(pos), sil))->disk_number;
 }
 
 /* Decide about ordering sequence of RAID subset. */
-static int set_sort(struct list_head *pos, struct list_head *new)
+static int
+set_sort(struct list_head *pos, struct list_head *new)
 {
 	return (META(RD_RS(RS(new)), sil))->mirrored_set_number <
-	       (META(RD_RS(RS(pos)), sil))->mirrored_set_number;
+		(META(RD_RS(RS(pos)), sil))->mirrored_set_number;
 }
 
 /*
@@ -294,15 +310,17 @@ static int set_sort(struct list_head *pos, struct list_head *new)
  *
  * Check device hierarchy and create super set appropriately.
  */
-static void super_created(struct raid_set *ss, void *private)
+static void
+super_created(struct raid_set *ss, void *private)
 {
-	ss->type   = t_raid1;
+	ss->type = t_raid1;
 	ss->stride = META(private, sil)->raid0_stride;
 }
 
 /* FIXME: handle spares. */
-static int group_rd(struct lib_context *lc, struct raid_set *rs,
-		    struct raid_set **ss, struct raid_dev *rd)
+static int
+group_rd(struct lib_context *lc, struct raid_set *rs,
+	 struct raid_set **ss, struct raid_dev *rd)
 {
 	struct sil *sil = META(rd, sil);
 
@@ -336,7 +354,8 @@ static int group_rd(struct lib_context *lc, struct raid_set *rs,
 }
 
 /* Add a SIL RAID device to a set */
-static struct raid_set *sil_group(struct lib_context *lc, struct raid_dev *rd)
+static struct raid_set *
+sil_group(struct lib_context *lc, struct raid_dev *rd)
 {
 	struct raid_set *rs, *ss = NULL;
 
@@ -355,7 +374,8 @@ static struct raid_set *sil_group(struct lib_context *lc, struct raid_dev *rd)
  *
  * FIXME: more sanity checks.
  */
-static unsigned int devices(struct raid_dev *rd, void *context)
+static unsigned int
+devices(struct raid_dev *rd, void *context)
 {
 	int ret;
 	struct sil *sil = META(rd, sil);
@@ -377,7 +397,8 @@ static unsigned int devices(struct raid_dev *rd, void *context)
 	return ret;
 }
 
-static int sil_check(struct lib_context *lc, struct raid_set *rs)
+static int
+sil_check(struct lib_context *lc, struct raid_set *rs)
 {
 	return check_raid_set(lc, rs, devices, NULL,
 			      NO_CHECK_RD, NULL, handler);
@@ -386,7 +407,8 @@ static int sil_check(struct lib_context *lc, struct raid_set *rs)
 /*
  * IO error event handler.
  */
-static int event_io(struct lib_context *lc, struct event_io *e_io)
+static int
+event_io(struct lib_context *lc, struct event_io *e_io)
 {
 	struct raid_dev *rd = e_io->rd;
 	struct sil *sil = META(rd, sil);
@@ -402,14 +424,15 @@ static int event_io(struct lib_context *lc, struct event_io *e_io)
 
 static struct event_handlers sil_event_handlers = {
 	.io = event_io,
-	.rd = NULL,	/* FIXME: no device add/remove event handler yet. */
+	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
 };
 
 #ifdef DMRAID_NATIVE_LOG
 /*
  * Log native information about a Silicon Image  RAID device.
  */
-static void sil_log(struct lib_context *lc, struct raid_dev *rd)
+static void
+sil_log(struct lib_context *lc, struct raid_dev *rd)
 {
 	char *tt;
 	struct sil *sil = META(rd, sil);
@@ -464,46 +487,49 @@ static void sil_log(struct lib_context *lc, struct raid_dev *rd)
 #endif
 
 static struct dmraid_format sil_format = {
-	.name	= HANDLER,
-	.descr	= "Silicon Image(tm) Medley(tm)",
-	.caps	= "0,1,10",
+	.name = HANDLER,
+	.descr = "Silicon Image(tm) Medley(tm)",
+	.caps = "0,1,10",
 	.format = FMT_RAID,
-	.read	= sil_read,
-	.write	= sil_write,
-	.group	= sil_group,
-	.check	= sil_check,
-	.events	= &sil_event_handlers,
+	.read = sil_read,
+	.write = sil_write,
+	.group = sil_group,
+	.check = sil_check,
+	.events = &sil_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
-	.log	= sil_log,
+	.log = sil_log,
 #endif
 };
 
 /* Register this format handler with the format core. */
-int register_sil(struct lib_context *lc)
+int
+register_sil(struct lib_context *lc)
 {
 	return register_format_handler(lc, &sil_format);
 }
 
 /* Set the RAID device contents up derived from the SIL ones. */
-static int stripes(struct sil *sil)
+static int
+stripes(struct sil *sil)
 {
 	return sil->drives_per_striped_set > -1 &&
-	       sil->disk_number < sil->drives_per_striped_set;
+		sil->disk_number < sil->drives_per_striped_set;
 }
 
-static uint64_t sectors(struct raid_dev *rd)
+static uint64_t
+sectors(struct raid_dev *rd)
 {
 	uint64_t array_sectors, ret = 0;
 	struct sil *sil = META(rd, sil);
 
 	array_sectors = (((uint64_t) sil->array_sectors_high) << 32) +
-			 sil->array_sectors_low;
+		sil->array_sectors_low;
 
 	switch (sil->type) {
 	case SIL_T_SPARE:
 		/* Cook them up... */
 		ret = rd->di->sectors - (AREAS - 1) * 512 -
-		      ((rd->di->sectors & 1) ? 1 : 2);
+			((rd->di->sectors & 1) ? 1 : 2);
 		break;
 
 	case SIL_T_RAID0:
@@ -519,7 +545,7 @@ static uint64_t sectors(struct raid_dev *rd)
 	default:
 		/* Cook them up... */
 		ret = rd->di->sectors - (AREAS - 1) * 512 -
-		      ((rd->di->sectors & 1) ? 1 : 2);
+			((rd->di->sectors & 1) ? 1 : 2);
 		break;
 	}
 
@@ -527,19 +553,19 @@ static uint64_t sectors(struct raid_dev *rd)
 }
 
 /* Quorate SIL metadata copies. */
-static struct sil *quorate(struct lib_context *lc, struct dev_info *di,
-			   struct sil *sils[])
+static struct sil *
+quorate(struct lib_context *lc, struct dev_info *di, struct sil *sils[])
 {
 	unsigned int areas = 0, i, ident = 0, j;
 	struct sil *sil = NULL, *tmp;
-	
+
 	/* Count valid metadata areas. */
 	while (areas < AREAS && sils[areas])
 		areas++;
 
 	if (areas != AREAS)
 		log_err(lc, "%s: only %u/%u metadata areas found on "
-			    "%s, %sing...",
+			"%s, %sing...",
 			handler, areas, AREAS, di->path,
 			areas > 1 ? "elect" : "pick");
 
@@ -551,7 +577,7 @@ static struct sil *quorate(struct lib_context *lc, struct dev_info *di,
 		}
 
 		if (ident > areas / 2);
-			break;
+		break;
 	}
 
 	if (ident) {
@@ -563,8 +589,9 @@ static struct sil *quorate(struct lib_context *lc, struct dev_info *di,
 	return sil;
 }
 
-static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
-		    struct dev_info *di, void *meta, union read_info *info)
+static int
+setup_rd(struct lib_context *lc, struct raid_dev *rd,
+	 struct dev_info *di, void *meta, union read_info *info)
 {
 	unsigned int i;
 	struct meta_areas *ma;
@@ -573,13 +600,13 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 	if (!(rd->meta_areas = alloc_meta_areas(lc, rd, handler, AREAS)))
 		goto bad;
 
-	sil = quorate(lc, di, sils);	/* Quorate one copy+save a pointer.*/
-	free_sils(sils, 1);		/* Free the other copies. */
+	sil = quorate(lc, di, sils);	/* Quorate one copy+save a pointer. */
+	free_sils(sils, 1);	/* Free the other copies. */
 
 	for (i = 0, ma = rd->meta_areas; i < rd->areas; i++, ma++) {
 		ma->offset = SIL_META_AREA(i) >> 9;
 		ma->size = sizeof(*sil);
-		ma->area = (void*) sil;
+		ma->area = (void *) sil;
 	}
 
 	rd->di = di;
@@ -590,11 +617,11 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 		return log_zero_sectors(lc, di->path, handler);
 
 	rd->status = status(sil);
-	rd->type   = type(sil);
+	rd->type = type(sil);
 
-        return (rd->name = name(lc, rd, sil->type == SIL_T_RAID10)) ? 1 : 0;
+	return (rd->name = name(lc, rd, sil->type == SIL_T_RAID10)) ? 1 : 0;
 
-   bad:
+      bad:
 	free_sils(sils, 0);
 
 	return 0;

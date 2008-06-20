@@ -20,9 +20,10 @@
 #include <datastruct/byteorder.h>
 
 /* Figure out what endian conversions we need */
-int ddf1_endianness(struct lib_context *lc, struct ddf1 *ddf1)
+int
+ddf1_endianness(struct lib_context *lc, struct ddf1 *ddf1)
 {
-	uint8_t *ptr = (uint8_t*) &ddf1->anchor.signature;
+	uint8_t *ptr = (uint8_t *) & ddf1->anchor.signature;
 
 	if (ptr[0] == 0xDE && ptr[1] == 0x11)
 		return BIG_ENDIAN;
@@ -33,7 +34,8 @@ int ddf1_endianness(struct lib_context *lc, struct ddf1 *ddf1)
 }
 
 /* Find the beginning of all DDF metadata */
-uint64_t ddf1_beginning(struct ddf1 *ddf1)
+uint64_t
+ddf1_beginning(struct ddf1 *ddf1)
 {
 	uint64_t start;
 	struct ddf1_header *h = &ddf1->anchor;
@@ -52,51 +54,52 @@ uint64_t ddf1_beginning(struct ddf1 *ddf1)
 }
 
 /* Helper for CR_OFF */
-uint16_t ddf1_cr_off_maxpds_helper(struct ddf1 *ddf1)
+uint16_t
+ddf1_cr_off_maxpds_helper(struct ddf1 * ddf1)
 {
 	struct ddf1_header *h = ddf1->primary;
 
 	/* The 0xFFFF nonsense is a weird Adaptec quirk */
-//	bz211016
-//	return (h->max_primary_elements == 0xFFFF && ddf1->adaptec_mode) ?
+//      bz211016
+//      return (h->max_primary_elements == 0xFFFF && ddf1->adaptec_mode) ?
 	return (h->max_primary_elements == 0xFFFF) ?
 		h->max_phys_drives : h->max_primary_elements;
 }
 
 /* Process DDF1 records depending on type */
-int ddf1_process_records(struct lib_context *lc, struct dev_info *di,
-			 struct ddf1_record_handler *handler,
-			 struct ddf1 *ddf1, int in_cpu_format)
+int
+ddf1_process_records(struct lib_context *lc, struct dev_info *di,
+		     struct ddf1_record_handler *handler,
+		     struct ddf1 *ddf1, int in_cpu_format)
 {
 	unsigned int i, cfgs = NUM_CONFIG_ENTRIES(ddf1);
 	uint32_t x;
 
 	for (i = 0; i < cfgs; i++) {
-		x = *((uint32_t*) CR(ddf1, i));
-		if (!in_cpu_format &&
-		    BYTE_ORDER != ddf1->disk_format)
+		x = *((uint32_t *) CR(ddf1, i));
+		if (!in_cpu_format && BYTE_ORDER != ddf1->disk_format)
 			CVT32(x);
 
 		switch (x) {
-			case DDF1_VD_CONFIG_REC:
-				if (!handler->vd(lc, di, ddf1, i))
-					return 0;
+		case DDF1_VD_CONFIG_REC:
+			if (!handler->vd(lc, di, ddf1, i))
+				return 0;
 
-				break;
+			break;
 
-			case DDF1_SPARE_REC:
-				if (!handler->spare(lc, di, ddf1, i))
-					return 0;
+		case DDF1_SPARE_REC:
+			if (!handler->spare(lc, di, ddf1, i))
+				return 0;
 
-				break;
+			break;
 
-			case 0: /* Adaptec puts zero in this field??? */
-			case DDF1_INVALID:
-				break;
+		case 0:	/* Adaptec puts zero in this field??? */
+		case DDF1_INVALID:
+			break;
 
-			default:
-				log_warn(lc, "%s: Unknown config record %d.",
-					 di->path, x);
+		default:
+			log_warn(lc, "%s: Unknown config record %d.",
+				 di->path, x);
 		}
 	}
 

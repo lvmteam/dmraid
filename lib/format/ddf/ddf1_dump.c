@@ -28,8 +28,9 @@
 _dp_guid(lc, name, P_OFF(x, basevar, x), DDF1_GUID_LENGTH);\
 } while (0)
 
-static void _dp_guid(struct lib_context *lc, const char *name,
-		     unsigned int offset, void *data, unsigned int len)
+static void
+_dp_guid(struct lib_context *lc, const char *name,
+	 unsigned int offset, void *data, unsigned int len)
 {
 	char *p;
 	int i;
@@ -52,17 +53,19 @@ static void _dp_guid(struct lib_context *lc, const char *name,
 #endif
 
 /* Dump top */
-static void dump_top(struct lib_context *lc, struct dev_info *di,
-		     struct ddf1 *ddf1, const char *handler)
+static void
+dump_top(struct lib_context *lc, struct dev_info *di,
+	 struct ddf1 *ddf1, const char *handler)
 {
 	log_print(lc, "%s (%s):", di->path, handler);
 	log_print(lc, "DDF1 anchor at %llu with tables in %s-endian format.",
 		  ddf1->anchor_offset / DDF1_BLKSIZE,
 		  (ddf1->disk_format == LITTLE_ENDIAN ? "little" : "big"));
 }
-	
+
 /* Dump DDF tables. */
-static void dump_header(struct lib_context *lc, struct ddf1_header *dh)
+static void
+dump_header(struct lib_context *lc, struct ddf1_header *dh)
 {
 	if (!dh)
 		return;
@@ -105,7 +108,8 @@ static void dump_header(struct lib_context *lc, struct ddf1_header *dh)
 	DP("vendor_len:\t%d", dh, dh->vendor_len);
 }
 
-static void dump_adapter(struct lib_context *lc, struct ddf1_adapter *da)
+static void
+dump_adapter(struct lib_context *lc, struct ddf1_adapter *da)
 {
 	if (!da)
 		return;
@@ -120,7 +124,8 @@ static void dump_adapter(struct lib_context *lc, struct ddf1_adapter *da)
 	DP("pci subdevice:\t0x%X", da, da->pci_subdevice);
 }
 
-static void dump_disk_data(struct lib_context *lc, struct ddf1_disk_data *fg)
+static void
+dump_disk_data(struct lib_context *lc, struct ddf1_disk_data *fg)
 {
 	log_print(lc, "Disk Data at %p", fg);
 	DP("signature:\t0x%X", fg, fg->signature);
@@ -131,8 +136,8 @@ static void dump_disk_data(struct lib_context *lc, struct ddf1_disk_data *fg)
 	DP("forced_guid_flag:\t%d", fg, fg->forced_guid_flag);
 }
 
-static void dump_phys_drive_header(struct lib_context *lc,
-				   struct ddf1_phys_drives *pd)
+static void
+dump_phys_drive_header(struct lib_context *lc, struct ddf1_phys_drives *pd)
 {
 	log_print(lc, "Physical Drive Header at %p", pd);
 	DP("signature:\t0x%X", pd, pd->signature);
@@ -141,7 +146,8 @@ static void dump_phys_drive_header(struct lib_context *lc,
 	DP("max drives:\t%d", pd, pd->max_drives);
 }
 
-static void dump_phys_drive(struct lib_context *lc, struct ddf1_phys_drive *pd)
+static void
+dump_phys_drive(struct lib_context *lc, struct ddf1_phys_drive *pd)
 {
 	log_print(lc, "Physical Drive at %p", pd);
 	DP_GUID("guid:\t\t", pd, pd->guid);
@@ -152,8 +158,8 @@ static void dump_phys_drive(struct lib_context *lc, struct ddf1_phys_drive *pd)
 	DP_BUF("path info:\t", pd, pd->path_info, 18);
 }
 
-static void dump_virt_drive_header(struct lib_context *lc,
-				   struct ddf1_virt_drives *vd)
+static void
+dump_virt_drive_header(struct lib_context *lc, struct ddf1_virt_drives *vd)
 {
 	log_print(lc, "Virtual Drive Header at %p", vd);
 	DP("signature:\t0x%X", vd, vd->signature);
@@ -162,7 +168,8 @@ static void dump_virt_drive_header(struct lib_context *lc,
 	DP("max drives:\t%d", vd, vd->max_drives);
 }
 
-static void dump_virt_drive(struct lib_context *lc, struct ddf1_virt_drive *vd)
+static void
+dump_virt_drive(struct lib_context *lc, struct ddf1_virt_drive *vd)
 {
 	log_print(lc, "Virtual Drive at %p", vd);
 	DP_GUID("guid:\t\t", vd, vd->guid);
@@ -173,8 +180,9 @@ static void dump_virt_drive(struct lib_context *lc, struct ddf1_virt_drive *vd)
 	DP_BUF("name:\t\t", vd, vd->name, 16);
 }
 
-static int dump_config_record(struct lib_context *lc, struct dev_info *di,
-			      struct ddf1 *ddf, int idx)
+static int
+dump_config_record(struct lib_context *lc, struct dev_info *di,
+		   struct ddf1 *ddf, int idx)
 {
 	int i;
 	uint16_t x;
@@ -220,10 +228,11 @@ static int dump_config_record(struct lib_context *lc, struct dev_info *di,
 			  cfg_drive_offsets[i]);
 	}
 	return 1;
-}	
+}
 
-static int dump_spares(struct lib_context *lc, struct dev_info *di,
-		       struct ddf1 *ddf1, int idx)
+static int
+dump_spares(struct lib_context *lc, struct dev_info *di,
+	    struct ddf1 *ddf1, int idx)
 {
 	int i;
 	struct ddf1_spare_header *sh = SR(ddf1, idx);
@@ -244,8 +253,9 @@ static int dump_spares(struct lib_context *lc, struct dev_info *di,
 	return 1;
 }
 
-static void dump_config_records(struct lib_context *lc, struct dev_info *di,
-				struct ddf1 *ddf1)
+static void
+dump_config_records(struct lib_context *lc, struct dev_info *di,
+		    struct ddf1 *ddf1)
 {
 	static struct ddf1_record_handler handlers = {
 		.vd = dump_config_record,
@@ -256,8 +266,9 @@ static void dump_config_records(struct lib_context *lc, struct dev_info *di,
 }
 
 /* Dump the entire table */
-void ddf1_dump_all(struct lib_context *lc, struct dev_info *di,
-		   struct ddf1 *ddf1, const char *handler)
+void
+ddf1_dump_all(struct lib_context *lc, struct dev_info *di,
+	      struct ddf1 *ddf1, const char *handler)
 {
 	int i;
 

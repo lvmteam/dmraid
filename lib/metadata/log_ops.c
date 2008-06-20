@@ -9,7 +9,8 @@
  */
 #include "internal.h"
 
-void end_log(struct lib_context *lc, struct list_head *log)
+void
+end_log(struct lib_context *lc, struct list_head *log)
 {
 	struct list_head *pos, *tmp;
 
@@ -19,7 +20,8 @@ void end_log(struct lib_context *lc, struct list_head *log)
 	}
 }
 
-int revert_log(struct lib_context *lc, struct list_head *log)
+int
+revert_log(struct lib_context *lc, struct list_head *log)
 {
 	int writes_started = 0, ret = 0;
 	struct change *entry;
@@ -37,13 +39,14 @@ int revert_log(struct lib_context *lc, struct list_head *log)
 			rd = entry->rd;
 			rd->type = t_spare;
 			list_del_init(&entry->rd->devs);
-		} else if (entry->type == WRITE_METADATA) {
+		}
+		else if (entry->type == WRITE_METADATA) {
 			writes_started = 1;
 			rd = entry->rd;
 			ret = write_dev(lc, rd, 0);
 			if (ret) {
 				log_err(lc, "%s: Error while reverting "
-					    "metadata.", __func__);
+					"metadata.", __func__);
 				break;
 			}
 		}

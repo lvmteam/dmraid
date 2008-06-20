@@ -91,160 +91,160 @@
 
 /* The DDF1 header table */
 struct ddf1_header {
-	uint32_t	signature;
-	uint32_t	crc;
-	uint8_t		guid[DDF1_GUID_LENGTH];
-	uint8_t		ddf_rev[DDF1_REV_LENGTH];
-	uint32_t	seqnum;
-	uint32_t	timestamp;
-	uint8_t		open_flag;
-	uint8_t		foreign_flag;
-	uint8_t		grouping_enforced;
-	uint8_t		reserved2[45];
-	uint64_t	primary_table_lba;
-	uint64_t	secondary_table_lba;
-	uint8_t		header_type;
-	uint8_t		reserved3[3];
-	uint32_t	workspace_length;
-	uint64_t	workspace_lba;
-	uint16_t	max_phys_drives;
-	uint16_t	max_virt_drives;
-	uint16_t	max_partitions;
-	uint16_t	vd_config_record_len;
-	uint16_t	max_primary_elements;
-	uint8_t		reserved4[54];
-	uint32_t	adapter_data_offset;
-	uint32_t	adapter_data_len;
-	uint32_t	phys_drive_offset;
-	uint32_t	phys_drive_len;
-	uint32_t	virt_drive_offset;
-	uint32_t	virt_drive_len;
-	uint32_t	config_record_offset;
-	uint32_t	config_record_len;
-	uint32_t	disk_data_offset;
-	uint32_t	disk_data_len;
-	uint32_t	badblock_offset;
-	uint32_t	badblock_len;
-	uint32_t	diag_offset;
-	uint32_t	diag_len;
-	uint32_t	vendor_offset;
-	uint32_t	vendor_len;
-	uint8_t		reserved5[256];
+	uint32_t signature;
+	uint32_t crc;
+	uint8_t guid[DDF1_GUID_LENGTH];
+	uint8_t ddf_rev[DDF1_REV_LENGTH];
+	uint32_t seqnum;
+	uint32_t timestamp;
+	uint8_t open_flag;
+	uint8_t foreign_flag;
+	uint8_t grouping_enforced;
+	uint8_t reserved2[45];
+	uint64_t primary_table_lba;
+	uint64_t secondary_table_lba;
+	uint8_t header_type;
+	uint8_t reserved3[3];
+	uint32_t workspace_length;
+	uint64_t workspace_lba;
+	uint16_t max_phys_drives;
+	uint16_t max_virt_drives;
+	uint16_t max_partitions;
+	uint16_t vd_config_record_len;
+	uint16_t max_primary_elements;
+	uint8_t reserved4[54];
+	uint32_t adapter_data_offset;
+	uint32_t adapter_data_len;
+	uint32_t phys_drive_offset;
+	uint32_t phys_drive_len;
+	uint32_t virt_drive_offset;
+	uint32_t virt_drive_len;
+	uint32_t config_record_offset;
+	uint32_t config_record_len;
+	uint32_t disk_data_offset;
+	uint32_t disk_data_len;
+	uint32_t badblock_offset;
+	uint32_t badblock_len;
+	uint32_t diag_offset;
+	uint32_t diag_len;
+	uint32_t vendor_offset;
+	uint32_t vendor_len;
+	uint8_t reserved5[256];
 } __attribute__ ((packed));
 
 /* The adapter data header */
 struct ddf1_adapter {
-	uint32_t	signature;
-	uint32_t	crc;
-	uint8_t		guid[DDF1_GUID_LENGTH];
-	uint16_t	pci_vendor;
-	uint16_t	pci_device;
-	uint16_t	pci_subvendor;
-	uint16_t	pci_subdevice;
-	uint8_t		reserved2[24];
-	uint8_t		adapter_data[448];
+	uint32_t signature;
+	uint32_t crc;
+	uint8_t guid[DDF1_GUID_LENGTH];
+	uint16_t pci_vendor;
+	uint16_t pci_device;
+	uint16_t pci_subvendor;
+	uint16_t pci_subdevice;
+	uint8_t reserved2[24];
+	uint8_t adapter_data[448];
 } __attribute__ ((packed));
 
 /* Physical drive info */
 struct ddf1_disk_data {
-	uint32_t	signature;
-	uint32_t	crc;
-	uint8_t		guid[DDF1_GUID_LENGTH];
-	uint32_t	reference;
-	uint8_t		forced_ref_flag;
-	uint8_t		forced_guid_flag;
-	uint8_t		scratch[32];
-	uint8_t		reserved[442];
+	uint32_t signature;
+	uint32_t crc;
+	uint8_t guid[DDF1_GUID_LENGTH];
+	uint32_t reference;
+	uint8_t forced_ref_flag;
+	uint8_t forced_guid_flag;
+	uint8_t scratch[32];
+	uint8_t reserved[442];
 } __attribute__ ((packed));
 
 /* Physical drive record header */
 struct ddf1_phys_drives {
-	uint32_t	signature;
-	uint32_t	crc;
-	uint16_t	num_drives;
-	uint16_t	max_drives;
-	uint8_t		reserved2[52];
+	uint32_t signature;
+	uint32_t crc;
+	uint16_t num_drives;
+	uint16_t max_drives;
+	uint8_t reserved2[52];
 	/* 64 bytes */
 	/* Drive records follow */
 } __attribute__ ((packed));
 
 /* Physical drive record */
 struct ddf1_phys_drive {
-	uint8_t		guid[DDF1_GUID_LENGTH];
-	uint32_t	reference;
-	uint16_t	type;
-	uint16_t	state;
-	uint64_t	size;
-	uint8_t		path_info[18];
-	uint8_t		reserved3[6];
+	uint8_t guid[DDF1_GUID_LENGTH];
+	uint32_t reference;
+	uint16_t type;
+	uint16_t state;
+	uint64_t size;
+	uint8_t path_info[18];
+	uint8_t reserved3[6];
 } __attribute__ ((packed));
 
 /* Virtual drive record header */
 struct ddf1_virt_drives {
-	uint32_t	signature;
-	uint32_t	crc;
-	uint16_t	num_drives;
-	uint16_t	max_drives;
-	uint8_t		reserved2[52];
+	uint32_t signature;
+	uint32_t crc;
+	uint16_t num_drives;
+	uint16_t max_drives;
+	uint8_t reserved2[52];
 	/* Drive records follow */
 } __attribute__ ((packed));
 
 /* Virtual drive record */
 struct ddf1_virt_drive {
-	uint8_t		guid[DDF1_GUID_LENGTH];
-	uint16_t	vd_num;
-	uint16_t	reserved2;
-	uint32_t	type;
-	uint8_t		state;
-	uint8_t		init_state;
-	uint8_t		reserved3[14];
-	uint8_t		name[16];
+	uint8_t guid[DDF1_GUID_LENGTH];
+	uint16_t vd_num;
+	uint16_t reserved2;
+	uint32_t type;
+	uint8_t state;
+	uint8_t init_state;
+	uint8_t reserved3[14];
+	uint8_t name[16];
 } __attribute__ ((packed));
 
 /* Virtual disk configuration record. */
 struct ddf1_config_record {
-	uint32_t	signature;
-	uint32_t	crc;
-	uint8_t		guid[DDF1_GUID_LENGTH];
-	uint32_t	timestamp;
-	uint32_t	seqnum;
-	uint8_t		reserved[24];
-	uint16_t	primary_element_count;
-	uint8_t		stripe_size;
-	uint8_t		raid_level;
-	uint8_t		raid_qualifier;
-	uint8_t		secondary_element_count;
-	uint8_t		secondary_element_number;
-	uint8_t		secondary_element_raid_level;
-	uint64_t	sectors;
-	uint64_t	size;
-	uint64_t	reserved2;
-	uint32_t	spares[8];
-	uint64_t	cache_policy;
-	uint8_t		bg_task_rate;
+	uint32_t signature;
+	uint32_t crc;
+	uint8_t guid[DDF1_GUID_LENGTH];
+	uint32_t timestamp;
+	uint32_t seqnum;
+	uint8_t reserved[24];
+	uint16_t primary_element_count;
+	uint8_t stripe_size;
+	uint8_t raid_level;
+	uint8_t raid_qualifier;
+	uint8_t secondary_element_count;
+	uint8_t secondary_element_number;
+	uint8_t secondary_element_raid_level;
+	uint64_t sectors;
+	uint64_t size;
+	uint64_t reserved2;
+	uint32_t spares[8];
+	uint64_t cache_policy;
+	uint8_t bg_task_rate;
 	/* 137 bytes */
-	uint8_t		reserved3[3+52+192+32+32+16+16+32];
+	uint8_t reserved3[3 + 52 + 192 + 32 + 32 + 16 + 16 + 32];
 	/* 512 bytes */
 } __attribute__ ((packed));
 
 /* Spare disk record */
 struct ddf1_spare {
-	uint8_t		guid[DDF1_GUID_LENGTH];
-	uint16_t	secondary_element;
-	uint8_t		reserved[6];
+	uint8_t guid[DDF1_GUID_LENGTH];
+	uint16_t secondary_element;
+	uint8_t reserved[6];
 } __attribute__ ((packed));
 
 /* Spare disk assignment record */
 struct ddf1_spare_header {
-	uint32_t	signature;
-	uint32_t	crc;
-	uint32_t	timestamp;
-	uint8_t		reserved[7];
-	uint8_t		type;
-	uint16_t	num_spares;
-	uint16_t	max_spares;
-	uint8_t		reserved2[8];
-	struct ddf1_spare	spares[0];
+	uint32_t signature;
+	uint32_t crc;
+	uint32_t timestamp;
+	uint8_t reserved[7];
+	uint8_t type;
+	uint16_t num_spares;
+	uint16_t max_spares;
+	uint8_t reserved2[8];
+	struct ddf1_spare spares[0];
 } __attribute__ ((packed));
 
 /* Metadata owner */

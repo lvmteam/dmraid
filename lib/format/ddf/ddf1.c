@@ -4,8 +4,8 @@
  * Copyright (C) 2005-2006 IBM, All rights reserved.
  * Written by Darrick Wong <djwong@us.ibm.com>
  *
- * Copyright (C) 2006 Heinz Mauelshagen, Red Hat GmbH
- *                    All rights reserved.
+ * Copyright (C) 2006-2008 Heinz Mauelshagen, Red Hat GmbH
+ *                         All rights reserved.
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -37,17 +37,19 @@ static const char *handler = HANDLER;
 #define	DDF1_DISKS	(char*) ".ddf1_disks"
 
 /* PCI IDs for Adaptec */
-// #define PCI_VENDOR_ID_ADAPTEC		0x9004
+// #define PCI_VENDOR_ID_ADAPTEC                0x9004
 #define PCI_VENDOR_ID_ADAPTEC2		0x9005
 
 /* Map DDF1 disk status to dmraid status */
-static enum status disk_status(struct ddf1_phys_drive *disk) {
+static enum status
+disk_status(struct ddf1_phys_drive *disk)
+{
 	struct states states[] = {
-		{ 0x72, s_broken },
-		{ 0x04, s_nosync },
-		{ 0x08, s_setup },
-		{ 0x01, s_ok },
-		{ 0, s_undef },
+		{0x72, s_broken},
+		{0x04, s_nosync},
+		{0x08, s_setup},
+		{0x01, s_ok},
+		{0, s_undef},
 	};
 
 	return disk ? rd_status(states, disk->state, AND) : s_undef;
@@ -60,7 +62,8 @@ static enum status disk_status(struct ddf1_phys_drive *disk) {
  * both GUIDs don't have 0xFFFFFFFF in bytes 20-23.  Gross.
  */
 /* Find this drive's physical data */
-static struct ddf1_phys_drive *get_phys_drive(struct ddf1 *ddf1)
+static struct ddf1_phys_drive *
+get_phys_drive(struct ddf1 *ddf1)
 {
 	unsigned int i = ddf1->pd_header->max_drives;
 
@@ -73,8 +76,8 @@ static struct ddf1_phys_drive *get_phys_drive(struct ddf1 *ddf1)
 }
 
 /* Find the virtual drive that goes with this config record */
-static struct ddf1_virt_drive *get_virt_drive(struct ddf1 *ddf1,
-					      struct ddf1_config_record *cr)
+static struct ddf1_virt_drive *
+get_virt_drive(struct ddf1 *ddf1, struct ddf1_config_record *cr)
 {
 	int i = ddf1->vd_header->num_drives;
 
@@ -89,8 +92,9 @@ static struct ddf1_virt_drive *get_virt_drive(struct ddf1 *ddf1,
 /*
  * Find the index of the VD config record given a physical drive and offset.
  */
-static int get_config_byoffset(struct ddf1 *ddf1, struct ddf1_phys_drive *pd,
-				 uint64_t offset)
+static int
+get_config_byoffset(struct ddf1 *ddf1, struct ddf1_phys_drive *pd,
+		    uint64_t offset)
 {
 	int cfgs = NUM_CONFIG_ENTRIES(ddf1), i;
 	uint32_t *cfg_drive_ids, j;
@@ -114,8 +118,8 @@ static int get_config_byoffset(struct ddf1 *ddf1, struct ddf1_phys_drive *pd,
 }
 
 /* Find the index of the nth VD config record for this physical drive. */
-static int get_config_index(struct ddf1 *ddf1, struct ddf1_phys_drive *pd,
-			    unsigned int *n)
+static int
+get_config_index(struct ddf1 *ddf1, struct ddf1_phys_drive *pd, unsigned int *n)
 {
 	int cfgs = NUM_CONFIG_ENTRIES(ddf1), i, j, nn = *n;
 	uint32_t *ids;
@@ -127,7 +131,7 @@ static int get_config_index(struct ddf1 *ddf1, struct ddf1_phys_drive *pd,
 			ids = CR_IDS(ddf1, cr);
 			for (j = 0; j < cr->primary_element_count; j++) {
 				if (ids[j] == pd->reference && !nn--)
-						return i;
+					return i;
 			}
 		}
 	}
@@ -139,18 +143,17 @@ static int get_config_index(struct ddf1 *ddf1, struct ddf1_phys_drive *pd,
 /*
  * Find the nth VD config record for this physical drive.
  */
-static inline struct ddf1_config_record *get_config(struct ddf1 *ddf1,
-						    struct ddf1_phys_drive *pd,
-						    unsigned int n)
+static inline struct ddf1_config_record *
+get_config(struct ddf1 *ddf1, struct ddf1_phys_drive *pd, unsigned int n)
 {
 	int i = get_config_index(ddf1, pd, &n);
 
 	return i < 0 ? NULL : CR(ddf1, i);
 }
- 
+
 /* Find a config record for this drive, given the offset of the array. */
-static inline struct ddf1_config_record *get_this_config(struct ddf1 *ddf1,
-							 uint64_t offset)
+static inline struct ddf1_config_record *
+get_this_config(struct ddf1 *ddf1, uint64_t offset)
 {
 	struct ddf1_phys_drive *pd = get_phys_drive(ddf1);
 	int i = get_config_byoffset(ddf1, pd, offset);
@@ -159,8 +162,9 @@ static inline struct ddf1_config_record *get_this_config(struct ddf1 *ddf1,
 }
 
 /* Find the config record disk/offset entry for this config/drive. */
-static int get_offset_entry(struct ddf1 *ddf1, struct ddf1_config_record *cr,
-			    struct ddf1_phys_drive *pd)
+static int
+get_offset_entry(struct ddf1 *ddf1, struct ddf1_config_record *cr,
+		 struct ddf1_phys_drive *pd)
 {
 	int i;
 	uint32_t *ids;
@@ -177,8 +181,9 @@ static int get_offset_entry(struct ddf1 *ddf1, struct ddf1_config_record *cr,
 }
 
 /* Find the offset for this config/drive. */
-static uint64_t get_offset(struct ddf1 *ddf1, struct ddf1_config_record *cr,
-			   struct ddf1_phys_drive *pd)
+static uint64_t
+get_offset(struct ddf1 *ddf1, struct ddf1_config_record *cr,
+	   struct ddf1_phys_drive *pd)
 {
 	int i = get_offset_entry(ddf1, cr, pd);
 
@@ -186,33 +191,34 @@ static uint64_t get_offset(struct ddf1 *ddf1, struct ddf1_config_record *cr,
 }
 
 /* Calculate the stripe size, in sectors */
-static inline unsigned int stride(struct ddf1_config_record *cr)
+static inline unsigned int
+stride(struct ddf1_config_record *cr)
 {
 	return to_bytes(1) >> 9 << cr->stripe_size;
 }
 
 /* Map the DDF1 raid type codes into dmraid type codes. */
-static enum type type(struct lib_context *lc, struct ddf1 *ddf1,
-		      struct ddf1_config_record *cr)
+static enum type
+type(struct lib_context *lc, struct ddf1 *ddf1, struct ddf1_config_record *cr)
 {
 	unsigned int l;
 	struct types *t;
 	/* Mapping of template types to generic types */
 	static struct types types[] = {
-		{ DDF1_RAID0,	t_raid0 },
-		{ DDF1_RAID1,	t_raid1 },
-		{ DDF1_RAID4,	t_raid4 },
-		{ DDF1_CONCAT,	t_linear },
-		{ DDF1_JBOD,	t_linear },
-		{ 0, t_undef}
+		{DDF1_RAID0, t_raid0},
+		{DDF1_RAID1, t_raid1},
+		{DDF1_RAID4, t_raid4},
+		{DDF1_CONCAT, t_linear},
+		{DDF1_JBOD, t_linear},
+		{0, t_undef}
 	};
 	/* Seperate array for RAID5 qualifiers */
 	static struct types qualifier_types[] = {
 		/* FIXME: Is RLQ=0 really right symmetric? */
-		{ DDF1_RAID5_RS, t_raid5_rs },
-		{ DDF1_RAID5_LA, t_raid5_la },
-		{ DDF1_RAID5_LS, t_raid5_ls },
-		{ 0, t_undef}
+		{DDF1_RAID5_RS, t_raid5_rs},
+		{DDF1_RAID5_LA, t_raid5_la},
+		{DDF1_RAID5_LS, t_raid5_ls},
+		{0, t_undef}
 	};
 
 	if (!cr)
@@ -236,8 +242,8 @@ static enum type type(struct lib_context *lc, struct ddf1 *ddf1,
 }
 
 /* Read the whole metadata chunk at once */
-static uint8_t *read_metadata_chunk(struct lib_context *lc, struct dev_info *di,
-				    uint64_t start)
+static uint8_t *
+read_metadata_chunk(struct lib_context *lc, struct dev_info *di, uint64_t start)
 {
 	uint8_t *ret;
 	size_t size = to_bytes(di->sectors - start);
@@ -254,26 +260,29 @@ static uint8_t *read_metadata_chunk(struct lib_context *lc, struct dev_info *di,
 	return ret;
 }
 
-static inline void cond_free(void *p)
+static inline void
+cond_free(void *p)
 {
 	if (p)
 		dbg_free(p);
 }
 
 /* Reused error message */
-static inline void *err_drive(struct lib_context *lc, struct dev_info *di,
-			      const char *what)
+static inline void *
+err_drive(struct lib_context *lc, struct dev_info *di, const char *what)
 {
 	LOG_ERR(lc, NULL, "%s: cannot find %s drive record on %s",
 		handler, what, di->path);
 }
 
-static void *err_phys_drive(struct lib_context *lc, struct dev_info *di)
+static void *
+err_phys_drive(struct lib_context *lc, struct dev_info *di)
 {
 	return err_drive(lc, di, "physical");
 }
 
-static void *err_virt_drive(struct lib_context *lc, struct dev_info *di)
+static void *
+err_virt_drive(struct lib_context *lc, struct dev_info *di)
 {
 	return err_drive(lc, di, "virtual");
 }
@@ -282,8 +291,8 @@ static void *err_virt_drive(struct lib_context *lc, struct dev_info *di)
  * Read a DDF1 RAID device.  Fields are little endian, so
  * need to convert them if we're on a BE machine (ppc, etc).
  */
-static int read_extended(struct lib_context *lc, struct dev_info *di,
-			 struct ddf1 *ddf1)
+static int
+read_extended(struct lib_context *lc, struct dev_info *di, struct ddf1 *ddf1)
 {
 	int i;
 	uint64_t where;
@@ -319,7 +328,7 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 		cond_free(ddf1->primary);
 		ddf1->primary = NULL;
 	};
-	
+
 	if (sec->signature == DDF1_HEADER) {
 		/* If we encounter an error, we use the secondary table */
 		if (!ddf1->primary) {
@@ -331,8 +340,7 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	} else {
 		if (sec->signature)
 			log_warn(lc, "%s: bad secondary header signature %x "
-				     "on %s",
-				 handler, sec->signature, di->path);
+				 "on %s", handler, sec->signature, di->path);
 
 		dbg_free(sec);
 		ddf1->secondary = NULL;
@@ -357,7 +365,7 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	if (ddf1->adapter->signature != DDF1_ADAPTER_DATA) {
 		if (ddf1->adapter->signature)
 			log_warn(lc, "%s: incorrect adapter data signature %x "
-				     "on %s",
+				 "on %s",
 				 handler, ddf1->adapter->signature, di->path);
 		dbg_free(ddf1->adapter);
 		ddf1->adapter = NULL;
@@ -402,8 +410,8 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	}
 
 	/* Now read the physical drive data */
-	ddf1->pds = (struct ddf1_phys_drive *)(((uint8_t *)ddf1->pd_header) +
-		    sizeof (*pd));
+	ddf1->pds = (struct ddf1_phys_drive *) (((uint8_t *) ddf1->pd_header) +
+						sizeof(*pd));
 	for (i = 0; i < pd->num_drives; i++) {
 		ddf1_cvt_phys_drive(ddf1, &ddf1->pds[i]);
 		/*
@@ -428,7 +436,7 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	}
 
 	/* Now read the virtual drive data */
-	ddf1->vds = (struct ddf1_virt_drive*)(((uint8_t*) vd) + sizeof (*pd));
+	ddf1->vds = (struct ddf1_virt_drive *) (((uint8_t *) vd) + sizeof(*pd));
 	for (i = 0; i < vd->num_drives; i++)
 		ddf1_cvt_virt_drive(ddf1, &ddf1->vds[i]);
 
@@ -454,13 +462,12 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	ddf1->in_cpu_format = 1;
 
 	/* FIXME: We should verify the checksums for all modes */
-	if (ddf1->adaptec_mode &&
-	    !(ddf1_check_all_crcs(lc, di, ddf1)))
+	if (ddf1->adaptec_mode && !(ddf1_check_all_crcs(lc, di, ddf1)))
 		goto bad;
 
 	return 1;
 
-bad:
+      bad:
 	ddf1->vds = NULL;
 	ddf1->pds = NULL;
 	cond_free(ddf1->cfg);
@@ -473,18 +480,19 @@ bad:
 }
 
 /* Count the number of raid_devs we need to create for this drive */
-static unsigned int num_devs(struct lib_context *lc, void *meta)
+static unsigned int
+num_devs(struct lib_context *lc, void *meta)
 {
 	struct ddf1 *ddf1 = meta;
 	unsigned int num_drives = ~0;
-	
+
 	get_config_index(ddf1, get_phys_drive(ddf1), &num_drives);
 	return num_drives;
 }
 
 /* Is this DDF1 metadata? */
-static inline int is_ddf1(struct lib_context *lc, struct dev_info *di,
-			  struct ddf1 *ddf1)
+static inline int
+is_ddf1(struct lib_context *lc, struct dev_info *di, struct ddf1 *ddf1)
 {
 	/*
 	 * Check our magic numbers and that the version == v2.
@@ -493,15 +501,15 @@ static inline int is_ddf1(struct lib_context *lc, struct dev_info *di,
 
 	/* FIXME: We should examine the version headers... */
 	return ddf1->anchor.signature == DDF1_HEADER ||
-	       ddf1->anchor.signature == DDF1_HEADER_BACKWARDS;
+		ddf1->anchor.signature == DDF1_HEADER_BACKWARDS;
 }
 
 /* Try to find DDF1 metadata at a given offset (ddf1_sboffset) */
-static struct ddf1 *try_to_find_ddf1(struct lib_context *lc,
-				     struct dev_info *di,
-				     size_t *sz, uint64_t *offset,
-				     union read_info *info,
-				     uint64_t ddf1_sboffset)
+static struct ddf1 *
+try_to_find_ddf1(struct lib_context *lc,
+		 struct dev_info *di,
+		 size_t * sz, uint64_t * offset,
+		 union read_info *info, uint64_t ddf1_sboffset)
 {
 	struct ddf1 *ddf1;
 
@@ -515,8 +523,7 @@ static struct ddf1 *try_to_find_ddf1(struct lib_context *lc,
 		goto err;
 
 	if (!read_file(lc, handler, di->path, &ddf1->anchor, to_bytes(1),
-		       ddf1_sboffset) ||
-	    !is_ddf1(lc, di, ddf1))
+		       ddf1_sboffset) || !is_ddf1(lc, di, ddf1))
 		goto bad;
 
 	ddf1->anchor_offset = ddf1_sboffset;
@@ -531,9 +538,9 @@ static struct ddf1 *try_to_find_ddf1(struct lib_context *lc,
 	if (read_extended(lc, di, ddf1))
 		return ddf1;
 
-   bad:
+      bad:
 	dbg_free(ddf1);
-   err:
+      err:
 	return NULL;
 }
 
@@ -543,9 +550,9 @@ static struct ddf1 *try_to_find_ddf1(struct lib_context *lc,
  * Note that the struct should be fully converted to the correct endianness
  * by the time this function returns.
  */
-static void *read_metadata_areas(struct lib_context *lc, struct dev_info *di,
-				 size_t *sz, uint64_t *offset,
-				 union read_info *info)
+static void *
+read_metadata_areas(struct lib_context *lc, struct dev_info *di,
+		    size_t * sz, uint64_t * offset, union read_info *info)
 {
 	struct ddf1 *ddf1;
 
@@ -560,8 +567,8 @@ static void *read_metadata_areas(struct lib_context *lc, struct dev_info *di,
 }
 
 /* This is all hogwash since file_metadata can only be called once... */
-static void file_metadata_areas(struct lib_context *lc, struct dev_info *di,
-				void *meta)
+static void
+file_metadata_areas(struct lib_context *lc, struct dev_info *di, void *meta)
 {
 	uint8_t *buf;
 	uint64_t start = ddf1_beginning(meta);
@@ -571,14 +578,14 @@ static void file_metadata_areas(struct lib_context *lc, struct dev_info *di,
 		file_metadata(lc, handler, di->path, buf,
 			      to_bytes(di->sectors - start), to_bytes(start));
 		dbg_free(buf);
-		file_dev_size(lc, handler, di); /* Record the device size. */
+		file_dev_size(lc, handler, di);	/* Record the device size. */
 	}
 }
 
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 		    struct dev_info *di, void *meta, union read_info *info);
-static struct raid_dev *ddf1_read(struct lib_context *lc,
-					struct dev_info *di)
+static struct raid_dev *
+ddf1_read(struct lib_context *lc, struct dev_info *di)
 {
 	/*
 	 * NOTE: Everything called after read_metadata_areas assumes that
@@ -590,7 +597,8 @@ static struct raid_dev *ddf1_read(struct lib_context *lc,
 }
 
 /* Compose an "identifier" for use as a sort key for raid sets. */
-static inline int compose_id(struct ddf1 *ddf1, struct raid_dev *rd)
+static inline int
+compose_id(struct ddf1 *ddf1, struct raid_dev *rd)
 {
 	struct ddf1_phys_drive *pd = get_phys_drive(ddf1);
 	int i = get_config_byoffset(ddf1, pd, rd->offset);
@@ -599,24 +607,27 @@ static inline int compose_id(struct ddf1 *ddf1, struct raid_dev *rd)
 }
 
 /* No sort. */
-static int no_sort(struct list_head *pos, struct list_head *new)
+static int
+no_sort(struct list_head *pos, struct list_head *new)
 {
 	return 0;
 }
 
 /* Sort DDF1 devices by offset entry within a RAID set. */
-static int dev_sort(struct list_head *pos, struct list_head *new)
+static int
+dev_sort(struct list_head *pos, struct list_head *new)
 {
 	struct raid_dev *rd_pos = RD(pos), *rd_new = RD(new);
 
 	return compose_id(META(GRP_RD(rd_new), ddf1), rd_new) <
-	       compose_id(META(GRP_RD(rd_pos), ddf1), rd_pos);
+		compose_id(META(GRP_RD(rd_pos), ddf1), rd_pos);
 }
 
 /*
  * IO error event handler.
  */
-static int event_io(struct lib_context *lc, struct event_io *e_io)
+static int
+event_io(struct lib_context *lc, struct event_io *e_io)
 {
 	log_err(lc, "%s: I/O error on device %s at sector %lu.\n",
 		handler, e_io->rd->di->path, e_io->sector);
@@ -626,30 +637,30 @@ static int event_io(struct lib_context *lc, struct event_io *e_io)
 
 #if 0
 	/* FIXME: This should not use META() directly? */
-	struct raid_dev *rd = e_io->rd;
-	struct ddf1 *ddf1 = META(rd, ddf1);
-	struct ddf1_raid_configline *cl = this_disk(ddf1);
-	struct ddf1_raid_configline *fwl = find_logical(ddf1);
+struct raid_dev *rd = e_io->rd;
+struct ddf1 *ddf1 = META(rd, ddf1);
+struct ddf1_raid_configline *cl = this_disk(ddf1);
+struct ddf1_raid_configline *fwl = find_logical(ddf1);
 
 	/* Ignore if we've already marked this disk broken(?) */
-	if (rd->status & s_broken)
-		return 0;
-	
+if (rd->status & s_broken)
+	return 0;
+
 	/* Mark the array as degraded and the disk as failed. */
-	rd->status = s_broken;
-	cl->raidstate = LSU_COMPONENT_STATE_FAILED;
-	fwl->raidstate = LSU_COMPONENT_STATE_DEGRADED;
+rd->status = s_broken;
+cl->raidstate = LSU_COMPONENT_STATE_FAILED;
+fwl->raidstate = LSU_COMPONENT_STATE_DEGRADED;
 	/* FIXME: Do we have to mark a parent too? */
 
 	/* Indicate that this is indeed a failure. */
-	return 1;
+return 1;
 }
 #endif
 
 #define NAME_SIZE 64
 /* Formulate a RAID set name for this disk. */
-static char *name(struct lib_context *lc, struct ddf1 *ddf1,
-		  struct raid_dev *rd)
+static char *
+name(struct lib_context *lc, struct ddf1 *ddf1, struct raid_dev *rd)
 {
 	int i, prefix;
 	char buf[NAME_SIZE];
@@ -661,8 +672,8 @@ static char *name(struct lib_context *lc, struct ddf1 *ddf1,
 		return err_phys_drive(lc, rd->di);
 
 	i = get_config_byoffset(ddf1, pd, rd->offset);
- 	cr = get_config(ddf1, pd, i);
- 	if (i < 0 || !cr) {
+	cr = get_config(ddf1, pd, i);
+	if (i < 0 || !cr) {
 		sprintf(buf, DDF1_SPARES);
 		goto out;
 	}
@@ -677,29 +688,29 @@ static char *name(struct lib_context *lc, struct ddf1 *ddf1,
 		memcpy(buf + prefix, vd->name, 16);
 		i = prefix + 16;
 		while (!isgraph(buf[--i]));
-		buf[i+1] = 0;
+		buf[i + 1] = 0;
 	} else {
 		char *b;
 
 		for (b = buf + prefix, i = 0; i < 24; b += 8, i += 4)
 			sprintf(b, "%02x%02x%02x%02x",
-				vd->guid[i], vd->guid[i+1],
-			        vd->guid[i+2], vd->guid[i+3]);
+				vd->guid[i], vd->guid[i + 1],
+				vd->guid[i + 2], vd->guid[i + 3]);
 	}
 
-   out:
-	return dbg_strdup(buf); /* Only return the needed allocation */
+      out:
+	return dbg_strdup(buf);	/* Only return the needed allocation */
 }
 
 /* Figure out the real size of a disk... */
-static uint64_t get_size(struct lib_context *lc, struct ddf1 *ddf1,
-			 struct ddf1_config_record *cr,
-			 struct ddf1_phys_drive *pd)
+static uint64_t
+get_size(struct lib_context *lc, struct ddf1 *ddf1,
+	 struct ddf1_config_record *cr, struct ddf1_phys_drive *pd)
 {
 	if (cr && cr->sectors)
 		/* Some Adaptec controllers need this clamping. */
 		return type(lc, ddf1, cr) == t_raid0 ?
-		       cr->sectors - cr->sectors % stride(cr) : cr->sectors;
+			cr->sectors - cr->sectors % stride(cr) : cr->sectors;
 
 	return pd->size;
 }
@@ -710,9 +721,9 @@ static uint64_t get_size(struct lib_context *lc, struct ddf1 *ddf1,
  * function is successful, NULL if not.  rd_group is the raid device that
  * represents the entire disk drive.
  */
-static struct raid_set *group_rd(struct lib_context *lc,
-				 struct raid_set *rs_group,
-				 struct raid_dev *rd_group)
+static struct raid_set *
+group_rd(struct lib_context *lc,
+	 struct raid_set *rs_group, struct raid_dev *rd_group)
 {
 	struct ddf1 *ddf1 = META(rd_group, ddf1);
 	struct raid_set *rs = NULL;
@@ -721,7 +732,7 @@ static struct raid_set *group_rd(struct lib_context *lc,
 	struct ddf1_phys_drive *pd;
 	struct ddf1_group_info *gi;
 	unsigned int devs, i;
-	
+
 	if (!(pd = get_phys_drive(ddf1)))
 		return err_phys_drive(lc, rd_group->di);
 
@@ -747,7 +758,7 @@ static struct raid_set *group_rd(struct lib_context *lc,
 		 * If we have a virtual drive config without an entry in the
 		 * list of virtual drives, we ignore it.  Weird bug seen on
 		 * Adaptec 2410SA controller.
-		*/
+		 */
 		if (!(rd->name = name(lc, ddf1, rd))) {
 			free_raid_dev(lc, &rd);
 			continue;
@@ -789,7 +800,8 @@ static struct raid_set *group_rd(struct lib_context *lc,
  *
  * FIXME: We haven't been able to set up a RAID10 for testing...
  */
-static struct raid_set *ddf1_group(struct lib_context *lc, struct raid_dev *rd)
+static struct raid_set *
+ddf1_group(struct lib_context *lc, struct raid_dev *rd)
 {
 	struct ddf1 *ddf1 = META(rd, ddf1);
 	struct ddf1_phys_drive *pd;
@@ -810,8 +822,7 @@ static struct raid_set *ddf1_group(struct lib_context *lc, struct raid_dev *rd)
 	 * (Is this really necessary?)
 	 */
 	if (!(rs = find_or_alloc_raid_set(lc, rd->name, FIND_TOP, rd,
-					  LC_RS(lc), NO_CREATE,
-					  NO_CREATE_ARG)))
+					  LC_RS(lc), NO_CREATE, NO_CREATE_ARG)))
 		return NULL;
 
 	rs->type = t_group;
@@ -822,19 +833,20 @@ static struct raid_set *ddf1_group(struct lib_context *lc, struct raid_dev *rd)
 }
 
 /* Write metadata. */
-static int ddf1_write(struct lib_context *lc,  struct raid_dev *rd, int erase)
+static int
+ddf1_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 {
 	int ret;
-        struct ddf1 *ddf1 = META(rd, ddf1);
+	struct ddf1 *ddf1 = META(rd, ddf1);
 
 	if (ddf1->adaptec_mode)
 		ddf1_update_all_crcs(lc, rd->di, ddf1);
 
-        ddf1_cvt_all(lc, ddf1, rd->di);
-        ret = write_metadata(lc, handler, rd, -1, erase);
-        ddf1_cvt_all(lc, ddf1, rd->di);
+	ddf1_cvt_all(lc, ddf1, rd->di);
+	ret = write_metadata(lc, handler, rd, -1, erase);
+	ddf1_cvt_all(lc, ddf1, rd->di);
 
-        return ret;
+	return ret;
 }
 
 /*
@@ -842,7 +854,8 @@ static int ddf1_write(struct lib_context *lc,  struct raid_dev *rd, int erase)
  */
 
 /* Retrieve the number of devices that should be in this set. */
-static unsigned int device_count(struct raid_dev *rd, void *context)
+static unsigned int
+device_count(struct raid_dev *rd, void *context)
 {
 	/* Get the logical drive */
 	struct ddf1_config_record *cr =
@@ -852,8 +865,9 @@ static unsigned int device_count(struct raid_dev *rd, void *context)
 }
 
 /* Check a RAID device */
-static int check_rd(struct lib_context *lc, struct raid_set *rs,
-		    struct raid_dev *rd, void *context)
+static int
+check_rd(struct lib_context *lc, struct raid_set *rs,
+	 struct raid_dev *rd, void *context)
 {
 	/*
 	 * FIXME: Should we do more checking for brokenness here?
@@ -863,7 +877,8 @@ static int check_rd(struct lib_context *lc, struct raid_set *rs,
 }
 
 /* Start the recursive RAID set check. */
-static int ddf1_check(struct lib_context *lc, struct raid_set *rs)
+static int
+ddf1_check(struct lib_context *lc, struct raid_set *rs)
 {
 	return check_raid_set(lc, rs, device_count, NULL, check_rd,
 			      NULL, handler);
@@ -871,36 +886,38 @@ static int ddf1_check(struct lib_context *lc, struct raid_set *rs)
 
 static struct event_handlers ddf1_event_handlers = {
 	.io = event_io,
-	.rd = NULL,	/* FIXME: no device add/remove event handler yet. */
+	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
 };
 
 #ifdef DMRAID_NATIVE_LOG
 /*
  * Log native information about the RAID device.
  */
-static void ddf1_log(struct lib_context *lc, struct raid_dev *rd)
+static void
+ddf1_log(struct lib_context *lc, struct raid_dev *rd)
 {
 	ddf1_dump_all(lc, rd->di, META(rd, ddf1), handler);
 }
 #endif /* #ifdef DMRAID_NATIVE_LOG  */
 
 static struct dmraid_format ddf1_format = {
-	.name	= HANDLER,
-	.descr	= "SNIA DDF1",
-	.caps	= "0,1,4,5,linear",
+	.name = HANDLER,
+	.descr = "SNIA DDF1",
+	.caps = "0,1,4,5,linear",
 	.format = FMT_RAID,
-	.read	= ddf1_read,
-	.write	= ddf1_write,
-	.group	= ddf1_group,
-	.check	= ddf1_check,
-	.events	= &ddf1_event_handlers,
+	.read = ddf1_read,
+	.write = ddf1_write,
+	.group = ddf1_group,
+	.check = ddf1_check,
+	.events = &ddf1_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
-	.log	= ddf1_log,
+	.log = ddf1_log,
 #endif
 };
 
 /* Register this format handler with the format core */
-int register_ddf1(struct lib_context *lc)
+int
+register_ddf1(struct lib_context *lc)
 {
 	return register_format_handler(lc, &ddf1_format);
 }
@@ -908,8 +925,9 @@ int register_ddf1(struct lib_context *lc)
 /*
  * Set up a RAID device from what we've assembled out of the metadata.
  */
-static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
-		    struct dev_info *di, void *meta, union read_info *info)
+static int
+setup_rd(struct lib_context *lc, struct raid_dev *rd,
+	 struct dev_info *di, void *meta, union read_info *info)
 {
 	unsigned int i, ma_count = 5;
 	struct ddf1 *ddf1 = meta;
@@ -918,7 +936,7 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	if (!(pd = get_phys_drive(ddf1)))
 		LOG_ERR(lc, 0, "%s: Cannot find physical drive description "
-			       "on %s!", handler, di->path);
+			"on %s!", handler, di->path);
 
 	/* We need multiple metadata areas */
 	ma_count += ddf1->adapter ? 1 : 0;
@@ -969,7 +987,7 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 	ma->area = ddf1->cfg;
 
 	/* Now set up the rest of the metadata info */
-        rd->di = di;
+	rd->di = di;
 	rd->fmt = &ddf1_format;
 	rd->status = disk_status(pd);
 	rd->type = t_group;

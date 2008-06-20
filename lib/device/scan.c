@@ -32,7 +32,8 @@
 #define	_PATH_MOUNTS	"/proc/mounts"
 #endif
 
-static char *find_sysfs_mp(struct lib_context *lc)
+static char *
+find_sysfs_mp(struct lib_context *lc)
 {
 #ifndef __KLIBC__
 	char *ret = NULL;
@@ -57,12 +58,14 @@ static char *find_sysfs_mp(struct lib_context *lc)
 
 	return ret;
 #else
-	return (char*) "/sys";
+	return (char *) "/sys";
 #endif
 }
 
 /* Make up an absolute sysfs path given a relative one. */
-static char *mk_sysfs_path(struct lib_context *lc, char const *path) {
+static char *
+mk_sysfs_path(struct lib_context *lc, char const *path)
+{
 	static char *ret = NULL, *sysfs_mp;
 
 	if (!(sysfs_mp = find_sysfs_mp(lc)))
@@ -78,18 +81,19 @@ static char *mk_sysfs_path(struct lib_context *lc, char const *path) {
 
 /* Test with sparse mapped devices. */
 #ifdef	DMRAID_TEST
-static int dm_test_device(struct lib_context *lc, char *path)
+static int
+dm_test_device(struct lib_context *lc, char *path)
 {
 	struct stat s;
 
 	return !lstat(path, &s) &&
-	       S_ISLNK(s.st_mode) &&
-	       !strncmp(get_basename(lc, path), "dm-", 3);
+		S_ISLNK(s.st_mode) &&
+		!strncmp(get_basename(lc, path), "dm-", 3);
 }
 
 /* Fake a SCSI serial number by reading it from a file. */
-static int get_dm_test_serial(struct lib_context *lc,
-			      struct dev_info *di, char *path)
+static int
+get_dm_test_serial(struct lib_context *lc, struct dev_info *di, char *path)
 {
 	int ret = 1;
 	char *serial, buffer[32];
@@ -121,19 +125,20 @@ static int get_dm_test_serial(struct lib_context *lc,
  * Ioctl for sector, optionally for device size
  * and get device serial number.
  */
-static int get_device_serial(struct lib_context *lc, int fd,
-			     struct dev_info *di)
+static int
+get_device_serial(struct lib_context *lc, int fd, struct dev_info *di)
 {
 	/*
 	 * In case new generic SCSI ioctl fails,
 	 * try ATA and fall back to old SCSI ioctl.
 	 */
-	return get_scsi_serial(lc, fd, di, SG) || /* SG: generic scsi ioctl. */
-	       get_ata_serial(lc, fd, di) ||	  /* Get ATA serial number. */
-	       get_scsi_serial(lc, fd, di, OLD);  /* OLD: Old scsi ioctl. */
+	return get_scsi_serial(lc, fd, di, SG) ||	/* SG: generic scsi ioctl. */
+		get_ata_serial(lc, fd, di) ||	/* Get ATA serial number. */
+		get_scsi_serial(lc, fd, di, OLD);	/* OLD: Old scsi ioctl. */
 }
 
-static int di_ioctl(struct lib_context *lc, int fd, struct dev_info *di)
+static int
+di_ioctl(struct lib_context *lc, int fd, struct dev_info *di)
 {
 	unsigned int sector_size = 0;
 	unsigned long size;
@@ -156,11 +161,12 @@ static int di_ioctl(struct lib_context *lc, int fd, struct dev_info *di)
 		return get_dm_test_serial(lc, di, di->path);
 	else
 #endif
-	return get_device_serial(lc, fd, di);
+		return get_device_serial(lc, fd, di);
 }
 
 /* Are we interested in this device ? */
-static int interested(struct lib_context *lc, char *path)
+static int
+interested(struct lib_context *lc, char *path)
 {
 	char *name = get_basename(lc, path);
 
@@ -168,19 +174,19 @@ static int interested(struct lib_context *lc, char *path)
 	 * Whole IDE and SCSI disks only.
 	 */
 	return (!isdigit(name[strlen(name) - 1]) &&
-	       (*(name + 1) == 'd' && (*name == 'h' || *name == 's')))
-
+		(*(name + 1) == 'd' && (*name == 'h' || *name == 's')))
 #ifdef	DMRAID_TEST
-	/*
-	 * Include dm devices for testing.
-	 */
+		/*
+		 * Include dm devices for testing.
+		 */
 		|| dm_test_device(lc, path)
 #endif
-	;
+		;
 }
 
 /* Ask sysfs, if a device is removable. */
-int removable_device(struct lib_context *lc, char *dev_path)
+int
+removable_device(struct lib_context *lc, char *dev_path)
 {
 	int ret = 0;
 	char buf[2], *name, *sysfs_path, *sysfs_file;
@@ -200,8 +206,7 @@ int removable_device(struct lib_context *lc, char *dev_path)
 	sprintf(sysfs_file, "%s/%s/%s", sysfs_path, name, sysfs_removable);
 	if ((f = fopen(sysfs_file, "r"))) {
 		/* Using fread for klibc compatibility. */
-		if (fread(buf, sizeof(char), sizeof(buf) - 1, f) &&
-		    *buf == '1') {
+		if (fread(buf, sizeof(char), sizeof(buf) - 1, f) && *buf == '1') {
 			log_notice(lc, "skipping removable device %s",
 				   dev_path);
 			ret = 1;
@@ -212,7 +217,7 @@ int removable_device(struct lib_context *lc, char *dev_path)
 
 	dbg_free(sysfs_file);
 
-   out:
+      out:
 	dbg_free(sysfs_path);
 
 	return ret;
@@ -222,8 +227,9 @@ int removable_device(struct lib_context *lc, char *dev_path)
  * Read the size in sectors from the sysfs "size" file.
  * Avoid access to removable devices.
  */
-static int sysfs_get_size(struct lib_context *lc, struct dev_info *di,
-			  const char *path, char *name)
+static int
+sysfs_get_size(struct lib_context *lc, struct dev_info *di,
+	       const char *path, char *name)
 {
 	int ret = 0;
 	char buf[22], *sysfs_file;
@@ -253,8 +259,8 @@ static int sysfs_get_size(struct lib_context *lc, struct dev_info *di,
 	return ret;
 }
 
-static int get_size(struct lib_context *lc, char *path,
-		    char *name, int sysfs)
+static int
+get_size(struct lib_context *lc, char *path, char *name, int sysfs)
 {
 	int fd, ret = 0;
 	char *dev_path;
@@ -282,7 +288,7 @@ static int get_size(struct lib_context *lc, char *path,
 
 	close(fd);
 
-   out:
+      out:
 	dbg_free(dev_path);
 
 	if (!ret && di)
@@ -295,7 +301,8 @@ static int get_size(struct lib_context *lc, char *path,
  * Find disk devices in sysfs or directly
  * in /dev (for Linux 2.4) and keep information.
  */
-int discover_devices(struct lib_context *lc, char **devnodes)
+int
+discover_devices(struct lib_context *lc, char **devnodes)
 {
 	int sysfs, ret = 0;
 	char *path, *p;
@@ -307,7 +314,7 @@ int discover_devices(struct lib_context *lc, char **devnodes)
 		path = p;
 	} else {
 		sysfs = 0;
-		path = (char*) _PATH_DEV;
+		path = (char *) _PATH_DEV;
 		log_print(lc, "carrying on with %s", path);
 	}
 
@@ -328,7 +335,7 @@ int discover_devices(struct lib_context *lc, char **devnodes)
 	closedir(d);
 	ret = 1;
 
-  out:
+      out:
 	if (p)
 		dbg_free(p);
 

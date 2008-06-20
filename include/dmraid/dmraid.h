@@ -1,6 +1,9 @@
 /*
- * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
+ *
+ * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * November, 2007 - additions for Create, Delete, Rebuild & Raid 10. 
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -56,7 +59,7 @@ extern int erase_metadata(struct lib_context *lc);
  */
 extern const char *get_set_type(struct lib_context *lc, void *rs);
 extern const char *get_set_name(struct lib_context *lc, void *rs);
-extern int group_set(struct lib_context *lc, char *name);
+extern int group_set(struct lib_context *lc, char **name);
 extern char *libdmraid_make_table(struct lib_context *lc, struct raid_set *rs);
 
 enum activate_type {
@@ -65,8 +68,8 @@ enum activate_type {
 };
 
 extern void process_sets(struct lib_context *lc,
-			 int (*func)(struct lib_context *lc, void *rs, int arg),
-			 int arg, enum set_type type);
+			 int (*func) (struct lib_context * lc, void *rs,
+				      int arg), int arg, enum set_type type);
 extern int change_set(struct lib_context *lc, enum activate_type what,
 		      void *rs);
 

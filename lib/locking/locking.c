@@ -16,7 +16,8 @@ static const char *lock_file = "/var/lock/dmraid/.lock";
 static int lf = -1;
 
 /* flock file. */
-static int lock(struct lib_context *lc, struct resource *res)
+static int
+lock(struct lib_context *lc, struct resource *res)
 {
 	/* Already locked. */
 	if (lf > -1)
@@ -36,7 +37,8 @@ static int lock(struct lib_context *lc, struct resource *res)
 }
 
 /* Unlock file. */
-static void unlock(struct lib_context *lc, struct resource *res)
+static void
+unlock(struct lib_context *lc, struct resource *res)
 {
 	/* Not locked! */
 	if (lf == -1)
@@ -55,17 +57,18 @@ static void unlock(struct lib_context *lc, struct resource *res)
 
 /* File base locking interface. */
 static struct locking file_locking = {
-	.name	 = "file",
-	.lock 	 = lock,
-	.unlock	 = unlock,
+	.name = "file",
+	.lock = lock,
+	.unlock = unlock,
 };
 
-static int init_file_locking(struct lib_context *lc)
+static int
+init_file_locking(struct lib_context *lc)
 {
 	int ret = 0;
 	char *dir;
 
-	if (!(dir = get_dirname(lc, (char*) lock_file)))
+	if (!(dir = get_dirname(lc, (char *) lock_file)))
 		return 0;
 
 	if (!mk_dir(lc, dir))
@@ -78,7 +81,7 @@ static int init_file_locking(struct lib_context *lc)
 	lc->lock = &file_locking;
 	ret = 1;
 
-   out:
+      out:
 	dbg_free(dir);
 
 	return ret;
@@ -89,7 +92,8 @@ static int init_file_locking(struct lib_context *lc)
  */
 
 /* Initialize locking. */
-int init_locking(struct lib_context *lc)
+int
+init_locking(struct lib_context *lc)
 {
 	if (OPT_IGNORELOCKING(lc))
 		return 1;
@@ -101,13 +105,15 @@ int init_locking(struct lib_context *lc)
 }
 
 /* Hide locking. */
-int lock_resource(struct lib_context *lc, struct resource *res)
+int
+lock_resource(struct lib_context *lc, struct resource *res)
 {
 	return OPT_IGNORELOCKING(lc) ? 1 : lc->lock->lock(lc, res);
 }
 
 /* Hide unlocking. */
-void unlock_resource(struct lib_context *lc, struct resource *res)
+void
+unlock_resource(struct lib_context *lc, struct resource *res)
 {
 	return OPT_IGNORELOCKING(lc) ? 1 : lc->lock->unlock(lc, res);
 }

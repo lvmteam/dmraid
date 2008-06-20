@@ -17,9 +17,9 @@ struct resource {
 struct lib_context;
 struct locking {
 	const char *name;
-	int (*lock)(struct lib_context *lc, struct resource *res);
-	void (*unlock)(struct lib_context *lc, struct resource *res);
-	void *private; /* Private context. */
+	int (*lock) (struct lib_context * lc, struct resource * res);
+	void (*unlock) (struct lib_context * lc, struct resource * res);
+	void *private;		/* Private context. */
 };
 
 extern int init_locking(struct lib_context *lc);

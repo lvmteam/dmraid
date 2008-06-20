@@ -30,7 +30,9 @@ static const char *handler = HANDLER;
 static const char *spare_array = ".asr_spares";
 
 /* Map ASR disk status to dmraid status */
-static enum status disk_status(struct asr_raid_configline *disk) {
+static enum status
+disk_status(struct asr_raid_configline *disk)
+{
 	static struct states states[] = {
 		{ LSU_COMPONENT_STATE_OPTIMAL, s_ok },
 		{ LSU_COMPONENT_STATE_DEGRADED, s_broken },
@@ -45,13 +47,14 @@ static enum status disk_status(struct asr_raid_configline *disk) {
 
 	return rd_status(states, disk->raidstate, EQUAL);
 }
-		
+
 /* Extract config line from metadata */
-static struct asr_raid_configline *get_config(struct asr *asr, uint32_t magic)
+static struct asr_raid_configline *
+get_config(struct asr *asr, uint32_t magic)
 {
 	struct asr_raidtable *rt = asr->rt;
 	struct asr_raid_configline *cl = rt->ent + rt->elmcnt;
-	
+
 	while (cl-- > rt->ent) {
 		if (cl->raidmagic == magic)
 			return cl;
@@ -61,14 +64,15 @@ static struct asr_raid_configline *get_config(struct asr *asr, uint32_t magic)
 }
 
 /* Get this disk's configuration */
-static struct asr_raid_configline *this_disk(struct asr *asr)
+static struct asr_raid_configline *
+this_disk(struct asr *asr)
 {
 	return get_config(asr, asr->rb.drivemagic);
 }
 
 /* Make up RAID device name. */
-static size_t _name(struct lib_context *lc, struct asr *asr, char *str,
-		    size_t len)
+static size_t
+_name(struct lib_context *lc, struct asr *asr, char *str, size_t len)
 {
 	struct asr_raid_configline *cl = this_disk(asr);
 
@@ -79,7 +83,8 @@ static size_t _name(struct lib_context *lc, struct asr *asr, char *str,
 }
 
 /* Figure out a name for the RAID device. */
-static char *name(struct lib_context *lc, struct asr *asr)
+static char *
+name(struct lib_context *lc, struct asr *asr)
 {
 	size_t len;
 	char *ret;
@@ -93,9 +98,10 @@ static char *name(struct lib_context *lc, struct asr *asr)
 }
 
 /* Stride size */
-static inline unsigned stride(struct asr_raid_configline *cl)
+static inline unsigned
+stride(struct asr_raid_configline *cl)
 {
-	return cl ? cl->strpsize: 0;
+	return cl ? cl->strpsize : 0;
 }
 
 /*
@@ -105,14 +111,15 @@ static inline unsigned stride(struct asr_raid_configline *cl)
  * do any of those right now (RAID4 and RAID5 are in the works).
  */
 /* Map the ASR raid type codes into dmraid type codes. */
-static enum type type(struct asr_raid_configline *cl)
+static enum type
+type(struct asr_raid_configline *cl)
 {
 	/* Mapping of template types to generic types */
 	static struct types types[] = {
-		{ ASR_RAID0,   t_raid0 },
-		{ ASR_RAID1,   t_raid1 },
+		{ ASR_RAID0, t_raid0 },
+		{ ASR_RAID1, t_raid1 },
 		{ ASR_RAIDSPR, t_spare },
-		{ 0, t_undef},
+		{ 0, t_undef },
 	};
 
 	return cl ? rd_type(types, (unsigned) cl->raidtype) : t_undef;
@@ -122,10 +129,11 @@ static enum type type(struct asr_raid_configline *cl)
  * Read an ASR RAID device.  Fields are big endian, so
  * need to convert them if we're on a LE machine (i386, etc).
  */
-enum { ASR_BLOCK = 0x01, ASR_TABLE = 0x02, ASR_EXTTABLE  = 0x04 };
+enum { ASR_BLOCK = 0x01, ASR_TABLE = 0x02, ASR_EXTTABLE = 0x04 };
 
 #if	BYTE_ORDER == LITTLE_ENDIAN
-static void cvt_configline(struct asr_raid_configline *cl)
+static void
+cvt_configline(struct asr_raid_configline *cl)
 {
 	CVT16(cl->raidcnt);
 	CVT16(cl->raidseq);
@@ -141,12 +149,13 @@ static void cvt_configline(struct asr_raid_configline *cl)
 	CVT32(cl->appBurstCount);
 }
 
-static void to_cpu(void *meta, unsigned cvt)
+static void
+to_cpu(void *meta, unsigned cvt)
 {
 	struct asr *asr = meta;
 	struct asr_raidtable *rt = asr->rt;
 	unsigned i, elmcnt = rt->elmcnt,
-		     use_old_elmcnt = (rt->ridcode == RVALID2);
+		use_old_elmcnt = (rt->ridcode == RVALID2);
 
 	if (cvt & ASR_BLOCK) {
 		CVT32(asr->rb.b0idcode);
@@ -179,7 +188,7 @@ static void to_cpu(void *meta, unsigned cvt)
 		CVT32(rt->recreateDate);
 
 		/* Convert the first seven config lines */
-		for (i = 0; i < (min(elmcnt, ASR_TBLELMCNT)); i++) 
+		for (i = 0; i < (min(elmcnt, ASR_TBLELMCNT)); i++)
 			cvt_configline(rt->ent + i);
 	}
 
@@ -194,10 +203,11 @@ static void to_cpu(void *meta, unsigned cvt)
 #endif
 
 /* Compute the checksum of RAID metadata */
-static unsigned compute_checksum(struct asr *asr)
+static unsigned
+compute_checksum(struct asr *asr)
 {
 	struct asr_raidtable *rt = asr->rt;
-	uint8_t *ptr = (uint8_t*) rt->ent;
+	uint8_t *ptr = (uint8_t *) rt->ent;
 	unsigned checksum = 0, end = sizeof(*rt->ent) * rt->elmcnt;
 
 	/* Compute checksum. */
@@ -209,7 +219,8 @@ static unsigned compute_checksum(struct asr *asr)
 
 /* (Un)truncate white space at the end of a name */
 enum truncate { TRUNCATE, UNTRUNCATE };
-static void handle_white_space(uint8_t *p, enum truncate truncate)
+static void
+handle_white_space(uint8_t * p, enum truncate truncate)
 {
 	unsigned j = ASR_NAMELEN;
 	uint8_t c = truncate == TRUNCATE ? 0 : ' ';
@@ -219,14 +230,14 @@ static void handle_white_space(uint8_t *p, enum truncate truncate)
 }
 
 /* Read extended metadata areas */
-static int read_extended(struct lib_context *lc, struct dev_info *di,
-			 struct asr *asr)
+static int
+read_extended(struct lib_context *lc, struct dev_info *di, struct asr *asr)
 {
 	unsigned remaining, i, chk;
 	struct asr_raidtable *rt = asr->rt;
 
 	log_notice(lc, "%s: reading extended data on %s", handler, di->path);
-	
+
 	/* Read the RAID table. */
 	if (!read_file(lc, handler, di->path, rt, ASR_DISK_BLOCK_SIZE,
 		       (uint64_t) asr->rb.raidtbl * ASR_DISK_BLOCK_SIZE))
@@ -235,7 +246,7 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 
 	/* Convert it */
 	to_cpu(asr, ASR_TABLE);
-	
+
 	/* Is this ok? */
 	if (rt->ridcode != RVALID2)
 		LOG_ERR(lc, 0, "%s: Invalid magic number in RAID table; "
@@ -256,7 +267,7 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	if (rt->elmcnt > ASR_TBLELMCNT) {
 		remaining = rt->elmsize * (rt->elmcnt - 7);
 		if (!read_file(lc, handler, di->path, rt->ent + 7,
-			       remaining, (uint64_t)(asr->rb.raidtbl + 1) *
+			       remaining, (uint64_t) (asr->rb.raidtbl + 1) *
 			       ASR_DISK_BLOCK_SIZE))
 			return 0;
 
@@ -267,10 +278,10 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	if (rt->rversion < 2) {
 		if ((chk = compute_checksum(asr)) != rt->rchksum)
 			log_err(lc, "%s: Invalid RAID config table checksum "
-				       "(0x%X vs. 0x%X) on %s",
+				"(0x%X vs. 0x%X) on %s",
 				handler, chk, rt->rchksum, di->path);
 	}
-	
+
 	/* Process the name of each line of the config line. */
 	for (i = 0; i < rt->elmcnt; i++) {
 		/* 
@@ -296,9 +307,8 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 		 * This is nuts.
 		 */
 		if (!*rt->ent[i].name)
-			strncpy((char*) rt->ent[i].name,
-				(char*) rt->ent->name,
-				ASR_NAMELEN);
+			strncpy((char *) rt->ent[i].name,
+				(char *) rt->ent->name, ASR_NAMELEN);
 
 		/* Now truncate trailing whitespace in the name. */
 		handle_white_space(rt->ent[i].name, TRUNCATE);
@@ -307,7 +317,8 @@ static int read_extended(struct lib_context *lc, struct dev_info *di,
 	return 1;
 }
 
-static int is_asr(struct lib_context *lc, struct dev_info *di, void *meta)
+static int
+is_asr(struct lib_context *lc, struct dev_info *di, void *meta)
 {
 	struct asr *asr = meta;
 
@@ -315,11 +326,10 @@ static int is_asr(struct lib_context *lc, struct dev_info *di, void *meta)
 	 * Check our magic numbers and that the version == v8.
 	 * We don't support anything other than that right now.
 	 */
-	if (asr->rb.b0idcode == B0RESRVD &&
-	    asr->rb.smagic == SVALID) {
+	if (asr->rb.b0idcode == B0RESRVD && asr->rb.smagic == SVALID) {
 		if (asr->rb.resver == RBLOCK_VER)
 			return 1;
-		
+
 		log_err(lc, "%s: ASR v%d detected, but we only support v8",
 			handler, asr->rb.resver);
 	}
@@ -340,9 +350,9 @@ static int is_asr(struct lib_context *lc, struct dev_info *di, void *meta)
  * lacks this sort of visibility as to where its block devices come from.
  * This is EXTREMELY DANGEROUS if you aren't careful!
  */
-static void *read_metadata_areas(struct lib_context *lc, struct dev_info *di,
-				 size_t *sz, uint64_t *offset,
-				 union read_info *info)
+static void *
+read_metadata_areas(struct lib_context *lc, struct dev_info *di,
+		    size_t * sz, uint64_t * offset, union read_info *info)
 {
 	size_t size = ASR_DISK_BLOCK_SIZE;
 	uint64_t asr_sboffset = ASR_CONFIGOFFSET;
@@ -357,7 +367,7 @@ static void *read_metadata_areas(struct lib_context *lc, struct dev_info *di,
 	 */
 	if (!(asr = alloc_private(lc, handler, sizeof(*asr))))
 		goto bad0;
-	
+
 	if (!(asr->rt = alloc_private(lc, handler, sizeof(*asr->rt))))
 		goto bad1;
 
@@ -370,8 +380,7 @@ static void *read_metadata_areas(struct lib_context *lc, struct dev_info *di,
 	to_cpu(asr, ASR_BLOCK);
 
 	/* Check Signature and read optional extended metadata. */
-	if (!is_asr(lc, di, asr) ||
-	    !read_extended(lc, di, asr))
+	if (!is_asr(lc, di, asr) || !read_extended(lc, di, asr))
 		goto bad2;
 
 	/*
@@ -383,21 +392,21 @@ static void *read_metadata_areas(struct lib_context *lc, struct dev_info *di,
 
 	goto out;
 
-   bad2:
+      bad2:
 	dbg_free(asr->rt);
-   bad1:
+      bad1:
 	asr->rt = NULL;
 	dbg_free(asr);
-   bad0:
+      bad0:
 	asr = NULL;
 
-   out:
+      out:
 	return asr;
 }
 
 /* Read the whole metadata chunk at once */
-static uint8_t *read_metadata_chunk(struct lib_context *lc, struct dev_info *di,
-				    uint64_t start)
+static uint8_t *
+read_metadata_chunk(struct lib_context *lc, struct dev_info *di, uint64_t start)
 {
 	uint8_t *ret;
 	size_t size = (di->sectors - start) * ASR_DISK_BLOCK_SIZE;
@@ -420,8 +429,8 @@ static uint8_t *read_metadata_chunk(struct lib_context *lc, struct dev_info *di,
  * "File the metadata areas" -- I think this function is supposed to declare
  * which parts of the drive are metadata and thus off-limits to dmraid.
  */
-static void file_metadata_areas(struct lib_context *lc, struct dev_info *di,
-				void *meta)
+static void
+file_metadata_areas(struct lib_context *lc, struct dev_info *di, void *meta)
 {
 	uint8_t *buf;
 	struct asr *asr = meta;
@@ -432,19 +441,18 @@ static void file_metadata_areas(struct lib_context *lc, struct dev_info *di,
 
 	/* Register the raid tables. */
 	file_metadata(lc, handler, di->path, buf,
-		      ASR_DISK_BLOCK_SIZE * 17,
-		      start * ASR_DISK_BLOCK_SIZE);
-	
+		      ASR_DISK_BLOCK_SIZE * 17, start * ASR_DISK_BLOCK_SIZE);
+
 	dbg_free(buf);
-	
+
 	/* Record the device size if -D was specified. */
 	file_dev_size(lc, handler, di);
 }
 
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 		    struct dev_info *di, void *meta, union read_info *info);
-static struct raid_dev *asr_read(struct lib_context *lc,
-					struct dev_info *di)
+static struct raid_dev *
+asr_read(struct lib_context *lc, struct dev_info *di)
 {
 	/*
 	 * NOTE: Everything called after read_metadata_areas assumes that
@@ -455,7 +463,8 @@ static struct raid_dev *asr_read(struct lib_context *lc,
 			     file_metadata_areas, setup_rd, handler);
 }
 
-static int set_sort(struct list_head *dont, struct list_head *care)
+static int
+set_sort(struct list_head *dont, struct list_head *care)
 {
 	return 0;
 }
@@ -465,16 +474,18 @@ static int set_sort(struct list_head *dont, struct list_head *care)
  * Is hba:ch:lun:id ok?
  * It seems to be the way the binary driver does it...
  */
-static inline uint64_t compose_id(struct asr_raid_configline *cl)
+static inline uint64_t
+compose_id(struct asr_raid_configline *cl)
 {
-	return    ((uint64_t) cl->raidhba  << 48)
+	return ((uint64_t) cl->raidhba << 48)
 		| ((uint64_t) cl->raidchnl << 40)
-		| ((uint64_t) cl->raidlun  << 32)
+		| ((uint64_t) cl->raidlun << 32)
 		| (uint64_t) cl->raidid;
 }
 
 /* Sort ASR devices by for a RAID set. */
-static int dev_sort(struct list_head *pos, struct list_head *new)
+static int
+dev_sort(struct list_head *pos, struct list_head *new)
 {
 	return compose_id(this_disk(META(RD(new), asr))) <
 	       compose_id(this_disk(META(RD(pos), asr)));
@@ -483,7 +494,8 @@ static int dev_sort(struct list_head *pos, struct list_head *new)
 /*
  * Find the top-level RAID set for an ASR context.
  */
-static int find_toplevel(struct lib_context *lc, struct asr *asr)
+static int
+find_toplevel(struct lib_context *lc, struct asr *asr)
 {
 	int i, toplevel = -1;
 	struct asr_raidtable *rt = asr->rt;
@@ -496,7 +508,7 @@ static int find_toplevel(struct lib_context *lc, struct asr *asr)
 			break;
 		}
 	}
-	
+
 	return toplevel;
 }
 
@@ -504,7 +516,8 @@ static int find_toplevel(struct lib_context *lc, struct asr *asr)
  * Find the logical drive configuration that goes with this
  * physical disk configuration.
  */
-static struct asr_raid_configline *find_logical(struct asr *asr)
+static struct asr_raid_configline *
+find_logical(struct asr *asr)
 {
 	int i, j;
 	struct asr_raidtable *rt = asr->rt;
@@ -522,11 +535,13 @@ static struct asr_raid_configline *find_logical(struct asr *asr)
 	return NULL;
 }
 
-static struct raid_dev *find_spare(struct lib_context *lc) {
+static struct raid_dev *
+find_spare(struct lib_context *lc)
+{
 	struct raid_dev *spare;
-	
+
 	list_for_each_entry(spare, LC_RD(lc), list) {
-		if (spare->type == t_spare)  
+		if (spare->type == t_spare)
 			return spare;
 	}
 
@@ -534,8 +549,8 @@ static struct raid_dev *find_spare(struct lib_context *lc) {
 }
 
 /* Wrapper for name() */
-static char *js_name(struct lib_context *lc, struct raid_dev *rd,
-		     unsigned subset)
+static char *
+js_name(struct lib_context *lc, struct raid_dev *rd, unsigned subset)
 {
 	return name(lc, META(rd, asr));
 }
@@ -543,7 +558,8 @@ static char *js_name(struct lib_context *lc, struct raid_dev *rd,
 /*
  * IO error event handler.
  */
-static int event_io(struct lib_context *lc, struct event_io *e_io)
+static int
+event_io(struct lib_context *lc, struct event_io *e_io)
 {
 	struct raid_dev *rd = e_io->rd;
 	struct asr *asr = META(rd, asr);
@@ -553,7 +569,7 @@ static int event_io(struct lib_context *lc, struct event_io *e_io)
 	/* Ignore if we've already marked this disk broken(?) */
 	if (rd->status & s_broken)
 		return 0;
-	
+
 	log_err(lc, "%s: I/O error on device %s at sector %lu",
 		handler, e_io->rd->di->path, e_io->sector);
 
@@ -563,13 +579,14 @@ static int event_io(struct lib_context *lc, struct event_io *e_io)
 	fwl->raidstate = LSU_COMPONENT_STATE_DEGRADED;
 	/* FIXME: Do we have to mark a parent too? */
 
-	return 1; /* Indicate that this is indeed a failure. */
+	return 1;		/* Indicate that this is indeed a failure. */
 }
 
 /*
  * Helper routines for asr_group()
  */
-static struct raid_set *do_spare(struct lib_context *lc, struct raid_dev *rd)
+static struct raid_set *
+do_spare(struct lib_context *lc, struct raid_dev *rd)
 {
 	struct raid_set *rs;
 
@@ -585,11 +602,11 @@ static struct raid_set *do_spare(struct lib_context *lc, struct raid_dev *rd)
 	 * it.
 	 *
 	 * rs = find_set(lc, name(lc, asr), FIND_TOP, rd, LC_RS(lc),
-	 *		 NO_CREATE, NO_CREATE_ARG);
+	 *               NO_CREATE, NO_CREATE_ARG);
 	 */
 
 	/* Otherwise, make a global spare pool. */
-	rs = find_or_alloc_raid_set(lc, (char*)spare_array, FIND_TOP, rd,
+	rs = find_or_alloc_raid_set(lc, (char *) spare_array, FIND_TOP, rd,
 				    LC_RS(lc), NO_CREATE, NO_CREATE_ARG);
 
 	/*
@@ -604,8 +621,9 @@ static struct raid_set *do_spare(struct lib_context *lc, struct raid_dev *rd)
 }
 
 #define BUFSIZE 128
-static struct raid_set *do_stacked(struct lib_context *lc, struct raid_dev *rd,
-				   struct asr_raid_configline *cl)
+static struct raid_set *
+do_stacked(struct lib_context *lc, struct raid_dev *rd,
+	   struct asr_raid_configline *cl)
 {
 	char buf[BUFSIZE], *path = rd->di->path;
 	struct raid_set *rs, *ss;
@@ -616,12 +634,11 @@ static struct raid_set *do_stacked(struct lib_context *lc, struct raid_dev *rd,
 	fwl = find_logical(asr);
 	if (!fwl)
 		LOG_ERR(lc, NULL, "%s: Failed to find RAID configuration "
-				  "line on %s",
-			handler, path);
+			"line on %s", handler, path);
 
 	snprintf(buf, BUFSIZE, ".asr_%s_%x_donotuse",
 		 fwl->name, fwl->raidmagic);
-	
+
 	/* Now find said parent. */
 	rs = find_or_alloc_raid_set(lc, buf, FIND_ALL, rd, NO_LIST,
 				    NO_CREATE, NO_CREATE_ARG);
@@ -635,7 +652,7 @@ static struct raid_set *do_stacked(struct lib_context *lc, struct raid_dev *rd,
 
 	/* Add the disk to the set. */
 	list_add_sorted(lc, &rs->devs, &rd->devs, dev_sort);
-	
+
 	/* Find the top level set. */
 	ss = join_superset(lc, js_name, NO_CREATE, set_sort, rs, rd);
 	if (!ss)
@@ -645,7 +662,7 @@ static struct raid_set *do_stacked(struct lib_context *lc, struct raid_dev *rd,
 	ss->stride = stride(cl);
 	ss->status = s_ok;
 	/* FIXME: correct type (this crashed in stacked set code) */
-	ss->type = t_raid1; // type(&asr->rt->ent[top_idx]);
+	ss->type = t_raid1;	// type(&asr->rt->ent[top_idx]);
 	return ss;
 }
 
@@ -654,7 +671,8 @@ static struct raid_set *do_stacked(struct lib_context *lc, struct raid_dev *rd,
  * which this disk belongs, and then attaching it.  Note that there are other
  * complications, such as two-layer arrays (RAID10).
  */
-static struct raid_set *asr_group(struct lib_context *lc, struct raid_dev *rd)
+static struct raid_set *
+asr_group(struct lib_context *lc, struct raid_dev *rd)
 {
 	int top_idx;
 	struct asr *asr = META(rd, asr);
@@ -668,8 +686,7 @@ static struct raid_set *asr_group(struct lib_context *lc, struct raid_dev *rd)
 	top_idx = find_toplevel(lc, asr);
 	if (top_idx < 0)
 		LOG_ERR(lc, NULL, "%s: Can't find a logical array config "
-			"for disk %x",
-			handler, asr->rb.drivemagic);
+			"for disk %x", handler, asr->rb.drivemagic);
 
 	/* This is a simple RAID0/1 array.  Find the set. */
 	if (asr->rt->ent[top_idx].raidlevel == FWL) {
@@ -700,7 +717,8 @@ static struct raid_set *asr_group(struct lib_context *lc, struct raid_dev *rd)
 }
 
 /* deletes configline from metadata of given asr, by index. */
-static void delete_configline(struct asr *asr, int index)
+static void
+delete_configline(struct asr *asr, int index)
 {
 	struct asr_raid_configline *cl, *end;
 	struct asr_raidtable *rt = asr->rt;
@@ -715,13 +733,14 @@ static void delete_configline(struct asr *asr, int index)
 }
 
 /* Find the newest configline entry in raid set and return a pointer to it. */
-static struct raid_dev *find_newest_drive(struct raid_set *rs)
+static struct raid_dev *
+find_newest_drive(struct raid_set *rs)
 {
 	struct asr_raidtable *rt;
 	struct raid_dev *device, *newest = NULL;
 	uint16_t newest_raidseq = 0;
-        int i;
-	
+	int i;
+
 	list_for_each_entry(device, &rs->devs, devs) {
 		rt = META(device, asr)->rt;
 		// FIXME: We should be able to assume each configline
@@ -734,19 +753,21 @@ static struct raid_dev *find_newest_drive(struct raid_set *rs)
 			}
 		}
 	}
-	
+
 	return newest;
 }
 
 /* Creates a random integer for a drive magic section */
-static uint32_t create_drivemagic() {
+static uint32_t
+create_drivemagic()
+{
 
 	srand(time(NULL));
 	return rand() + rand();
 }
 
-static int spare(struct lib_context *lc, struct raid_dev *rd,
-		 struct asr *asr)
+static int
+spare(struct lib_context *lc, struct raid_dev *rd, struct asr *asr)
 {
 	struct asr_raid_configline *cl;
 
@@ -781,13 +802,13 @@ static int spare(struct lib_context *lc, struct raid_dev *rd,
 	cl->raidtype = ASR_RAIDSPR;
 	cl->lcapcty = rd->di->sectors;
 	cl->raidlevel = FWP;
-
 	return 1;
 }
 
 /* Returns (boolean) whether or not the drive described by the given configline
  * is in the given raid_set. */
-static int in_raid_set(struct asr_raid_configline *cl, struct raid_set *rs)
+static int
+in_raid_set(struct asr_raid_configline *cl, struct raid_set *rs)
 {
 	struct asr *asr;
 	struct raid_dev *d;
@@ -797,11 +818,13 @@ static int in_raid_set(struct asr_raid_configline *cl, struct raid_set *rs)
 		if (cl->raidmagic == asr->rb.drivemagic)
 			return 1;
 	}
+
 	return 0;
 }
 
 /* Delete extra configlines which would otherwise trip us up. */
-static int cleanup_configlines(struct raid_dev *rd, struct raid_set *rs)
+static int
+cleanup_configlines(struct raid_dev *rd, struct raid_set *rs)
 {
 	struct asr *a;
 	struct raid_dev *d;
@@ -810,7 +833,7 @@ static int cleanup_configlines(struct raid_dev *rd, struct raid_set *rs)
 
 	list_for_each_entry(d, &rs->devs, devs) {
 		a = META(d, asr);
-	
+
 		cl = a->rt->ent;
 		for (clcnt = 0; clcnt < a->rt->elmcnt; /* done in loop */ ) {
 			/* If it's in the seen list, or is a logical drive, 
@@ -833,19 +856,21 @@ static int cleanup_configlines(struct raid_dev *rd, struct raid_set *rs)
 			}
 		}
 	}
+
 	return 1;
 }
 
 /* Add a CL entry */
-static int create_configline(struct raid_set *rs, struct asr *asr,
-		             struct asr *a, struct raid_dev* newest)
+static int
+create_configline(struct raid_set *rs, struct asr *asr,
+		  struct asr *a, struct raid_dev *newest)
 {
 	struct asr *newest_asr = META(newest, asr);
 	struct asr_raid_configline *cl;
-	
+
 	if (asr->rt->elmcnt >= RCTBL_MAX_ENTRIES)
 		return 0;
-	
+
 	cl = asr->rt->ent + asr->rt->elmcnt;
 	asr->rt->elmcnt++;
 
@@ -858,7 +883,7 @@ static int create_configline(struct raid_set *rs, struct asr *asr,
 	cl->strpsize = newest_asr->rt->ent[0].strpsize;
 
 	/* Starts after "asr_" */
-	strcpy((char*) cl->name, &rs->name[sizeof(HANDLER)]);
+	strcpy((char *) cl->name, &rs->name[sizeof(HANDLER)]);
 	cl->raidcnt = 0;
 
 	/* Convert rs->type to an ASR_RAID type for the CL */
@@ -872,6 +897,7 @@ static int create_configline(struct raid_set *rs, struct asr *asr,
 	default:
 		return 0;
 	}
+
 	cl->lcapcty = newest_asr->rt->ent[0].lcapcty;
 	cl->raidlevel = FWP;
 	return 1;
@@ -879,8 +905,8 @@ static int create_configline(struct raid_set *rs, struct asr *asr,
 
 /* Update metadata to reflect the current raid set configuration.
  * Returns boolean success. */
-static int update_metadata(struct lib_context *lc,  struct raid_dev *rd,
-			   struct asr *asr)
+static int
+update_metadata(struct lib_context *lc, struct raid_dev *rd, struct asr *asr)
 {
 	struct raid_set *rs;
 	struct asr_raid_configline *cl;
@@ -895,7 +921,7 @@ static int update_metadata(struct lib_context *lc,  struct raid_dev *rd,
 		rt->elmcnt = 0;
 		return 1;
 	}
-	
+
 	/* If this is the spare array... */
 	if (!strcmp(spare_array, rs->name))
 		return spare(lc, rd, asr);
@@ -911,11 +937,11 @@ static int update_metadata(struct lib_context *lc,  struct raid_dev *rd,
 	/* Make sure the raid type agrees with the metadata */
 	if (type(this_disk(asr)) == t_spare) {
 		struct asr *newest_asr = META(newest, asr);
-	
-		/* copy entire table from newest drive */	
+
+		/* copy entire table from newest drive */
 		rt->elmcnt = newest_asr->rt->elmcnt;
 		memcpy(rt->ent, newest_asr->rt->ent,
-			rt->elmcnt * sizeof(*rt->ent));
+		       rt->elmcnt * sizeof(*rt->ent));
 	}
 
 	/* Increment the top level CL's raid count */
@@ -935,26 +961,25 @@ static int update_metadata(struct lib_context *lc,  struct raid_dev *rd,
 		}
 
 		/* If the magic is 0xFFFFFFFF, assign a random one */
-		if (a->rb.drivemagic == 0xFFFFFFFF) {
+		if (a->rb.drivemagic == 0xFFFFFFFF)
 			a->rb.drivemagic = create_drivemagic();
-		}
-		
+
 		if (!(newest = find_newest_drive(rs)))
 			return 0;
-				
+
 		create_configline(rs, asr, a, newest);
 	}
 
 	cleanup_configlines(rd, rs);
-
 	return 1;
 }
 
 
 /* Write metadata. */
-static int asr_write(struct lib_context *lc,  struct raid_dev *rd, int erase)
+static int
+asr_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 {
-        struct asr *asr = META(rd, asr);
+	struct asr *asr = META(rd, asr);
 	int elmcnt = asr->rt->elmcnt, i, ret;
 
 	/* Update the metadata if we're not erasing it. */
@@ -969,19 +994,19 @@ static int asr_write(struct lib_context *lc,  struct raid_dev *rd, int erase)
 	asr->rt->rchksum = compute_checksum(asr);
 
 	/* Convert back to disk format */
-        to_disk(asr, ASR_BLOCK | ASR_TABLE | ASR_EXTTABLE);
+	to_disk(asr, ASR_BLOCK | ASR_TABLE | ASR_EXTTABLE);
 
 	/* Write data */
-        ret = write_metadata(lc, handler, rd, -1, erase);
-	
+	ret = write_metadata(lc, handler, rd, -1, erase);
+
 	/* Go back to CPU format */
-        to_cpu(asr, ASR_BLOCK | ASR_TABLE | ASR_EXTTABLE);
- 
+	to_cpu(asr, ASR_BLOCK | ASR_TABLE | ASR_EXTTABLE);
+
 	/* Truncate trailing whitespace in the name. */
 	for (i = 0; i < elmcnt; i++)
 		handle_white_space(asr->rt->ent[i].name, TRUNCATE);
 
-        return ret;
+	return ret;
 }
 
 /*
@@ -989,7 +1014,8 @@ static int asr_write(struct lib_context *lc,  struct raid_dev *rd, int erase)
  */
 
 /* Retrieve the number of devices that should be in this set. */
-static unsigned device_count(struct raid_dev *rd, void *context)
+static unsigned
+device_count(struct raid_dev *rd, void *context)
 {
 	/* Get the logical drive */
 	struct asr_raid_configline *cl = find_logical(META(rd, asr));
@@ -998,15 +1024,17 @@ static unsigned device_count(struct raid_dev *rd, void *context)
 }
 
 /* Check a RAID device */
-static int check_rd(struct lib_context *lc, struct raid_set *rs,
-		    struct raid_dev *rd, void *context)
+static int
+check_rd(struct lib_context *lc, struct raid_set *rs,
+	 struct raid_dev *rd, void *context)
 {
 	/* FIXME: Assume non-broken means ok. */
 	return rd->type != s_broken;
 }
 
 /* Start the recursive RAID set check. */
-static int asr_check(struct lib_context *lc, struct raid_set *rs)
+static int
+asr_check(struct lib_context *lc, struct raid_set *rs)
 {
 	return check_raid_set(lc, rs, device_count, NULL, check_rd,
 			      NULL, handler);
@@ -1018,7 +1046,8 @@ static struct event_handlers asr_event_handlers = {
 };
 
 /* Dump a reserved block */
-static void dump_rb(struct lib_context *lc, struct asr_reservedblock *rb)
+static void
+dump_rb(struct lib_context *lc, struct asr_reservedblock *rb)
 {
 	DP("block magic:\t\t0x%X", rb, rb->b0idcode);
 	DP("sb0flags:\t\t\t0x%X", rb, rb->sb0flags);
@@ -1033,7 +1062,8 @@ static void dump_rb(struct lib_context *lc, struct asr_reservedblock *rb)
 }
 
 /* Dump a raid config line */
-static void dump_cl(struct lib_context *lc, struct asr_raid_configline *cl)
+static void
+dump_cl(struct lib_context *lc, struct asr_raid_configline *cl)
 {
 	DP("config ID:\t\t0x%X", cl, cl->raidmagic);
 	DP("  name:\t\t\t\"%s\"", cl, cl->name);
@@ -1062,7 +1092,8 @@ static void dump_cl(struct lib_context *lc, struct asr_raid_configline *cl)
 }
 
 /* Dump a raid config table */
-static void dump_rt(struct lib_context *lc, struct asr_raidtable *rt)
+static void
+dump_rt(struct lib_context *lc, struct asr_raidtable *rt)
 {
 	unsigned i;
 
@@ -1093,7 +1124,8 @@ static void dump_rt(struct lib_context *lc, struct asr_raidtable *rt)
 /*
  * Log native information about the RAID device.
  */
-static void asr_log(struct lib_context *lc, struct raid_dev *rd)
+static void
+asr_log(struct lib_context *lc, struct raid_dev *rd)
 {
 	struct asr *asr = META(rd, asr);
 
@@ -1104,22 +1136,23 @@ static void asr_log(struct lib_context *lc, struct raid_dev *rd)
 #endif
 
 static struct dmraid_format asr_format = {
-	.name	= HANDLER,
-	.descr	= "Adaptec HostRAID ASR",
-	.caps	= "0,1,10",
+	.name = HANDLER,
+	.descr = "Adaptec HostRAID ASR",
+	.caps = "0,1,10",
 	.format = FMT_RAID,
-	.read	= asr_read,
-	.write	= asr_write,
-	.group	= asr_group,
-	.check	= asr_check,
-	.events	= &asr_event_handlers,
+	.read = asr_read,
+	.write = asr_write,
+	.group = asr_group,
+	.check = asr_check,
+	.events = &asr_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
-	.log	= asr_log,
+	.log = asr_log,
 #endif
 };
 
 /* Register this format handler with the format core */
-int register_asr(struct lib_context *lc)
+int
+register_asr(struct lib_context *lc)
 {
 	return register_format_handler(lc, &asr_format);
 }
@@ -1127,15 +1160,17 @@ int register_asr(struct lib_context *lc)
 /*
  * Set up a RAID device from what we've assembled out of the metadata.
  */
-static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
-		    struct dev_info *di, void *meta, union read_info *info)
+static int
+setup_rd(struct lib_context *lc, struct raid_dev *rd,
+	 struct dev_info *di, void *meta, union read_info *info)
 {
 	struct asr *asr = meta;
 	struct meta_areas *ma;
 	struct asr_raid_configline *cl = this_disk(asr);
 
 	if (!cl)
-		LOG_ERR(lc, 0, "%s: Could not find current disk!", handler);		
+		LOG_ERR(lc, 0, "%s: Could not find current disk!", handler);
+
 	/* We need two metadata areas */
 	if (!(ma = rd->meta_areas = alloc_meta_areas(lc, rd, handler, 2)))
 		return 0;
@@ -1151,11 +1186,12 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 	ma->area = asr->rt;
 
 	/* Now set up the rest of the metadata info */
-        rd->di = di;
+	rd->di = di;
 	rd->fmt = &asr_format;
 	rd->status = disk_status(cl);
-	rd->type   = type(cl);
+	rd->type = type(cl);
 	rd->offset = ASR_DATAOFFSET;
+
 	if (!(rd->sectors = cl->lcapcty))
 		return log_zero_sectors(lc, di->path, handler);
 

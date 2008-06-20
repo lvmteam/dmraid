@@ -10,12 +10,12 @@
 
 extern enum action action;
 
-int  activate_or_deactivate_sets(struct lib_context *lc, int arg);
+int activate_or_deactivate_sets(struct lib_context *lc, int arg);
 void build_sets(struct lib_context *lc, char **sets);
 void format_error(struct lib_context *lc, const char *error, char **argv);
 void str_tolower(char *s);
 char *collapse_delimiter(struct lib_context *lc, char *str,
 			 size_t size, const char delim);
-int  valid_format(struct lib_context *lc, const char *fmt);
+int valid_format(struct lib_context *lc, const char *fmt);
 
 #endif

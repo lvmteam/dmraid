@@ -2,8 +2,8 @@
  * Copyright (C) 2006 Darrick Wong, IBM.
  *                    All rights reserved.
  *
- * Copyright (C) 2006 Heinz Mauelshagen Red Hat GmbH.
- * 		      All rights reserved.
+ * Copyright (C) 2006-2008 Heinz Mauelshagen Red Hat GmbH.
+ * 		           All rights reserved.
  *
  * See the file LICENSE at the top of this source tree for license information.
  */
@@ -50,5 +50,9 @@ extern int del_dev_in_set(struct lib_context *lc, struct raid_set *rs,
 			  struct raid_dev *rd);
 extern void end_log(struct lib_context *lc, struct list_head *log);
 extern int revert_log(struct lib_context *lc, struct list_head *log);
+extern int hot_spare_add(struct lib_context *lc, struct raid_set *rs);
+extern struct raid_set *find_group(struct lib_context *lc,
+				   struct raid_set *sub_rs);
+extern int rebuild_raidset(struct lib_context *lc, char *set_name);
 
 #endif

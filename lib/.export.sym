@@ -45,7 +45,14 @@ Base {
 		remove_white_space;
 		total_sectors;
 		unlock_resource;
-
+		add_dev_to_array;
+		delete_raidsets;
+                lib_perform;
+                rebuild_raidset;
+		dso_end_rebuild;
+		hot_spare_add;
+		dso_get_members;
 	local:
 		*;
 };
+

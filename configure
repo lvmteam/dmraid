@@ -854,8 +854,10 @@ Optional Features:
   --enable-jobs=NUM       Number of jobs to run simultaneously
   --enable-libselinux     Use this to link the tools to libselinux
   --enable-libsepol       Use this to link the tools to libsepol
-  --enable-mini           Use this to create a minimal binrary suitable
+  --enable-mini           Use this to create a minimal binary suitable
                           for early boot environments
+  --enable-led            Use this to enable LED support
+  --enable-intel_led      Use this to enable Intel LED support
   --disable-native_log    Disable native metadata logging. Default is enabled
   --enable-static_link    Use this to link the tools to the dmraid and devmapper
                           libraries statically.  Default is dynamic linking
@@ -4513,6 +4515,22 @@ else
   DMRAID_MINI=no
 fi;
 
+# Check whether --enable-led or --disable-led was given.
+if test "${enable_led+set}" = set; then
+  enableval="$enable_led"
+  DMRAID_LED=$enableval
+else
+  DMRAID_LED=no
+fi;
+
+# Check whether --enable-intel_led or --disable-intel_led was given.
+if test "${enable_intel_led+set}" = set; then
+  enableval="$enable_intel_led"
+  DMRAID_INTEL_LED=$enableval
+else
+  DMRAID_INTEL_LED=no
+fi;
+
 echo $ac_n "checking whether to disable native metadata logging""... $ac_c" 1>&6
 # Check whether --enable-native_log or --disable-native_log was given.
 if test "${enable_native_log+set}" = set; then
@@ -4575,6 +4593,14 @@ else
 	else
         	CFLAGS="$CFLAGS -DDMRAID_NATIVE_LOG"
 	fi
+fi
+
+if test x$DMRAID_LED = xyes; then
+        CFLAGS="$CFLAGS -DDMRAID_LED"
+fi
+
+if test x$DMRAID_INTEL_LED = xyes; then
+        CFLAGS="$CFLAGS -DDMRAID_LED -DDMRAID_INTEL_LED"
 fi
 
 if test x$DEBUG = xyes; then

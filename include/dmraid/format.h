@@ -1,6 +1,9 @@
 /*
- * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
+ * 
+ * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * November, 2007 - additions for Create, Delete, Rebuild & Raid 10. 
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -40,7 +43,7 @@ enum rd_action {
 struct event_rd {
 	struct raid_set *rs;
 	struct raid_dev *rd;
-	enum rd_action	action;
+	enum rd_action action;
 };
 
 /*
@@ -51,10 +54,46 @@ struct event_rd {
  */
 struct event_handlers {
 	/* Handle IO error */
-	int (*io)(struct lib_context *lc, struct event_io *e_io);
+	int (*io) (struct lib_context * lc, struct event_io * e_io);
 
 	/* Handle RAID device add/remove. */
-	int (*rd)(struct lib_context *lc, struct event_rd *e_rd);
+	int (*rd) (struct lib_context * lc, struct event_rd * e_rd);
+};
+
+/*
+ * Hot-spare search types list: it can be searched locally/globally 
+ */
+enum scope {
+	t_scope_local = 0x01,
+	t_scope_global = 0x02
+};
+
+/* Metadata Handler commands */
+enum handler_commands {
+	UPDATE_REBUILD_STATE,
+	GET_REBUILD_STATE,
+	GET_REBUILD_DRIVE,
+	GET_REBUILD_DRIVE_NO,
+	CHECK_HOT_SPARE,
+	/* ... */
+};
+
+/* Union to return metadata_handler information. */
+struct handler_info {
+	unsigned short size;
+
+	union {
+		char *str;
+		void *ptr;
+		int8_t i8;
+		int16_t i16;
+		int32_t i32;
+		int64_t i64;
+		uint8_t u8;
+		uint16_t u16;
+		uint32_t u32;
+		uint64_t u64;
+	} data;
 };
 
 /*
@@ -69,33 +108,54 @@ struct dmraid_format {
 	/*
 	 * Read RAID metadata off a device and unify it.
 	 */
-	struct raid_dev* (*read)(struct lib_context *lc, struct dev_info* di);
+	struct raid_dev *(*read) (struct lib_context * lc,
+				  struct dev_info * di);
 
 	/*
 	 * Write RAID metadata to a device deunifying it
 	 * or erase ondisk metadata if erase != 0.
 	 */
-	int (*write)(struct lib_context *lc, struct raid_dev* rd, int erase);
+	int (*write) (struct lib_context * lc, struct raid_dev * rd, int erase);
+
+	/*
+	 * delete RAID metadata to devices.
+	 */
+	int (*delete) (struct lib_context * lc, struct raid_set * rs);
+
+	/*
+	 * create RAID metadata to devices.
+	 */
+	int (*create) (struct lib_context * lc, struct raid_set * rs);
 
 	/*
 	 * Group a RAID device into a set.
 	 */
-	struct raid_set* (*group)(struct lib_context *lc, struct raid_dev *rd);
+	struct raid_set *(*group) (struct lib_context * lc,
+				   struct raid_dev * rd);
 
 	/*
 	 * Check consistency of the RAID set metadata.
 	 */
-	int (*check)(struct lib_context *lc, struct raid_set *rs);
+	int (*check) (struct lib_context * lc, struct raid_set * rs);
+
+	/* Metadata handler. */
+	int (*metadata_handler) (struct lib_context * lc,
+				 enum handler_commands command,
+				 struct handler_info * info, void *ptr);
 
 	/*
 	 * Event handlers (eg, I/O error).
 	 */
 	struct event_handlers *events;
 
+	/* 
+	 * Hot-spare disk search scope 
+	 */
+	enum scope scope;
 	/*
 	 * Display RAID disk metadata native.
 	 */
-	void (*log)(struct lib_context *lc, struct raid_dev *rd);
+	void (*log) (struct lib_context * lc, struct raid_dev * rd);
 };
 
 /* Chain of registered format handlers (needed for library context). */
@@ -113,14 +173,13 @@ extern void unregister_format_handlers(struct lib_context *lc);
  */
 #define	NO_CHECK_RD	NULL
 extern int check_raid_set(struct lib_context *lc, struct raid_set *rs,
-			  unsigned int (*f_devices)(struct raid_dev *rd,
-						    void *context),
+			  unsigned int (*f_devices) (struct raid_dev * rd,
+						     void *context),
 			  void *f_devices_context,
-			  int (*f_check)(struct lib_context *lc,
-					 struct raid_set *rs,
-					 struct raid_dev *rd, void *context),
-			  void *f_check_context,
-			  const char *handler);
+			  int (*f_check) (struct lib_context * lc,
+					  struct raid_set * rs,
+					  struct raid_dev * rd, void *context),
+			  void *f_check_context, const char *handler);
 extern int check_valid_format(struct lib_context *lc, char *fmt);
 extern int init_raid_set(struct lib_context *lc, struct raid_set *rs,
 			 struct raid_dev *rd, unsigned int stride,
@@ -135,22 +194,29 @@ union read_info {
 	uint64_t u64;
 };
 
-struct raid_dev *read_raid_dev(
-	struct lib_context *lc,
-	struct dev_info *di,
-	void* (*f_read_metadata)(struct lib_context *lc, struct dev_info *di,
-				 size_t *size, uint64_t *offset,
-				 union read_info *info),
-	size_t size, uint64_t offset,
-	void (*f_to_cpu)(void *meta),
-	int (*f_is_meta)(struct lib_context *lc, struct dev_info *di,
-			 void *meta),
-	void (*f_file_metadata)(struct lib_context *lc, struct dev_info *di,
-				void *meta),
-	int (*f_setup_rd)(struct lib_context *lc, struct raid_dev *rd,
-			  struct dev_info *di, void *meta,
-			  union read_info *info),
-	const char *handler);
+struct raid_dev *read_raid_dev(struct lib_context *lc,
+			       struct dev_info *di,
+			       void *(*f_read_metadata) (struct lib_context *
+							 lc,
+							 struct dev_info * di,
+							 size_t * size,
+							 uint64_t * offset,
+							 union read_info *
+							 info), size_t size,
+			       uint64_t offset, void (*f_to_cpu) (void *meta),
+			       int (*f_is_meta) (struct lib_context * lc,
+						 struct dev_info * di,
+						 void *meta),
+			       void (*f_file_metadata) (struct lib_context *
+							lc,
+							struct dev_info * di,
+							void *meta),
+			       int (*f_setup_rd) (struct lib_context * lc,
+						  struct raid_dev * rd,
+						  struct dev_info * di,
+						  void *meta,
+						  union read_info * info),
+			       const char *handler);
 
 extern void *alloc_meta_areas(struct lib_context *lc, struct raid_dev *rd,
 			      const char *who, unsigned int n);
@@ -158,14 +224,17 @@ extern void *alloc_private(struct lib_context *lc, const char *who,
 			   size_t size);
 extern void *alloc_private_and_read(struct lib_context *lc, const char *who,
 				    size_t size, char *path, loff_t offset);
-extern struct raid_set *join_superset(
-	struct lib_context *lc,
-	char *(*f_name)(struct lib_context *lc, struct raid_dev *rd,
-			unsigned int subset),
-	void (*f_create)(struct raid_set *super, void *private),
-	int (*f_set_sort)(struct list_head *pos, struct list_head *new),
-	struct raid_set *rs, struct raid_dev *rd
-);
+extern struct raid_set *join_superset(struct lib_context *lc,
+				      char *(*f_name) (struct lib_context * lc,
+						       struct raid_dev * rd,
+						       unsigned int subset),
+				      void (*f_create) (struct raid_set *
+							super, void *private),
+				      int (*f_set_sort) (struct list_head *
+							 pos,
+							 struct list_head *
+							 new),
+				      struct raid_set *rs, struct raid_dev *rd);
 extern int register_format_handler(struct lib_context *lc,
 				   struct dmraid_format *fmt);
 extern int write_metadata(struct lib_context *lc, const char *handler,
@@ -175,7 +244,7 @@ extern int log_zero_sectors(struct lib_context *lc, char *path,
 
 #define	to_disk	to_cpu
 
-#define struct_offset(s, member) ((unsigned short) &((struct s *) 0)->member)
+#define struct_offset(s, member) ((size_t) &((struct s *) 0)->member)
 
 /* Print macros used in log methods. */
 

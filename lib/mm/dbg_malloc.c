@@ -12,7 +12,8 @@
 #include "dbg_malloc.h"
 #include "log/log.h"
 
-static void *__dbg_malloc(size_t size, int init)
+static void *
+__dbg_malloc(size_t size, int init)
 {
 	void *ret = malloc(size);
 
@@ -24,31 +25,34 @@ static void *__dbg_malloc(size_t size, int init)
 
 #ifdef	DEBUG_MALLOC
 
-void *_dbg_malloc(size_t size, struct lib_context *lc,
-		  const char *who, unsigned int line)
+void *
+_dbg_malloc(size_t size, struct lib_context *lc,
+	    const char *who, unsigned int line)
 {
 	void *ret = __dbg_malloc(size, 1);
 
 	log_dbg(lc, "%s: dbg_malloc(%zu) at line %u returned 0x%x",
-		(char*) who, size, line, (unsigned long) ret);
+		(char *) who, size, line, (unsigned long) ret);
 
 	return ret;
 }
 
-void *_dbg_realloc(void *ptr, size_t size, struct lib_context *lc,
-		   const char *who, unsigned int line)
+void *
+_dbg_realloc(void *ptr, size_t size, struct lib_context *lc,
+	     const char *who, unsigned int line)
 {
 	void *ret = realloc(ptr, size);
 
 	log_dbg(lc, "%s: dbg_realloc(0x%x, %zu) at line %u returned 0x%x",
-		(char*) who, (unsigned long) ptr, size, line,
+		(char *) who, (unsigned long) ptr, size, line,
 		(unsigned long) ret);
 
 	return ret;
 }
 
-void *_dbg_strndup(void *ptr, size_t len, struct lib_context *lc,
-		   const char *who, unsigned int line)
+void *
+_dbg_strndup(void *ptr, size_t len, struct lib_context *lc,
+	     const char *who, unsigned int line)
 {
 	char *ret;
 
@@ -58,40 +62,44 @@ void *_dbg_strndup(void *ptr, size_t len, struct lib_context *lc,
 	}
 
 	log_dbg(lc, "%s: dbg_strndup(0x%x) at line %u returned 0x%x",
-		(char*) who, (unsigned long) ptr, line, (unsigned long) ret);
+		(char *) who, (unsigned long) ptr, line, (unsigned long) ret);
 
 	return ret;
 
 }
 
-void *_dbg_strdup(void *ptr, struct lib_context *lc,
-		  const char *who, unsigned int line)
+void *
+_dbg_strdup(void *ptr, struct lib_context *lc,
+	    const char *who, unsigned int line)
 {
 	return _dbg_strndup(ptr, strlen(ptr), lc, who, line);
 }
 
 
-void _dbg_free(void *ptr, struct lib_context *lc,
-	       const char *who, unsigned int line)
+void
+_dbg_free(void *ptr, struct lib_context *lc, const char *who, unsigned int line)
 {
 	log_dbg(lc, "%s: dbg_free(0x%x) at line %u",
-		(char*) who, (unsigned long) ptr, line);
+		(char *) who, (unsigned long) ptr, line);
 	free(ptr);
 }
 
 #else
 
-void *_dbg_malloc(size_t size)
+void *
+_dbg_malloc(size_t size)
 {
 	return __dbg_malloc(size, 1);
 }
 
-void *_dbg_realloc(void *ptr, size_t size)
+void *
+_dbg_realloc(void *ptr, size_t size)
 {
 	return realloc(ptr, size);
 }
 
-void *_dbg_strndup(void *ptr, size_t len)
+void *
+_dbg_strndup(void *ptr, size_t len)
 {
 	char *ret;
 
@@ -103,12 +111,14 @@ void *_dbg_strndup(void *ptr, size_t len)
 	return ret;
 }
 
-void *_dbg_strdup(void *ptr)
+void *
+_dbg_strdup(void *ptr)
 {
 	return _dbg_strndup(ptr, strlen(ptr));
 }
 
-void _dbg_free(void *ptr)
+void
+_dbg_free(void *ptr)
 {
 	free(ptr);
 }

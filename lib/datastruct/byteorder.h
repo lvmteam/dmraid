@@ -16,30 +16,33 @@
 
 #ifdef	DM_BYTEORDER_SWAB
 
-static inline uint64_t le64_to_cpu(uint64_t x)
+static inline uint64_t
+le64_to_cpu(uint64_t x)
 {
-	return((((uint64_t)x & 0x00000000000000ffULL) << 56) | 
-	       (((uint64_t)x & 0x000000000000ff00ULL) << 40) | 
-	       (((uint64_t)x & 0x0000000000ff0000ULL) << 24) | 
-	       (((uint64_t)x & 0x00000000ff000000ULL) <<  8) |
-	       (((uint64_t)x & 0x000000ff00000000ULL) >>  8) | 
-	       (((uint64_t)x & 0x0000ff0000000000ULL) >> 24) | 
-	       (((uint64_t)x & 0x00ff000000000000ULL) >> 40) | 
-	       (((uint64_t)x & 0xff00000000000000ULL) >> 56));
+	return ((((uint64_t) x & 0x00000000000000ffULL) << 56) |
+		(((uint64_t) x & 0x000000000000ff00ULL) << 40) |
+		(((uint64_t) x & 0x0000000000ff0000ULL) << 24) |
+		(((uint64_t) x & 0x00000000ff000000ULL) << 8) |
+		(((uint64_t) x & 0x000000ff00000000ULL) >> 8) |
+		(((uint64_t) x & 0x0000ff0000000000ULL) >> 24) |
+		(((uint64_t) x & 0x00ff000000000000ULL) >> 40) |
+		(((uint64_t) x & 0xff00000000000000ULL) >> 56));
 }
 
-static inline int32_t le32_to_cpu(int32_t x)
+static inline int32_t
+le32_to_cpu(int32_t x)
 {
-	return((((u_int32_t)x & 0x000000ffU) << 24) | 
-	       (((u_int32_t)x & 0x0000ff00U) <<  8) | 
-	       (((u_int32_t)x & 0x00ff0000U) >>  8) | 
-	       (((u_int32_t)x & 0xff000000U) >> 24));
+	return ((((u_int32_t) x & 0x000000ffU) << 24) |
+		(((u_int32_t) x & 0x0000ff00U) << 8) |
+		(((u_int32_t) x & 0x00ff0000U) >> 8) |
+		(((u_int32_t) x & 0xff000000U) >> 24));
 }
 
-static inline int16_t le16_to_cpu(int16_t x)
+static inline int16_t
+le16_to_cpu(int16_t x)
 {
-	return((((u_int16_t)x & 0x00ff) << 8) | 
-	       (((u_int16_t)x & 0xff00) >> 8));
+	return ((((u_int16_t) x & 0x00ff) << 8) |
+		(((u_int16_t) x & 0xff00) >> 8));
 }
 
 #define	CVT64(x)	do { x = le64_to_cpu(x); } while(0)

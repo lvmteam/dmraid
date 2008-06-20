@@ -1,6 +1,9 @@
 /*
- * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
+ *
+ * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * November, 2007 - additions for Create, Delete, Rebuild & Raid 10. 
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -23,13 +26,13 @@
 #include "toollib.h"
 
 /* [De]activate a RAID set. */
-static int _change_set(struct lib_context *lc, void *rs, int arg)
+static int
+_change_set(struct lib_context *lc, void *rs, int arg)
 {
-	if (change_set(lc,
-		       (ACTIVATE & action) ? A_ACTIVATE : A_DEACTIVATE,
+	if (change_set(lc, (ACTIVATE & action) ? A_ACTIVATE : A_DEACTIVATE,
 		       rs)) {
-		log_info(lc, "%sctivating %s RAID set \"%s\"",
-			 action & ACTIVATE ? "A": "Dea",
+		log_info(lc, "%sctivating %s raid set \"%s\"",
+			 action & ACTIVATE ? "A" : "Dea",
 			 get_set_type(lc, rs), get_set_name(lc, rs));
 		return 1;
 	}
@@ -39,13 +42,15 @@ static int _change_set(struct lib_context *lc, void *rs, int arg)
 
 /* [De]activate RAID sets. */
 /* FIXME: remove partition code in favour of kpartx ? */
-static void process_partitions(struct lib_context *lc)
+static void
+process_partitions(struct lib_context *lc)
 {
 	discover_partitions(lc);
 	process_sets(lc, _change_set, 0, PARTITIONS);
 }
 
-int activate_or_deactivate_sets(struct lib_context *lc, int arg)
+int
+activate_or_deactivate_sets(struct lib_context *lc, int arg)
 {
 	/* Discover partitions to deactivate RAID sets for and work on them. */
 	if (DEACTIVATE & action)
@@ -61,21 +66,15 @@ int activate_or_deactivate_sets(struct lib_context *lc, int arg)
 }
 
 /* Build all sets or the ones given. */
-void build_sets(struct lib_context *lc, char **sets)
+void
+build_sets(struct lib_context *lc, char **sets)
 {
-	int o = 0;
-
-	do {
-		if (!group_set(lc, sets[o]))
-			log_err(lc, "building set");
-
-		if (!sets[o])
-			break;
-	} while (sets[++o]);
+	group_set(lc, sets);
 }
 
 /* Convert a character string to lower case. */
-void str_tolower(char *s)
+void
+str_tolower(char *s)
 {
 	for (; *s; s++)
 		*s = tolower(*s);
@@ -85,8 +84,9 @@ void str_tolower(char *s)
  * Check if selected or all formats shall be used to read the metadata.
 */
 /* Collapse a delimiter into one. */
-char *collapse_delimiter(struct lib_context *lc, char *str,
-			 size_t size, const char delim)
+char *
+collapse_delimiter(struct lib_context *lc, char *str,
+		   size_t size, const char delim)
 {
 	size_t len;
 	char *p = str;
@@ -101,13 +101,14 @@ char *collapse_delimiter(struct lib_context *lc, char *str,
 	return str;
 }
 
-int valid_format(struct lib_context *lc, const char *fmt)
+int
+valid_format(struct lib_context *lc, const char *fmt)
 {
 	int ret = 1;
 	char *p, *p_sav, *sep;
 	const char delim = *OPT_STR_SEPARATOR(lc);
 
- 	if (!(p_sav = dbg_strdup((char*) fmt)))
+	if (!(p_sav = dbg_strdup((char *) fmt)))
 		return log_alloc_err(lc, __func__);
 
 	sep = p_sav;
@@ -122,29 +123,5 @@ int valid_format(struct lib_context *lc, const char *fmt)
 	} while (sep);
 
 	dbg_free(p_sav);
-
 	return ret;
-}
-
-void format_error(struct lib_context *lc, const char *error, char **argv)
-{
-	log_print_nnl(lc, "No RAID %s", error);
-
-	if (OPT_FORMAT(lc))
-		log_print_nnl(lc, " with format: \"%s\"",
-			      OPT_STR_FORMAT(lc));
-
-
-	if (argv && *argv) {
-		log_print_nnl(lc, " and with names: \"");
-		while (*argv) {
-			log_print_nnl(lc, "%s", *argv++);
-			if (*argv)
-				log_print_nnl(lc, "%s", OPT_STR_SEPARATOR(lc));
-			else
-				log_print_nnl(lc, "\"");
-		}
-	}
-
-	log_print(lc, "");
 }

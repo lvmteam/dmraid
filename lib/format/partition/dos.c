@@ -25,19 +25,19 @@
 static const char *handler = HANDLER;
 
 /* Make up RAID device name. */
-static size_t _name(struct lib_context *lc, struct raid_dev *rd,
-		    unsigned short partition, char *str, size_t len,
-		    unsigned char type)
+static size_t
+_name(struct lib_context *lc, struct raid_dev *rd,
+      unsigned short partition, char *str, size_t len, unsigned char type)
 {
 	const char *base = get_basename(lc, rd->di->path);
 
 	return type ? snprintf(str, len, "%s%s%u", base, OPT_STR_PARTCHAR(lc),
-			       partition) :
-		      snprintf(str, len, "%s", base);
+			       partition) : snprintf(str, len, "%s", base);
 }
 
-static char *name(struct lib_context *lc, struct raid_dev *rd,
-		   unsigned int part, unsigned char type)
+static char *
+name(struct lib_context *lc, struct raid_dev *rd,
+     unsigned int part, unsigned char type)
 {
 	size_t len;
 	char *ret;
@@ -57,7 +57,8 @@ static char *name(struct lib_context *lc, struct raid_dev *rd,
 #if	BYTE_ORDER == LITTLE_ENDIAN
 #  define	to_cpu	NULL
 #else
-static void to_cpu(void *meta)
+static void
+to_cpu(void *meta)
 {
 	struct dos *dos = meta;
 	struct dos_partition *part = dos->partitions;
@@ -71,7 +72,8 @@ static void to_cpu(void *meta)
 }
 #endif
 
-static int is_dos(struct lib_context *lc, struct dev_info *di, void *meta)
+static int
+is_dos(struct lib_context *lc, struct dev_info *di, void *meta)
 {
 	struct dos *dos = meta;
 	struct dos_partition *part;
@@ -87,8 +89,8 @@ static int is_dos(struct lib_context *lc, struct dev_info *di, void *meta)
 	return 1;
 }
 
-static void dos_file_metadata(struct lib_context *lc, struct dev_info *di,
-			      void *meta)
+static void
+dos_file_metadata(struct lib_context *lc, struct dev_info *di, void *meta)
 {
 	if (OPT_DUMP(lc))
 		log_print(lc, "%s: filing metadata not supported (use fdisk "
@@ -98,7 +100,8 @@ static void dos_file_metadata(struct lib_context *lc, struct dev_info *di,
 /* Allocate a DOS partition sector struct and read the data. */
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 		    struct dev_info *di, void *meta, union read_info *info);
-static struct raid_dev *dos_read(struct lib_context *lc, struct dev_info *di)
+static struct raid_dev *
+dos_read(struct lib_context *lc, struct dev_info *di)
 {
 	return read_raid_dev(lc, di, NULL,
 			     sizeof(struct dos), DOS_CONFIGOFFSET,
@@ -107,23 +110,24 @@ static struct raid_dev *dos_read(struct lib_context *lc, struct dev_info *di)
 }
 
 /* Support functions for dos_group to read the partition table(s). */
-static int part_is_extended (struct dos_partition *part)
+static int
+part_is_extended(struct dos_partition *part)
 {
 	return part->type == PARTITION_EXT ||
-	       part->type == PARTITION_EXT_LBA ||
-	       part->type == PARTITION_LINUX_EXT;
+		part->type == PARTITION_EXT_LBA ||
+		part->type == PARTITION_LINUX_EXT;
 }
 
 /* Get a partition start offset relative to a base location. */
-static uint64_t get_part_start(const struct dos_partition *raw_part,
-			     uint64_t offset)
+static uint64_t
+get_part_start(const struct dos_partition *raw_part, uint64_t offset)
 {
 	return (uint64_t) raw_part->start + offset;
 }
 
 /* RAID set allocation support function. */
-static struct raid_set *_alloc_raid_set(struct lib_context *lc,
-					struct raid_dev *rd)
+static struct raid_set *
+_alloc_raid_set(struct lib_context *lc, struct raid_dev *rd)
 {
 	struct raid_set *rs;
 
@@ -135,9 +139,9 @@ static struct raid_set *_alloc_raid_set(struct lib_context *lc,
 		return NULL;
 
 	rs->status = rd->status;
-	rs->type   = rd->type;
+	rs->type = rd->type;
 
-       	if (!(rs->name = dbg_strdup(rd->name))) {
+	if (!(rs->name = dbg_strdup(rd->name))) {
 		dbg_free(rs);
 		rs = NULL;
 		log_alloc_err(lc, handler);
@@ -147,12 +151,12 @@ static struct raid_set *_alloc_raid_set(struct lib_context *lc,
 }
 
 /* Check sector vs. RAID device end */
-static int rd_check_end(struct lib_context *lc,
-			struct raid_dev *rd, uint64_t sector)
+static int
+rd_check_end(struct lib_context *lc, struct raid_dev *rd, uint64_t sector)
 {
 	if (sector > rd->di->sectors)
 		LOG_ERR(lc, 1, "%s: partition address past end of RAID device",
-		 	handler);
+			handler);
 
 	return 0;
 }
@@ -161,9 +165,10 @@ static int rd_check_end(struct lib_context *lc,
  * Allocate a DOS RAID device and a set.
  * Set the device up and add it to the set.
  */
-static int _create_rs_and_rd(struct lib_context *lc, struct raid_dev *rd,
-			     struct dos_partition *raw_part, uint64_t sector,
-			     unsigned int part)
+static int
+_create_rs_and_rd(struct lib_context *lc, struct raid_dev *rd,
+		  struct dos_partition *raw_part, uint64_t sector,
+		  unsigned int part)
 {
 	struct raid_dev *r;
 	struct raid_set *rs;
@@ -174,7 +179,7 @@ static int _create_rs_and_rd(struct lib_context *lc, struct raid_dev *rd,
 	if (!(r->di = alloc_dev_info(lc, rd->di->path)))
 		goto free_raid_dev;
 
-        if (!(r->name = name(lc, rd, part, 1)))
+	if (!(r->name = name(lc, rd, part, 1)))
 		goto free_di;
 
 	r->fmt = rd->fmt;
@@ -197,9 +202,9 @@ static int _create_rs_and_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	return 1;
 
-  free_di:
+      free_di:
 	free_dev_info(lc, r->di);
-  free_raid_dev:
+      free_raid_dev:
 	free_raid_dev(lc, &r);
 
 	return 0;
@@ -215,14 +220,16 @@ static int _create_rs_and_rd(struct lib_context *lc, struct raid_dev *rd,
  * Partition code inspired by libparted and squeezed for this purpose (lemon).
  */
 /* FIXME: Check for position of partition */
-static int is_partition(struct dos_partition *p, uint64_t start_sector)
+static int
+is_partition(struct dos_partition *p, uint64_t start_sector)
 {
 	return p->type != PARTITION_EMPTY && p->length && p->start;
 }
 
-static int group_rd_extended(struct lib_context *lc, struct raid_dev *rd,
-			     uint64_t start_sector, uint64_t *extended_root,
-			     unsigned int part)
+static int
+group_rd_extended(struct lib_context *lc, struct raid_dev *rd,
+		  uint64_t start_sector, uint64_t * extended_root,
+		  unsigned int part)
 {
 	int ret = 0;
 	uint64_t new_start_sector;
@@ -240,7 +247,7 @@ static int group_rd_extended(struct lib_context *lc, struct raid_dev *rd,
 #endif
 	if (dos->magic == PARTITION_MAGIC_MAGIC)
 		goto out;
-	
+
 	/* Check magic to see if this is a real partition table. */
 	if (dos->magic != DOS_MAGIC)
 		goto out;
@@ -249,13 +256,13 @@ static int group_rd_extended(struct lib_context *lc, struct raid_dev *rd,
 	 * Logical partition tables only have two entries,
 	 * one for the partition and one for the next partition table.
 	 */
-	 
+
 	/*
 	 * An entry pointing to the present logical partition.
 	 * It is an offset from the present partition table location.
 	 */
 	p1 = dos->partitions;
-	
+
 	/*
 	 * An entry pointing to the next logical partition table.
 	 * It is an offset from the main extended partition start.
@@ -276,25 +283,25 @@ static int group_rd_extended(struct lib_context *lc, struct raid_dev *rd,
 	if (!*extended_root)
 		*extended_root = start_sector;
 	new_start_sector = get_part_start(p2, *extended_root);
-	
+
 	if (is_partition(p2, start_sector) &&
 	    !group_rd_extended(lc, rd, new_start_sector, extended_root, part))
 		goto out;
 
 	ret = 1;
 
-  out:
+      out:
 	dbg_free(dos);
 	return ret;
 }
 
 /* Handle primary partitions. */
-static int group_rd(struct lib_context *lc, struct raid_dev *rd,
-		    uint64_t start_sector)
+static int
+group_rd(struct lib_context *lc, struct raid_dev *rd, uint64_t start_sector)
 {
 	unsigned int i;
 	uint64_t part_start, part_end,
-		 extended_part_start = 0, extended_root = 0;
+		extended_part_start = 0, extended_root = 0;
 	struct dos *dos = META(rd, dos);
 	struct dos_partition *raw_table_entry;
 
@@ -314,8 +321,8 @@ static int group_rd(struct lib_context *lc, struct raid_dev *rd,
 		 * start of drive.
 		 */
 		part_start = get_part_start(raw_table_entry, start_sector);
-		part_end   = part_start + raw_table_entry->length;
-		
+		part_end = part_start + raw_table_entry->length;
+
 		/* Avoid infinite recursion (mostly). */
 		if (part_start == start_sector)
 			continue;
@@ -336,19 +343,19 @@ static int group_rd(struct lib_context *lc, struct raid_dev *rd,
 					    start_sector, i + 1))
 			return 0;
 	}
-	
+
 	/* When we are finished with all the primary partitions,
 	 * go do the extended partition if we have one.
 	 * It always starts with partition 5.
 	 */
 	return extended_part_start ?
-	       group_rd_extended(lc, rd, extended_part_start,
-				 &extended_root, 5) : 1;
+		group_rd_extended(lc, rd, extended_part_start,
+				  &extended_root, 5) : 1;
 }
 
 /* Add a DOS RAID device to a set */
-static struct raid_set *dos_group(struct lib_context *lc,
-				    struct raid_dev *rd)
+static struct raid_set *
+dos_group(struct lib_context *lc, struct raid_dev *rd)
 {
 	/*
 	 * Once we get here, a DOS partition table
@@ -363,34 +370,36 @@ static struct raid_set *dos_group(struct lib_context *lc,
 	 * to something else for some strange partitioning scheme because the
 	 * code will handle it.
 	 */
-	return group_rd(lc, rd, 0) ? (struct raid_set*) 1 : NULL;
+	return group_rd(lc, rd, 0) ? (struct raid_set *) 1 : NULL;
 }
 
 /*
  * Check integrity of a DOS RAID set.
  */
-static int dos_check(struct lib_context *lc, struct raid_set *rs)
+static int
+dos_check(struct lib_context *lc, struct raid_set *rs)
 {
-	return 1; /* Nice, eh ? */
+	return 1;		/* Nice, eh ? */
 }
 
 static struct dmraid_format dos_format = {
-	.name	= HANDLER,
-	.descr	= "DOS partitions on SW RAIDs",
-	.caps	= NULL, /* Not supported */
+	.name = HANDLER,
+	.descr = "DOS partitions on SW RAIDs",
+	.caps = NULL,		/* Not supported */
 	.format = FMT_PARTITION,
-	.read	= dos_read,
-	.write	= NULL, /* Not supported */
-	.group	= dos_group,
-	.check	= dos_check,
-	.events	= NULL, /* Not supported */
+	.read = dos_read,
+	.write = NULL,		/* Not supported */
+	.group = dos_group,
+	.check = dos_check,
+	.events = NULL,		/* Not supported */
 #ifdef DMRAID_NATIVE_LOG
-	.log	= NULL, /* Not supported; use fdisk and friends */
+	.log = NULL,		/* Not supported; use fdisk and friends */
 #endif
 };
 
 /* Register this format handler with the format core. */
-int register_dos(struct lib_context *lc)
+int
+register_dos(struct lib_context *lc)
 {
 	return register_format_handler(lc, &dos_format);
 }
@@ -401,8 +410,9 @@ int register_dos(struct lib_context *lc)
  * For a DOS partition we essentially just save the
  * partition table sector and let dos_group do the rest...
  */
-static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
-		    struct dev_info *di, void *meta, union read_info *info)
+static int
+setup_rd(struct lib_context *lc, struct raid_dev *rd,
+	 struct dev_info *di, void *meta, union read_info *info)
 {
 	struct dos *dos = meta;
 
@@ -411,16 +421,16 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	rd->meta_areas->offset = DOS_CONFIGOFFSET >> 9;
 	rd->meta_areas->size = sizeof(*dos);
-	rd->meta_areas->area = (void*) dos;
+	rd->meta_areas->area = (void *) dos;
 
-        rd->di  = di;
+	rd->di = di;
 	rd->fmt = &dos_format;
 
-        rd->status = s_ok; /* Always :-) */
-	rd->type   = t_partition;
+	rd->status = s_ok;	/* Always :-) */
+	rd->type = t_partition;
 
-	rd->offset   = DOS_DATAOFFSET;
-	rd->sectors  = di->sectors;
+	rd->offset = DOS_DATAOFFSET;
+	rd->sectors = di->sectors;
 
-        return (rd->name = name(lc, rd, 0, 0)) ? 1 : 0;
+	return (rd->name = name(lc, rd, 0, 0)) ? 1 : 0;
 }

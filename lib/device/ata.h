@@ -13,10 +13,10 @@
 struct ata_identify {
 	unsigned short dummy[10];
 #define	ATA_SERIAL_LEN	20
-	unsigned char  serial[ATA_SERIAL_LEN];
+	unsigned char serial[ATA_SERIAL_LEN];
 	unsigned short dummy1[3];
-	unsigned char  fw_rev[8];
-	unsigned char  model[40];
+	unsigned char fw_rev[8];
+	unsigned char model[40];
 	unsigned short dummy2[33];
 	unsigned short major_rev_num;
 	unsigned short minor_rev_num;

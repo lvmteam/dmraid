@@ -107,8 +107,14 @@ dnl Enables linking to libselinux
 AC_ARG_ENABLE(libsepol, [  --enable-libsepol       Use this to link the tools to libsepol ], LIBSEPOL=$enableval, LIBSEPOL=no)
 
 dnl Enables mini binary
-AC_ARG_ENABLE(mini, [  --enable-mini           Use this to create a minimal binrary suitable
+AC_ARG_ENABLE(mini, [  --enable-mini           Use this to create a minimal binary suitable
                           for early boot environments],  DMRAID_MINI=$enableval, DMRAID_MINI=no)
+
+dnl Enables LED support
+AC_ARG_ENABLE(led, [  --enable-led            Use this to enable LED support],  DMRAID_LED=$enableval, DMRAID_LED=no)
+
+dnl Enables Intel LED support
+AC_ARG_ENABLE(intel_led, [  --enable-intel_led      Use this to enable Intel LED support],  DMRAID_INTEL_LED=$enableval, DMRAID_INTEL_LED=no)
 
 echo $ac_n "checking whether to disable native metadata logging""... $ac_c" 1>&6
 dnl Disable native metadata logging
@@ -153,6 +159,14 @@ else
 	else
         	CFLAGS="$CFLAGS -DDMRAID_NATIVE_LOG"
 	fi
+fi
+
+if test x$DMRAID_LED = xyes; then
+        CFLAGS="$CFLAGS -DDMRAID_LED"
+fi
+
+if test x$DMRAID_INTEL_LED = xyes; then
+        CFLAGS="$CFLAGS -DDMRAID_LED -DDMRAID_INTEL_LED"
 fi
 
 if test x$DEBUG = xyes; then

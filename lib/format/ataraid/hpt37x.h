@@ -39,60 +39,59 @@
 #include <stdint.h>
 
 /* HPT 37x config data byte offset on disk */
-#define HPT37X_CONFIGOFFSET	(9 << 9) /* 9 sectors */
+#define HPT37X_CONFIGOFFSET	(9 << 9)	/* 9 sectors */
 #define HPT37X_DATAOFFSET	10	/* Data offset in sectors */
 
 /* Ondisk metadata for Highpoint ATARAID */
 struct hpt37x {
-       uint8_t  filler1[32];
+	uint8_t filler1[32];
 
-       uint32_t       magic;
+	uint32_t magic;
 #define HPT37X_MAGIC_OK   0x5a7816f0
-#define HPT37X_MAGIC_BAD  0x5a7816fd  
+#define HPT37X_MAGIC_BAD  0x5a7816fd
 
-       uint32_t       magic_0;	/* Set identifier */
-       uint32_t       magic_1;	/* Array identifier */
+	uint32_t magic_0;	/* Set identifier */
+	uint32_t magic_1;	/* Array identifier */
 
-       uint32_t       order;  
-#define HPT_O_MIRROR   0x01  
+	uint32_t order;
+#define HPT_O_MIRROR   0x01
 #define HPT_O_STRIPE   0x02
 #define HPT_O_OK       0x04
 
-       uint8_t        raid_disks;
-       uint8_t        raid0_shift; 
+	uint8_t raid_disks;
+	uint8_t raid0_shift;
 
-       uint8_t        type;
-#define HPT37X_T_RAID0		0x00 
+	uint8_t type;
+#define HPT37X_T_RAID0		0x00
 #define HPT37X_T_RAID1		0x01
 #define HPT37X_T_RAID01_RAID0	0x02
 #define HPT37X_T_SPAN		0x03
-#define HPT37X_T_RAID_3		0x04   
+#define HPT37X_T_RAID_3		0x04
 #define HPT37X_T_RAID_5		0x05
 #define HPT37X_T_SINGLEDISK	0x06
 #define HPT37X_T_RAID01_RAID1	0x07
 
-       uint8_t        disk_number;
-       uint32_t       total_secs; 
-       uint32_t       disk_mode;  
-       uint32_t       boot_mode;
-       uint8_t        boot_disk; 
-       uint8_t        boot_protect;
-       uint8_t        error_log_entries;
-       uint8_t        error_log_index;  
+	uint8_t disk_number;
+	uint32_t total_secs;
+	uint32_t disk_mode;
+	uint32_t boot_mode;
+	uint8_t boot_disk;
+	uint8_t boot_protect;
+	uint8_t error_log_entries;
+	uint8_t error_log_index;
 #define	HPT37X_MAX_ERRORLOG	32
-       struct hpt37x_errorlog
-       {
-	       uint32_t       timestamp;
-	       uint8_t        reason;   
-#define HPT_R_REMOVED          0xfe      
-#define HPT_R_BROKEN           0xff      
+	struct hpt37x_errorlog {
+		uint32_t timestamp;
+		uint8_t reason;
+#define HPT_R_REMOVED          0xfe
+#define HPT_R_BROKEN           0xff
 
-	       uint8_t        disk;
-	       uint8_t        status;
-	       uint8_t        sectors;
-	       uint32_t       lba;
-       } errorlog[HPT37X_MAX_ERRORLOG];
-       uint8_t        filler[60];
+		uint8_t disk;
+		uint8_t status;
+		uint8_t sectors;
+		uint32_t lba;
+	} errorlog[HPT37X_MAX_ERRORLOG];
+	uint8_t filler[60];
 } __attribute__ ((packed));
 #endif
 

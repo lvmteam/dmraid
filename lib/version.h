@@ -7,6 +7,6 @@
 #define	DMRAID_LIB_SUBMINOR_VERSION	0
 #define	DMRAID_LIB_VERSION_SUFFIX	"rc15"
 
-#define	DMRAID_LIB_DATE			"(2008.04.02)"
+#define	DMRAID_LIB_DATE			"(2008.06.20)"
 
 #endif

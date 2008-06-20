@@ -2,7 +2,8 @@
  * NVidia NVRAID metadata format handler.
  *
  * Copyright (C) 2004      NVidia Corporation. All rights reserved.
- * Copyright (C) 2004,2005 Heinz Mauelshagen, Red Hat GmbH.
+ *
+ * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
  * See file LICENSE at the top of this source tree for license information.
@@ -27,12 +28,14 @@ static const char *handler = HANDLER;
  * The subset parameter indicates the requirement to create
  * name suffixes in case the RAID set is hierarchical.
  */
-static unsigned int _subset(struct nv *nv)
+static unsigned int
+_subset(struct nv *nv)
 {
 	return nv->unitNumber >= nv->array.stripeWidth;
 }
 
-static size_t _name(struct nv *nv, char *str, size_t len, unsigned int subset)
+static size_t
+_name(struct nv *nv, char *str, size_t len, unsigned int subset)
 {
 	unsigned int i = NV_SIGNATURES;
 	uint32_t sum = 0;
@@ -44,8 +47,8 @@ static size_t _name(struct nv *nv, char *str, size_t len, unsigned int subset)
 			handler, sum, _subset(nv));
 }
 
-static char *name(struct lib_context *lc, struct raid_dev *rd,
-		  unsigned int subset)
+static char *
+name(struct lib_context *lc, struct raid_dev *rd, unsigned int subset)
 {
 	size_t len;
 	char *ret;
@@ -61,7 +64,8 @@ static char *name(struct lib_context *lc, struct raid_dev *rd,
 	return ret;
 }
 
-static enum status status(struct nv *nv)
+static enum status
+status(struct nv *nv)
 {
 	static struct states states[] = {
 		{ NV_IDLE, s_ok },
@@ -77,7 +81,8 @@ static enum status status(struct nv *nv)
 }
 
 /* Neutralize disk type using generic metadata type mapping function. */
-static enum type type(struct nv *nv)
+static enum type
+type(struct nv *nv)
 {
 	uint8_t stripeWidth = nv->array.stripeWidth;
 	/* Mapping of nv types to generic types */
@@ -89,17 +94,17 @@ static enum type type(struct nv *nv)
 		{ NV_LEVEL_1_0, t_raid0 },
 		{ NV_LEVEL_3, t_raid4 },
 		{ NV_LEVEL_5_SYM, t_raid5_ls },
-	        { NV_LEVEL_UNKNOWN, t_spare},	/* FIXME: UNKNOWN = spare ? */
+		{ NV_LEVEL_UNKNOWN, t_spare },	/* FIXME: UNKNOWN = spare ? */
 		/* FIXME: The ones below don't really map to anything ?? */
 		{ NV_LEVEL_10, t_undef },
-		{ NV_LEVEL_5, t_undef },    /* Asymmetric RAID 5 is not used */
+		{ NV_LEVEL_5, t_undef },	/* Asymmetric RAID 5 is not used */
 	};
 
 	/*
 	 * FIXME: is there a direct way to decide what
-	 * 	  a spare is (eg, NV_LEVEL_UNKNOWN) ?
+	 *        a spare is (eg, NV_LEVEL_UNKNOWN) ?
 	 */
-	switch(NV_RAIDLEVEL(nv)) {
+	switch (NV_RAIDLEVEL(nv)) {
 	case NV_LEVEL_1_0:
 	case NV_LEVEL_10:
 	case NV_LEVEL_1:
@@ -109,27 +114,29 @@ static enum type type(struct nv *nv)
 	case NV_LEVEL_5_SYM:
 		stripeWidth += 1;
 		break;
-		
-			default:
+
+	default:
 		break;
 	}
 
 	if (nv->array.totalVolumes >= stripeWidth &&
-	    nv->unitNumber         >= stripeWidth)
+	    nv->unitNumber >= stripeWidth)
 		return t_spare;
 
 	return rd_type(types, (unsigned int) NV_RAIDLEVEL(nv));
 }
 
 /* Decide about ordering sequence of RAID device. */
-static int dev_sort(struct list_head *pos, struct list_head *new)
+static int
+dev_sort(struct list_head *pos, struct list_head *new)
 {
-	return (META(RD(new), nv))->unitNumber <
-	       (META(RD(pos), nv))->unitNumber;
+	return META(RD(new), nv)->unitNumber <
+	       META(RD(pos), nv)->unitNumber;
 }
 
 /* Decide about ordering sequence of RAID subset. */
-static int set_sort(struct list_head *pos, struct list_head *new)
+static int
+set_sort(struct list_head *pos, struct list_head *new)
 {
 	return _subset((META(RD_RS(RS(new)), nv))) <
 	       _subset((META(RD_RS(RS(pos)), nv)));
@@ -141,7 +148,8 @@ static int set_sort(struct list_head *pos, struct list_head *new)
 #if	BYTE_ORDER == LITTLE_ENDIAN
 #  define	to_cpu	NULL
 #else
-static void to_cpu(void *meta)
+static void
+to_cpu(void *meta)
 {
 	struct nv *nv = meta;
 	unsigned int i = NV_SIGNATURES;
@@ -173,7 +181,8 @@ static void to_cpu(void *meta)
 #endif
 
 /* Check the metadata checksum. */
-static int checksum(struct nv *nv)
+static int
+checksum(struct nv *nv)
 {
 	uint32_t sum = 0;
 	unsigned int s = nv->size;
@@ -181,18 +190,19 @@ static int checksum(struct nv *nv)
 	if (s != sizeof(*nv) / sizeof(sum))
 		return 0;
 
-	while (s--) 
-		sum += ((uint32_t*) nv)[s];
+	while (s--)
+		sum += ((uint32_t *) nv)[s];
 
 	/* Ignore chksum member itself. */
 	return nv->chksum - sum == nv->chksum;
 }
 
-static int is_nv(struct lib_context *lc, struct dev_info *di, void *meta)
+static int
+is_nv(struct lib_context *lc, struct dev_info *di, void *meta)
 {
 	struct nv *nv = meta;
 
-	if (strncmp((char*) nv->vendor, NV_ID_STRING, sizeof(NV_ID_STRING) - 1))
+	if (strncmp((char *) nv->vendor, NV_ID_STRING, sizeof(NV_ID_STRING) -1))
 		return 0;
 
 	if (checksum(nv))
@@ -200,10 +210,11 @@ static int is_nv(struct lib_context *lc, struct dev_info *di, void *meta)
 
 	LOG_ERR(lc, 0, "%s: bad checksum on %s", handler, di->path);
 }
-	
+
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 		    struct dev_info *di, void *meta, union read_info *info);
-static struct raid_dev *nv_read(struct lib_context *lc, struct dev_info *di)
+static struct raid_dev *
+nv_read(struct lib_context *lc, struct dev_info *di)
 {
 	return read_raid_dev(lc, di, NULL,
 			     sizeof(struct nv), NV_CONFIGOFFSET,
@@ -211,7 +222,8 @@ static struct raid_dev *nv_read(struct lib_context *lc, struct dev_info *di)
 }
 
 /* Write private RAID metadata to device */
-static int nv_write(struct lib_context *lc, struct raid_dev *rd, int erase)
+static int
+nv_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 {
 	int ret;
 #if	BYTE_ORDER != LITTLE_ENDIAN
@@ -226,15 +238,17 @@ static int nv_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 	return ret;
 }
 
-static void super_created(struct raid_set *ss, void *private)
+static void
+super_created(struct raid_set *ss, void *private)
 {
-	ss->type   = t_raid1;
+	ss->type = t_raid1;
 	ss->stride = META(private, nv)->array.stripeBlockSize;
 }
 
 /* FIXME: handle spares in mirrors and check that types are correct. */
-static int group_rd(struct lib_context *lc, struct raid_set *rs,
-		    struct raid_set **ss, struct raid_dev *rd)
+static int
+group_rd(struct lib_context *lc, struct raid_set *rs,
+	 struct raid_set **ss, struct raid_dev *rd)
 {
 	struct nv *nv = META(rd, nv);
 
@@ -251,7 +265,6 @@ static int group_rd(struct lib_context *lc, struct raid_set *rs,
 	case NV_LEVEL_5_SYM:
 		if (!find_set(lc, NULL, rs->name, FIND_TOP))
 			list_add_tail(&rs->list, LC_RS(lc));
-
 		break;
 
 	case NV_LEVEL_1_0:
@@ -264,8 +277,8 @@ static int group_rd(struct lib_context *lc, struct raid_set *rs,
 }
 
 /* Add an NVidia RAID device to a set. */
-static struct raid_set *nv_group(struct lib_context *lc,
-				       struct raid_dev *rd)
+static struct raid_set *
+nv_group(struct lib_context *lc, struct raid_dev *rd)
 {
 	struct raid_set *rs, *ss = NULL;
 
@@ -282,14 +295,16 @@ static struct raid_set *nv_group(struct lib_context *lc,
  *
  * FIXME: more sanity checks.
  */
-static unsigned int devices(struct raid_dev *rd, void *context)
+static unsigned int
+devices(struct raid_dev *rd, void *context)
 {
 	struct nv *nv = META(rd, nv);
 
 	return nv->array.totalVolumes / (NVRAID_1_0(nv) ? 2 : 1);
 }
 
-static int nv_check(struct lib_context *lc, struct raid_set *rs)
+static int
+nv_check(struct lib_context *lc, struct raid_set *rs)
 {
 	return check_raid_set(lc, rs, devices, NULL,
 			      NO_CHECK_RD, NULL, handler);
@@ -298,7 +313,8 @@ static int nv_check(struct lib_context *lc, struct raid_set *rs)
 /*
  * IO error event handler.
  */
-static int event_io(struct lib_context *lc, struct event_io *e_io)
+static int
+event_io(struct lib_context *lc, struct event_io *e_io)
 {
 	struct raid_dev *rd = e_io->rd;
 	struct nv *nv = META(rd, nv);
@@ -315,14 +331,15 @@ static int event_io(struct lib_context *lc, struct event_io *e_io)
 
 static struct event_handlers nv_event_handlers = {
 	.io = event_io,
-	.rd = NULL,	/* FIXME: no device add/remove event handler yet. */
+	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
 };
 
 #ifdef DMRAID_NATIVE_LOG
 /*
  * Log native information about the RAID device.
  */
-static void nv_log(struct lib_context *lc, struct raid_dev *rd)
+static void
+nv_log(struct lib_context *lc, struct raid_dev *rd)
 {
 	unsigned int i, j;
 #define	LEN	NV_PRODUCTIDS + 1
@@ -379,29 +396,31 @@ static void nv_log(struct lib_context *lc, struct raid_dev *rd)
 #endif
 
 static struct dmraid_format nv_format = {
-	.name	= HANDLER,
-	.descr	= "NVidia RAID",
-	.caps	= "S,0,1,10,5",
+	.name = HANDLER,
+	.descr = "NVidia RAID",
+	.caps = "S,0,1,10,5",
 	.format = FMT_RAID,
-	.read	= nv_read,
-	.write	= nv_write,
-	.group	= nv_group,
-	.check	= nv_check,
-	.events	= &nv_event_handlers,
+	.read = nv_read,
+	.write = nv_write,
+	.group = nv_group,
+	.check = nv_check,
+	.events = &nv_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
-	.log	= nv_log,
+	.log = nv_log,
 #endif
 };
 
 /* Register this format handler with the format core. */
-int register_nv(struct lib_context *lc)
+int
+register_nv(struct lib_context *lc)
 {
 	return register_format_handler(lc, &nv_format);
 }
 
 /* Set the RAID device contents up derived from the NV ones */
-static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
-		    struct dev_info *di, void *meta, union read_info *info)
+static int
+setup_rd(struct lib_context *lc, struct raid_dev *rd,
+	 struct dev_info *di, void *meta, union read_info *info)
 {
 	struct nv *nv = meta;
 
@@ -410,17 +429,17 @@ static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	rd->meta_areas->offset = NV_CONFIGOFFSET >> 9;
 	rd->meta_areas->size = sizeof(*nv);
-	rd->meta_areas->area = (void*) nv;
+	rd->meta_areas->area = (void *) nv;
 
-        rd->di = di;
+	rd->di = di;
 	rd->fmt = &nv_format;
 
 	rd->status = status(nv);
-	rd->type   = type(nv);
+	rd->type = type(nv);
 
 	rd->offset = NV_DATAOFFSET;
 	if (!(rd->sectors = rd->meta_areas->offset))
 		return log_zero_sectors(lc, di->path, handler);
 
-        return (rd->name = name(lc, rd, 1)) ? 1 : 0;
+	return (rd->name = name(lc, rd, 1)) ? 1 : 0;
 }

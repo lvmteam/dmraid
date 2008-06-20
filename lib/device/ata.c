@@ -15,7 +15,8 @@
 #include "dev-io.h"
 #include "ata.h"
 
-int get_ata_serial(struct lib_context *lc, int fd, struct dev_info *di)
+int
+get_ata_serial(struct lib_context *lc, int fd, struct dev_info *di)
 {
 	int ret = 0;
 	const int cmd_offset = 4;
@@ -26,11 +27,14 @@ int get_ata_serial(struct lib_context *lc, int fd, struct dev_info *di)
 		buf[0] = ATA_IDENTIFY_DEVICE;
 		buf[3] = 1;
 		if (!ioctl(fd, HDIO_DRIVE_CMD, buf)) {
-			ata_ident = (struct ata_identify*) &buf[cmd_offset];
-			if ((di->serial = dbg_strdup(remove_white_space(lc, (char*) ata_ident->serial, ATA_SERIAL_LEN))))
+			ata_ident = (struct ata_identify *) &buf[cmd_offset];
+			if ((di->serial =
+			     dbg_strdup(remove_white_space
+					(lc, (char *) ata_ident->serial,
+					 ATA_SERIAL_LEN))))
 				ret = 1;
 		}
-	
+
 		dbg_free(buf);
 	}
 

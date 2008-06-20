@@ -1,6 +1,9 @@
 /*
- * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
+ *
+ * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * November, 2007 - additions for Create, Delete, Rebuild & Raid 10. 
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -24,7 +27,8 @@
 #include <linux/dm-ioctl.h>
 
 /* Make up a dm path. */
-char *mkdm_path(struct lib_context *lc, const char *name)
+char *
+mkdm_path(struct lib_context *lc, const char *name)
 {
 	char *ret;
 	const char *dir = dm_dir();
@@ -38,20 +42,22 @@ char *mkdm_path(struct lib_context *lc, const char *name)
 }
 
 /* Device-mapper NULL log function. */
-static void dmraid_log(int level, const char *file, int line,
-		       const char *f, ...)
+static void
+dmraid_log(int level, const char *file, int line, const char *f, ...)
 {
 	return;
 }
 
 /* Init device-mapper library. */
-static void _init_dm(void)
+static void
+_init_dm(void)
 {
 	dm_log_init(dmraid_log);
 }
 
 /* Cleanup at exit. */
-static void _exit_dm(struct dm_task *dmt)
+static void
+_exit_dm(struct dm_task *dmt)
 {
 	if (dmt)
 		dm_task_destroy(dmt);
@@ -65,17 +71,18 @@ static void _exit_dm(struct dm_task *dmt)
  *
  * dm-library must get inititalized by caller.
  */
-static struct dm_versions *get_target_list(void)
+static struct dm_versions *
+get_target_list(void)
 {
 	struct dm_task *dmt;
 
 	return (dmt = dm_task_create(DM_DEVICE_LIST_VERSIONS)) &&
-	       dm_task_run(dmt) ? dm_task_get_versions(dmt) : NULL;
+		dm_task_run(dmt) ? dm_task_get_versions(dmt) : NULL;
 }
 
 /* Check a target's name against registered ones. */
-static int valid_ttype(struct lib_context *lc, char *ttype,
-		       struct dm_versions *targets)
+static int
+valid_ttype(struct lib_context *lc, char *ttype, struct dm_versions *targets)
 {
 	struct dm_versions *t, *last;
 
@@ -94,18 +101,20 @@ static int valid_ttype(struct lib_context *lc, char *ttype,
 			return 1;
 
 		last = t;
-		t = (void*) t + t->next;
+		t = (void *) t + t->next;
 	} while (last != t);
 
-	LOG_ERR(lc, 0, "device-mapper target type \"%s\" not in kernel", ttype);
+	LOG_ERR(lc, 0,
+		"device-mapper target type \"%s\" is not in the kernel", ttype);
 }
 
 /*
  * Parse a mapping table and create the appropriate targets or
  * check that a target type is registered with the device-mapper core.
  */
-static int handle_table(struct lib_context *lc, struct dm_task *dmt,
-			char *table, struct dm_versions *targets)
+static int
+handle_table(struct lib_context *lc, struct dm_task *dmt,
+	     char *table, struct dm_versions *targets)
 {
 	int line = 0, n, ret = 0;
 	uint64_t start, size;
@@ -138,21 +147,25 @@ static int handle_table(struct lib_context *lc, struct dm_task *dmt,
 }
 
 /* Parse a mapping table and create the appropriate targets. */
-static int parse_table(struct lib_context *lc, struct dm_task *dmt, char *table)
+static int
+parse_table(struct lib_context *lc, struct dm_task *dmt, char *table)
 {
 	return handle_table(lc, dmt, table, NULL);
 }
 
 /* Check if a target type is not registered with the kernel after a failure. */
-static int check_table(struct lib_context *lc, char *table)
+static int
+check_table(struct lib_context *lc, char *table)
 {
 	return handle_table(lc, NULL, table, get_target_list());
 }
 
 /* Build a UUID for a dmraid device 
  * Return 1 for sucess; 0 for failure*/
-static int dmraid_uuid(struct lib_context *lc, struct raid_set *rs,
-		       char *uuid, uint uuid_len) {
+static int
+dmraid_uuid(struct lib_context *lc, struct raid_set *rs,
+	    char *uuid, uint uuid_len)
+{
 	int r;
 
 	/* Clear garbage data from uuid string */
@@ -164,35 +177,39 @@ static int dmraid_uuid(struct lib_context *lc, struct raid_set *rs,
 }
 
 /* Create a task, set its name and run it. */
-static int run_task(struct lib_context *lc, struct raid_set *rs,
-		    char *table, int type)
+static int
+run_task(struct lib_context *lc, struct raid_set *rs, char *table, int type)
 {
-	/* DM_UUID_LEN is defined in dm-ioctl.h as 129 characters;
+	/*
+	 * DM_UUID_LEN is defined in dm-ioctl.h as 129 characters;
 	 * though not all 129 must be used (md uses just 16 from 
 	 * a quick review of md.c. 
-	 * We will be using: (len vol grp name)*/ 
+	 * We will be using: (len vol grp name)
+	 */
 	char uuid[DM_UUID_LEN];
 	int ret;
 	struct dm_task *dmt;
 
 	_init_dm();
-	ret = (dmt = dm_task_create(type)) &&
-	      dm_task_set_name(dmt, rs->name);
+	ret = (dmt = dm_task_create(type)) && dm_task_set_name(dmt, rs->name);
 	if (ret && table)
 		ret = parse_table(lc, dmt, table);
 
-	if (ret && 
-	    DM_DEVICE_CREATE == type)
-		ret = dmraid_uuid(lc, rs, uuid, DM_UUID_LEN) &&
-		      dm_task_set_uuid(dmt, uuid) &&
-		      dm_task_run(dmt);
+	if (ret) {
+		if (DM_DEVICE_CREATE == type) {
+			ret = dmraid_uuid(lc, rs, uuid, DM_UUID_LEN) &&
+				dm_task_set_uuid(dmt, uuid) && dm_task_run(dmt);
+		} else
+			ret = dm_task_run(dmt);
+	}
 
 	_exit_dm(dmt);
 	return ret;
 }
-	
+
 /* Create a mapped device. */
-int dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
+int
+dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
 {
 	int ret;
 
@@ -210,21 +227,24 @@ int dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
 }
 
 /* Suspend a mapped device. */
-int dm_suspend(struct lib_context *lc, struct raid_set *rs)
+int
+dm_suspend(struct lib_context *lc, struct raid_set *rs)
 {
 	/* Suspend <dev_name> */
 	return run_task(lc, rs, NULL, DM_DEVICE_SUSPEND);
 }
 
 /* Resume a mapped device. */
-int dm_resume(struct lib_context *lc, struct raid_set *rs)
+int
+dm_resume(struct lib_context *lc, struct raid_set *rs)
 {
 	/* Resume <dev_name> */
 	return run_task(lc, rs, NULL, DM_DEVICE_RESUME);
 }
 
 /* Reload a mapped device. */
-int dm_reload(struct lib_context *lc, struct raid_set *rs, char *table)
+int
+dm_reload(struct lib_context *lc, struct raid_set *rs, char *table)
 {
 	int ret;
 
@@ -242,7 +262,8 @@ int dm_reload(struct lib_context *lc, struct raid_set *rs, char *table)
 }
 
 /* Remove a mapped device. */
-int dm_remove(struct lib_context *lc, struct raid_set *rs)
+int
+dm_remove(struct lib_context *lc, struct raid_set *rs)
 {
 	/* Remove <dev_name> */
 	return run_task(lc, rs, NULL, DM_DEVICE_REMOVE);
@@ -250,7 +271,8 @@ int dm_remove(struct lib_context *lc, struct raid_set *rs)
 
 /* Retrieve status of a mapped device. */
 /* FIXME: more status for device monitoring... */
-int dm_status(struct lib_context *lc, struct raid_set *rs)
+int
+dm_status(struct lib_context *lc, struct raid_set *rs)
 {
 	int ret;
 	struct dm_task *dmt;
@@ -260,18 +282,15 @@ int dm_status(struct lib_context *lc, struct raid_set *rs)
 
 	/* Status <dev_name>. */
 	ret = (dmt = dm_task_create(DM_DEVICE_STATUS)) &&
-	       dm_task_set_name(dmt, rs->name) &&
-	       dm_task_run(dmt) &&
-	       dm_task_get_info(dmt, &info) &&
-	       info.exists;
-
+	      dm_task_set_name(dmt, rs->name) &&
+	      dm_task_run(dmt) && dm_task_get_info(dmt, &info) && info.exists;
 	_exit_dm(dmt);
-
 	return ret;
 }
 
 /* Retrieve device-mapper driver version. */
-int dm_version(struct lib_context *lc, char *version, size_t size)
+int
+dm_version(struct lib_context *lc, char *version, size_t size)
 {
 	int ret;
 	struct dm_task *dmt;
@@ -282,10 +301,8 @@ int dm_version(struct lib_context *lc, char *version, size_t size)
 	_init_dm();
 
 	ret = (dmt = dm_task_create(DM_DEVICE_VERSION)) &&
-	       dm_task_run(dmt) &&
-	       dm_task_get_driver_version(dmt, version, size);
-
+		dm_task_run(dmt) &&
+		dm_task_get_driver_version(dmt, version, size);
 	_exit_dm(dmt);
-
 	return ret;
 }
