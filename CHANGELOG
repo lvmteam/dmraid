@@ -1,5 +1,5 @@
 
-Changelog from dmraid 1.0.0.rc14 to 1.0.0.rc15		2007.08.22
+Changelog from dmraid 1.0.0.rc14 to 1.0.0.rc15		2007.09.17
 
 FIXES:
 ------
@@ -9,6 +9,8 @@ o nv.c: fixed endian bug (Bryn Reeves)
 
 FEATURES:
 ---------
+o added support for RAID set create/remove/rebuild and
+  event handling (for isw metadata format initially)
 
 
 MISCELANIOUS:

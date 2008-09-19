@@ -19,6 +19,7 @@
 #define	HANDLER	"isw"
 
 #include <time.h>
+#include <math.h>
 #include "internal.h"
 #include <device/scsi.h>
 #define	FORMAT_HANDLER
@@ -366,6 +367,61 @@ set_metadata_sizoff(struct raid_dev *rd, size_t size)
 		size / ISW_DISK_BLOCK_SIZE + 1;
 }
 
+#define MIN_VOLUME_SIZE 204800
+static void
+enforce_size_limit(struct raid_set *rs)
+{
+	/* the min size is 100M bytes */
+	if (rs->size && rs->size < MIN_VOLUME_SIZE)
+		rs->size = MIN_VOLUME_SIZE;
+}
+
+static int
+is_first_volume(struct lib_context *lc, struct raid_set *rs)
+{
+	struct raid_dev *rd1, *rd2;
+
+	list_for_each_entry(rd1, &rs->devs, devs) {
+		list_for_each_entry(rd2, LC_RD(lc), list) {
+			if (!strcmp(rd1->di->path, rd2->di->path) &&
+			    rd1->fmt == rd2->fmt) {
+				/* No choice for the 2nd volume. */
+				rs->size = 0;
+				return 0;
+			}
+		}
+	}
+
+	enforce_size_limit(rs);
+	return 1;
+}
+
+/* Return correct signature version based on RAID type */
+static char *
+_isw_get_version(struct lib_context *lc, struct raid_set *rs)
+{
+	if((rs->total_devs == 5) || (rs->total_devs == 6))
+		return mpb_versions[6]; /* MPB_VERSION_5OR6_DISK_ARRAY */
+
+	if(rs->type == ISW_T_RAID5)
+		return mpb_versions[5]; /* MPB_VERSION_RAID5 */
+
+	if((rs->total_devs == 3) || (rs->total_devs == 4))
+		return mpb_versions[4]; /* MPB_VERSION_3OR4_DISK_ARRAY */
+	
+	if(!is_first_volume(lc, rs))
+		return mpb_versions[3]; /* MPB_VERSION_MUL_VOLS */
+
+	if(rs->type == ISW_T_RAID1)
+		return mpb_versions[2]; /* MPB_VERSION_RAID1 */
+
+	if((rs->type == ISW_T_RAID0) || T_SPARE(rs))
+		return mpb_versions[1]; /* MPB_VERSION_RAID0 */
+
+	return mpb_versions[0]; /* unknown */
+	
+}
+
 /* Check for isw signature (magic) and version. */
 static int
 is_isw(struct lib_context *lc, struct dev_info *di, struct isw *isw)
@@ -375,7 +431,7 @@ is_isw(struct lib_context *lc, struct dev_info *di, struct isw *isw)
 
 	/* Check version info; older versions supported. */
 	if (strncmp((const char *) isw->sig + MPB_SIGNATURE_SIZE,
-		    MPB_VERSION_RAID2, MPB_VERSION_RAID2_SIZE) > 0)
+		    MPB_VERSION_LAST, MPB_VERSION_LENGTH) > 0)
 		log_print(lc,
 			  "%s: untested metadata version %s found on %s",
 			  handler, isw->sig + MPB_SIGNATURE_SIZE, di->path);
@@ -611,7 +667,7 @@ _create_rd(struct lib_context *lc,
 	r->di = rd->di;
 	r->fmt = rd->fmt;
 	r->offset = dev->vol.map.pba_of_lba0;
-	if ((r->sectors = dev->vol.map.blocks_per_member))
+	if ((r->sectors = dev->vol.map.blocks_per_member - RAID_DS_JOURNAL))
 		goto out;
 
 	log_zero_sectors(lc, rd->di->path, handler);
@@ -1212,35 +1268,6 @@ is_hd_array_available(struct lib_context *lc, struct raid_set *rs)
 	return 0;
 }
 
-#define MIN_VOLUME_SIZE 204800
-static void
-enforce_size_limit(struct raid_set *rs)
-{
-	/* the min size is 100M bytes */
-	if (rs->size && rs->size < MIN_VOLUME_SIZE)
-		rs->size = MIN_VOLUME_SIZE;
-}
-
-static int
-is_first_volume(struct lib_context *lc, struct raid_set *rs)
-{
-	struct raid_dev *rd1, *rd2;
-
-	list_for_each_entry(rd1, &rs->devs, devs) {
-		list_for_each_entry(rd2, LC_RD(lc), list) {
-			if (!strcmp(rd1->di->path, rd2->di->path) &&
-			    rd1->fmt == rd2->fmt) {
-				/* No choice for the 2nd volume. */
-				rs->size = 0;
-				return 0;
-			}
-		}
-	}
-
-	enforce_size_limit(rs);
-	return 1;
-}
-
 /* Retrieve and make up SCSI ID. */
 static unsigned
 get_scsiId(struct lib_context *lc, char *path)
@@ -1279,6 +1306,7 @@ isw_config_disks(struct lib_context *lc, struct isw_disk *disk,
 		disk[i++].status = CLAIMED_DISK |
 			CONFIG_ON_DISK |
 			DETECTED_DISK | USABLE_DISK |
+			DISK_SMART_EVENT_SUPPORTED |
 			((rs->type == ISW_T_SPARE) ?
 			 SPARE_DISK : CONFIGURED_DISK);
 	}
@@ -1374,9 +1402,8 @@ isw_config_map(struct raid_set *rs, struct isw_map *map,
 	_find_factors(rs, &div, &sub);
 	map->pba_of_lba0 = first;
 	map->blocks_per_strip = _get_stride_size(rs);
-	map->num_data_stripes = size / (map->blocks_per_strip) /
-		((rs->total_devs - sub) / div);
-	map->blocks_per_member = map->blocks_per_strip * map->num_data_stripes +
+	map->num_data_stripes = ((size/map->blocks_per_strip) + (rs->total_devs -sub -1)) / (rs->total_devs-sub); 
+	map->blocks_per_member = (map->blocks_per_strip * map->num_data_stripes) * div +
 		RAID_DS_JOURNAL;
 
 	map->map_state = ISW_T_STATE_NORMAL;
@@ -1384,6 +1411,8 @@ isw_config_map(struct raid_set *rs, struct isw_map *map,
 	map->num_members = rs->found_devs;
 	map->num_domains = (rs->type == ISW_T_RAID1 ||
 			    rs->type == ISW_T_RAID10) ? 2 : 1;
+	map->failed_disk_num = ISW_DEV_NONE_FAILED;
+	map->ddf = 1; 
 
 /* FIXME */
 	for (i = 0; i < map->num_members; i++)
@@ -1517,12 +1546,12 @@ display_new_volume(struct raid_set *rs, struct isw *isw, struct isw_dev *dev)
 		printf("RAID size:      %lluG",
 		       ((unsigned long long) dev->SizeLow +
 			((unsigned long long) dev->SizeHigh << 32)) / GB_DIV);
-		printf("(%llublocks)\n",
+		printf(" (%llu blocks)\n",
 		       ((unsigned long long) dev->SizeLow +
 			((unsigned long long) dev->SizeHigh << 32)));
 
 		if (rt != t_raid1)
-			printf("RAID strip:     %uk(%ublocks)\n",
+			printf("RAID strip:     %uk (%u blocks)\n",
 			       dev->vol.map.blocks_per_strip / 2,
 			       dev->vol.map.blocks_per_strip);
 
@@ -1547,11 +1576,12 @@ _isw_create_first_volume(struct lib_context *lc, struct raid_set *rs)
 	struct isw *isw;
 	struct isw_dev *dev = NULL;
 	struct isw_disk *disk = NULL;
+	char *sig_version;
 
 	total_size = _cal_array_size(disk, rs, NULL);
 	if (rs->size > total_size)
 		LOG_ERR(lc, 0,
-			"%s: the size exceeds the max %lluG(%llublocks)",
+			"%s: the size exceeds the max %lluG (%llu blocks)",
 			handler, total_size / GB_DIV, total_size);
 
 	/* allocate min 2 sectors space for isw metadata. */
@@ -1577,10 +1607,12 @@ _isw_create_first_volume(struct lib_context *lc, struct raid_set *rs)
 	display_new_volume(rs, isw, dev);
 
 	strncpy((char *) isw->sig, MPB_SIGNATURE, MPB_SIGNATURE_SIZE);
+	sig_version = _isw_get_version(lc, rs);
 	strncpy((char *) isw->sig + MPB_SIGNATURE_SIZE,
-		MPB_VERSION_RAID2, MPB_VERSION_RAID2_SIZE);
+		sig_version, MPB_VERSION_LENGTH);
 	isw->mpb_size = isw_size;
 	isw->generation_num = 0;
+	isw->attributes = MPB_ATTRIB_CHECKSUM_VERIFY;
 	isw->num_raid_devs = (rs->type == ISW_T_SPARE) ? 0 : 1;
 	isw->family_num = isw->orig_family_num = _checksum(isw) + time(NULL);
 	isw->check_sum = 0;
@@ -1630,6 +1662,7 @@ _isw_create_second_volume(struct lib_context *lc, struct raid_set *rs)
 	struct raid_dev *rd;
 	struct isw *isw, *isw_v1;
 	struct isw_dev *dev1, *dev2;
+	char *sig_version; 
 
 	if (!(rs_group = _find_group(lc, rs)))
 		return NULL;
@@ -1668,8 +1701,16 @@ _isw_create_second_volume(struct lib_context *lc, struct raid_set *rs)
 		(isw->num_disks - 1);
 
 	display_new_volume(rs, isw, dev2);
+
+	/* If new signature version is higher than the old one, replace it */
+	sig_version = _isw_get_version(lc, rs);
+	if (strcmp((const char *) isw->sig + MPB_SIGNATURE_SIZE,
+		    (const char *) sig_version) < 0)
+		strncpy((char *) isw->sig + MPB_SIGNATURE_SIZE,
+			sig_version, MPB_VERSION_LENGTH);	    
 	isw->mpb_size = isw_size;
 	isw->generation_num++;
+	isw->attributes = MPB_ATTRIB_CHECKSUM_VERIFY;
 	isw->num_raid_devs++;
 	isw->check_sum = 0;
 	isw->check_sum = _checksum(isw);
@@ -2102,6 +2143,16 @@ isw_remove_dev(struct lib_context *lc, struct raid_set *rs,
 		sizeof(uint32_t) * (dev->vol.map.num_members - 1);
 	memcpy((char *) isw_tmp + size, dev, dev_size);
 
+	/* If remaining device is a lower version, downgrade */
+	if(dev->vol.map.raid_level == ISW_T_RAID1)
+		strncpy((char *) isw_tmp->sig + MPB_SIGNATURE_SIZE,
+			MPB_VERSION_RAID1, MPB_VERSION_LENGTH);
+	
+	if((dev->vol.map.raid_level == ISW_T_RAID0) &&
+			(dev->vol.map.num_members < 3))
+		strncpy((char *) isw_tmp->sig + MPB_SIGNATURE_SIZE,
+			MPB_VERSION_RAID0, MPB_VERSION_LENGTH);
+	
 	isw_tmp->mpb_size = size + dev_size;
 	isw_tmp->num_raid_devs--;
 	isw_tmp->check_sum = _checksum(isw_tmp);

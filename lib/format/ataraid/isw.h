@@ -40,19 +40,38 @@
 
 #define MPB_SIGNATURE	     "Intel Raid ISM Cfg Sig. "
 #define MPB_SIGNATURE_SIZE	(sizeof(MPB_SIGNATURE) - 1)
-#define MPB_VERSION_RAID2	"1.2.02"
-#define MPB_VERSION_RAID2_SIZE	(sizeof(MPB_VERSION_RAID2) - 1)
+#define MPB_VERSION_UNKNOWN "??????"
+#define MPB_VERSION_RAID0 "1.0.00"
+#define MPB_VERSION_RAID1 "1.1.00"
+#define MPB_VERSION_MUL_VOLS "1.2.00"
+#define MPB_VERSION_3OR4_DISK_ARRAY "1.2.01"
+#define MPB_VERSION_RAID5 "1.2.02"
+#define MPB_VERSION_5OR6_DISK_ARRAY "1.2.04"
 #define MAX_SIGNATURE_LENGTH  32
+#define MPB_VERSION_LENGTH 6
 #define MAX_RAID_SERIAL_LEN   16
 #define ISW_DISK_BLOCK_SIZE  512
 #define TYPICAL_MPBSIZE 1024
 
-#define RAID_DS_JOURNAL 259
+#define RAID_DS_JOURNAL 264
 #define MIGR_OPT_SPACE  4096
 #define RAID_VOLUME_RESERVED_BLOCKS (RAID_DS_JOURNAL+MIGR_OPT_SPACE)
 #define RAID_DISK_RESERVED_BLOCKS 417
 #define DISK_RESERVED_BLOCKS (RAID_DISK_RESERVED_BLOCKS+RAID_VOLUME_RESERVED_BLOCKS)
 #define UNKNOWN_SCSI_ID ((uint32_t)~0)
+
+static char * mpb_versions[] = 
+{
+	(char *) MPB_VERSION_UNKNOWN, 
+	(char *) MPB_VERSION_RAID0,
+	(char *) MPB_VERSION_RAID1,
+	(char *) MPB_VERSION_MUL_VOLS,
+	(char *) MPB_VERSION_3OR4_DISK_ARRAY,
+	(char *) MPB_VERSION_RAID5,
+	(char *) MPB_VERSION_5OR6_DISK_ARRAY,
+};
+
+#define MPB_VERSION_LAST mpb_versions[sizeof(mpb_versions)/sizeof(char*) - 1]
 
 /* Disk configuration info. */
 struct isw_disk {
@@ -112,7 +131,7 @@ struct isw_map {
 	uint8_t num_domains;
 	uint8_t failed_disk_num;
 #define	ISW_DEV_NONE_FAILED	255
-	uint8_t ddf;
+	uint8_t ddf; // not used, should be set to 1
 
 	uint32_t filler[7];	// expansion area
 	uint32_t disk_ord_tbl[1];	/* disk_ord_tbl[num_members],
@@ -175,6 +194,7 @@ struct isw {
 	/* 0x2C - 0x2F  Incremented each time this array's MPB is written */
 	uint32_t generation_num;
 	uint32_t error_log_size;	/* 0x30 - 0x33 in bytes */
+#define MPB_ATTRIB_CHECKSUM_VERIFY 0x80000000
 	uint32_t attributes;	/* 0x34 - 0x37 */
 
 	uint8_t num_disks;	/* 0x38 Number of configured disks */

@@ -1998,10 +1998,8 @@ find_spare(struct lib_context *lc, struct raid_set *rs,
 					if (spare_rd->di->sectors >=
 					    rd->di->sectors &&
 					    (!closest ||
-					     closest->di->sectors <
-					     rd->di->sectors)) {
-						if (spare_rd->di->sectors ==
-						    rd->di->sectors) {
+					     spare_rd->di->sectors < closest->di->sectors)) {
+						if (spare_rd->di->sectors == rd->di->sectors) {
 							/* Match */
 							closest = spare_rd;
 							break;
@@ -2028,8 +2026,8 @@ find_spare(struct lib_context *lc, struct raid_set *rs,
 						list_for_each_entry(spare_rd, &tmp_spare_rs->devs, devs) {
 							/* Simple check of size. */
 							if ((spare_rd->di->sectors >= rd->di->sectors) &&
-							    (!closest == NULL ||
-							     closest->di->sectors < rd->di->sectors)) {
+							    (!closest ||
+							     spare_rd->di->sectors < closest->di->sectors)) {
 								if (spare_rd->di->sectors == rd->di->sectors) {
 									/* match */
 									closest = spare_rd;
@@ -2044,6 +2042,7 @@ find_spare(struct lib_context *lc, struct raid_set *rs,
 			}
 		}
 	}
+
 
 	/* Global search. */
 	if (closest) {

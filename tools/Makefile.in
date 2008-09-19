@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2004-2005  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
+# Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
 #
 # See file LICENSE at the top of this source tree for license information.
 #
@@ -56,7 +56,7 @@ endif
 
 dmraid:	$(OBJECTS) $(top_srcdir)/lib/libdmraid.a
 	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) -L$(top_srcdir)/lib \
-	      -L$(DESTDIR)/lib $(DMRAIDLIBS) $(LIBS)
+	      -L$(DESTDIR)$(libdir) $(DMRAIDLIBS) $(LIBS) 
 
 install_dmraid_tools: $(TARGETS)
 	@echo "Installing $(TARGETS) in $(sbindir)"; \

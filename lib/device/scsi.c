@@ -110,7 +110,7 @@ get_scsi_serial(struct lib_context *lc, int fd, struct dev_info *di,
 		}
 
 		ret = ret &&
-		     (di->serial = dbg_strdup(remove_white_space (lc, (char *) &response[p->start + 1], serial_len)));
+		     (di->serial = dbg_strdup((char *) &response[p->start + 1]));
 	}
 
 	dbg_free(response);

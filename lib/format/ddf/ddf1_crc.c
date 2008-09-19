@@ -16,7 +16,6 @@
 #include "ddf1.h"
 #include "ddf1_crc.h"
 #include "ddf1_lib.h"
-#include "zlib.h"
 
 #define DM_BYTEORDER_SWAB
 #include <datastruct/byteorder.h>

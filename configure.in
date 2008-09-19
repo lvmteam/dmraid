@@ -60,7 +60,7 @@ if test x$KLIBC != xyes; then
 fi
 
 dnl -- prefix is /usr by default, the exec_prefix default is setup later
-AC_PREFIX_DEFAULT(/usr)
+AC_PREFIX_DEFAULT(/usr/share)
 
 dnl -- setup the ownership of the files
 AC_ARG_WITH(user,
