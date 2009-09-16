@@ -2,8 +2,9 @@
  * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
- * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * Copyright (C) 2007, 2009   Intel Corporation. All rights reserved.
  * November, 2007 - additions for Create, Delete, Rebuild & Raid 10. 
+ * April, 2009 - dmreg.h file included
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -21,7 +22,7 @@
 #include <dmraid/format.h>
 #include <dmraid/metadata.h>
 #include <dmraid/reconfig.h>
-
+#include <dmraid/dmreg.h>
 /*
  * Library init/exit
  */

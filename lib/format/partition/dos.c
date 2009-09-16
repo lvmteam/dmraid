@@ -202,9 +202,9 @@ _create_rs_and_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	return 1;
 
-      free_di:
+free_di:
 	free_dev_info(lc, r->di);
-      free_raid_dev:
+free_raid_dev:
 	free_raid_dev(lc, &r);
 
 	return 0;
@@ -290,7 +290,7 @@ group_rd_extended(struct lib_context *lc, struct raid_dev *rd,
 
 	ret = 1;
 
-      out:
+out:
 	dbg_free(dos);
 	return ret;
 }

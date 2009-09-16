@@ -169,6 +169,7 @@ enum action {
 	PARTCHAR = 0x20000000,
 
 #endif
+	RMPARTITIONS = 0x40000000,
 };
 
 /* Arguments allowed ? */

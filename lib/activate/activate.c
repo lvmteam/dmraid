@@ -2,9 +2,15 @@
  * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
- * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * Copyright (C) 2007,2009   Intel Corporation. All rights reserved.
  * November, 2007 - additions for Create, Delete, Rebuild & Raid 10.
- *
+ * March, 2008 - additions for hot-spare check
+ * August, 2008 - check before Activation
+ * January, 2009 - additions for Activation, Rebuild check
+ * April, 2009 - automatic un/registration added
+ * April, 2009 -Activation array in degraded state added
+ * May, 2009 - fix for wrong error_target place in device-mapper table
+ * 
  * See file LICENSE at the top of this source tree for license information.
  */
 
@@ -18,13 +24,15 @@
 static int
 valid_rd(struct raid_dev *rd)
 {
-	return S_OK(rd->status) && !T_SPARE(rd);
+	return (S_OK(rd->status) || S_INCONSISTENT(rd->status) ||
+		S_NOSYNC(rd->status)) && !T_SPARE(rd);
 }
 
 static int
 valid_rs(struct raid_set *rs)
 {
-	return S_OK(rs->status) && !T_SPARE(rs);
+	return (S_OK(rs->status) || S_INCONSISTENT(rs->status)||
+		S_NOSYNC(rs->status)) && !T_SPARE(rs);
 }
 
 /* Return rounded size in case of unbalanced mappings */
@@ -32,6 +40,21 @@ static uint64_t
 maximize(struct raid_set *rs, uint64_t sectors, uint64_t last, uint64_t min)
 {
 	return sectors > min ? min(last, sectors) : last;
+}
+
+/* Find biggest device */
+static uint64_t
+_biggest(struct raid_set *rs)
+{
+	uint64_t ret = 0;
+	struct raid_dev *rd;
+
+	list_for_each_entry(rd, &rs->devs, devs) {
+		if (!T_SPARE(rd) && rd->sectors > ret)
+                	ret = rd->sectors;
+	}
+
+	return ret;
 }
 
 /* Find smallest set/disk larger than given minimum. */
@@ -50,7 +73,7 @@ _smallest(struct lib_context *lc, struct raid_set *rs, uint64_t min)
 			ret = maximize(rs, rd->sectors, ret, min);
 	}
 
-	return ret == (uint64_t) ~ 0 ? 0 : ret;
+	return ret == (uint64_t) ~0 ? 0 : ret;
 }
 
 /*
@@ -290,7 +313,7 @@ dm_raid0(struct lib_context *lc, char **table, struct raid_set *rs)
 
 	return stripes ? 1 : 0;
 
-      err:
+     err:
 	return log_alloc_err(lc, __func__);
 }
 
@@ -391,6 +414,11 @@ _dm_raid1_bol(struct lib_context *lc, char **table,
 	      struct raid_set *rs,
 	      uint64_t sectors, unsigned int mirrors, int need_sync)
 {
+	/*
+	 * Append the flag/feature required for dmraid1
+	 * event handling in the kernel driver here for RHEL5.
+	 * In mainline, dm-raid1 handles it, in RHEL5, it's dm-log.
+	 */
 	return (p_fmt(lc, table, "0 %U %s core 2 %u %s %u",
 		      sectors, get_dm_type(lc, t_raid1),
 		      calc_region_size(lc, sectors),
@@ -429,6 +457,7 @@ dm_raid1(struct lib_context *lc, char **table, struct raid_set *rs)
 	 * drive (i.e. the master) to the other mirrors.
 	 */
 	need_sync = rs_need_sync(rs);
+	rebuild_drive.data.i32 = -1;
 	if (need_sync && !get_rebuild_drive(lc, rs, &rebuild_drive))
 		return 0;
 
@@ -497,7 +526,7 @@ dm_raid1(struct lib_context *lc, char **table, struct raid_set *rs)
 	if (p_fmt(lc, table, " 1 handle_errors"))
 		return 1;
 
-      err:
+err:
 	return log_alloc_err(lc, __func__);
 }
 
@@ -515,6 +544,7 @@ _dm_raid45_bol(struct lib_context *lc, char **table, struct raid_set *rs,
 	struct handler_info rebuild_drive;
 
 	/* Get drive as rebuild target. */
+	rebuild_drive.data.i32 = -1;
 	if (need_sync && !get_rebuild_drive(lc, rs, &rebuild_drive))
 		return 0;
 
@@ -527,18 +557,190 @@ _dm_raid45_bol(struct lib_context *lc, char **table, struct raid_set *rs,
 		     rs->stride, members, rebuild_drive.data.i32);
 }
 
+/* Create "error target" name based on raid set name. */
+static char *err_target_name(struct raid_set *rs)
+{
+	char *ret;
+	static const char *_err_target = "_err_target";
+
+	if ((ret = dbg_malloc(strlen(rs->name) + strlen(_err_target) + 1)))
+		sprintf(ret, "%s%s", rs->name, _err_target);
+
+	return ret;
+}
+
+/*
+ * Create "error target" device to replace missing
+ * disk path by "error target" in order to avoid any
+ * further access to the real (unavailable) device.
+ */
+static char *
+create_error_target(struct lib_context *lc, struct raid_set *rs) 
+{
+	uint64_t err_targ_size;
+	char *err_name, *path = NULL, *table;
+
+	/* "error target" should be bigger than the biggest device in the set */
+	err_targ_size = _biggest(rs) + 1;
+	
+	/* create "error target" name based on raid set name*/
+	if (!(err_name = err_target_name(rs))) {
+		log_alloc_err(lc, __func__);
+		goto err;
+	}
+
+	/* Allocate memory for "error target" table. */
+	if ((table = dbg_malloc(ERROR_TARG_TABLE_LEN)))
+		sprintf(table, "0 %llu error",
+			(long long unsigned) err_targ_size);
+	else {
+		log_alloc_err(lc, __func__);
+		dbg_free(err_name);
+		goto err;
+	}
+
+	/* Create "error target" in device-mapper. */
+	if (dm_create(lc, rs, table, err_name))
+		path = mkdm_path(lc, err_name);
+	
+	dbg_free(err_name);
+	dbg_free(table);
+   err:
+	return path;
+}
+
+/* Delete "error target" device */
+void delete_error_target(struct lib_context *lc, struct raid_set *rs) 
+{
+	char *err_name;
+
+	/* Create "error target" name based on raid set name. */
+	if ((err_name = err_target_name(rs))) {
+		/* Remove "error target" form device-mapper. */
+		dm_remove(lc, rs, err_name);
+		dbg_free(err_name);
+	} else
+		log_alloc_err(lc, __func__);
+}
+
+/* Alloc a dummy rd to insert for a missing drive. */
+static struct raid_dev *add_rd_dummy(struct lib_context *lc,
+				     struct raid_dev *rd_ref,
+				     struct list_head *rd_list, char *path)
+{
+	struct raid_dev *rd = NULL;
+	int area_size = rd_ref->meta_areas->size;
+
+	/* Create dummy rd for error_target. */
+	if ((rd = alloc_raid_dev(lc, __func__))) {
+		rd->name = NULL;
+		rd->fmt = rd_ref->fmt;
+		rd->status = s_inconsistent;
+		rd->type = t_undef;
+		rd->sectors = rd_ref->sectors;
+		rd->offset = rd_ref->offset;
+		rd->areas = rd_ref->areas;
+
+		rd->di = alloc_dev_info(lc, path);
+		if (!rd->di)
+			goto err;
+
+		rd->meta_areas = alloc_meta_areas(lc, rd, rd->fmt->name, 1);
+		if (!rd->meta_areas)
+			goto err;				
+            
+		rd->meta_areas->size = area_size;
+		rd->meta_areas->offset = rd_ref->meta_areas->offset;     
+
+		rd->meta_areas->area = 
+				alloc_private(lc, rd->fmt->name, area_size);
+		if (!rd->meta_areas->area)
+			goto err;
+	    
+		memcpy(rd->meta_areas->area, rd_ref->meta_areas->area, area_size);
+	
+		list_add_tail(&rd->devs, rd_list);
+	}
+
+	return rd;
+err:
+	free_raid_dev(lc, &rd);
+	return NULL;
+}
+
 static int
 dm_raid45(struct lib_context *lc, char **table, struct raid_set *rs)
 {
+	int ret;
 	uint64_t sectors = 0;
 	unsigned int members = get_dm_devs(rs, 0);
 	struct raid_dev *rd;
 	struct raid_set *r;
+	char *err_targ_path = NULL;
+    
+	/* If one disk is missing create error target to replace it. */
+	if (members != rs->found_devs) {
+		int i, ndev, idx;
+		struct raid_dev *rd_first, *rd_tmp;
+		struct handler_info info;
 
+		/* Get get number of disks from metadata handler. */	    
+		rd_first = list_entry(rs->devs.next, struct raid_dev, devs); 
+		if (rd_first->fmt->metadata_handler) {
+			ndev = rd_first->fmt->metadata_handler(lc,
+				 GET_NUMBER_OF_DEVICES, NULL, rs); 
+			if (ndev < 0)
+				LOG_ERR(lc, 0, "No devices in RAID set!");
+		} else
+			goto out;
+
+		/* Delete potentially existing error_target. */
+		delete_error_target(lc, rs);
+
+		/* Create error_target */
+		if (!(err_targ_path = create_error_target(lc, rs)))
+			LOG_ERR(lc, 0,
+				"Cannot create error target for missing"
+				" disk(s) in degraded array!");
+
+		/* Insert dummy rd(s) into rd list */		
+		i = 0;
+		list_for_each_entry_safe(rd, rd_tmp, &rs->devs, devs) {
+			info.data.ptr = rd;
+			idx = rd_first->fmt->metadata_handler(lc,
+				 GET_DEVICE_IDX, &info, rs); 
+			if (idx < 0)
+				LOG_ERR(lc, 0, "Can't get index of \"%s\"",
+					rd->di->path);
+
+			/* Insert dummy devices for any missing raid devices. */
+			while (i < idx) {
+				if (!add_rd_dummy(lc, rd_first, &rd->devs,
+						  err_targ_path))
+			        	goto err;
+
+				members++;
+				i++;
+			}
+
+			i++;
+		}
+
+		/* Insert any missing RAID devices after the last one found. */
+		while (i < ndev) {
+			if (!add_rd_dummy(lc, rd_first, &rs->devs,
+					  err_targ_path))
+		        	goto err;
+
+			members++;
+			i++;
+		}
+	}
+    
 	if (!(sectors = _smallest(lc, rs, 0)))
 		LOG_ERR(lc, 0, "can't find smallest RAID4/5 member!");
 
-	/* Adjust sectors with chunk size: only whole chunks count */
+	/* Adjust sectors with chunk size: only whole chunks count. */
 	sectors = sectors / rs->stride * rs->stride;
 
 	/*
@@ -552,7 +754,6 @@ dm_raid45(struct lib_context *lc, char **table, struct raid_set *rs)
 
 	/* Stacked RAID sets (for RAID50 etc.) */
 	list_for_each_entry(r, &rs->sets, list) {
-		int ret;
 		char *path;
 
 		if (!(path = mkdm_path(lc, r->name)))
@@ -565,16 +766,22 @@ dm_raid45(struct lib_context *lc, char **table, struct raid_set *rs)
 			goto err;
 	}
 
-	/* Lowest level RAID devices */
+	/* Lowest level RAID devices. */
 	list_for_each_entry(rd, &rs->devs, devs) {
-		if (!_dm_path_offset(lc, table, valid_rd(rd), rd->di->path,
-				     rd->offset))
+		if (!_dm_path_offset(lc, table, valid_rd(rd), 
+				     rd->di->path, rd->offset))
 			goto err;
 	}
 
+	if (err_targ_path)
+		dbg_free(err_targ_path);
+out:
 	return 1;
 
-      err:
+err:
+	if (err_targ_path)
+		dbg_free(err_targ_path);
+
 	return log_alloc_err(lc, __func__);
 }
 
@@ -589,22 +796,20 @@ static struct type_handler {
 	const enum type type;
 	int (*f) (struct lib_context * lc, char **table, struct raid_set * rs);
 } type_handler[] = {
-	{
-	t_undef, dm_undef},	/* Needs to stay here! */
-	{
-	t_partition, dm_partition}, {
-	t_spare, dm_spare}, {
-	t_linear, dm_linear}, {
-	t_raid0, dm_raid0}, {
-	t_raid1, dm_raid1}, {
-	t_raid4, dm_raid45}, {
-	t_raid5_ls, dm_raid45}, {
-	t_raid5_rs, dm_raid45}, {
-	t_raid5_la, dm_raid45}, {
-	t_raid5_ra, dm_raid45},
-		/* RAID types below not supported (yet) */
-	{
-t_raid6, dm_unsup},};
+	{ t_undef, dm_undef },	/* Needs to stay here! */
+	{ t_partition, dm_partition },
+	{ t_spare, dm_spare },
+	{ t_linear, dm_linear },
+	{ t_raid0, dm_raid0 },
+	{ t_raid1, dm_raid1 },
+	{ t_raid4, dm_raid45 },
+	{ t_raid5_ls, dm_raid45 },
+	{ t_raid5_rs, dm_raid45 },
+	{ t_raid5_la, dm_raid45 },
+	{ t_raid5_ra, dm_raid45 },
+	/* RAID types below not supported (yet) */
+	{ t_raid6, dm_unsup },
+};
 
 /* Retrieve type handler from array. */
 static struct type_handler *
@@ -640,35 +845,44 @@ libdmraid_make_table(struct lib_context *lc, struct raid_set *rs)
 enum dm_what { DM_ACTIVATE, DM_REGISTER };
 
 /* Register devices of the RAID set with the dmeventd. */
-/* REMOVEME: dummy functions once linking to the real ones. */
 #define	ALL_EVENTS 0xffffffff
 static int
-dm_register_for_event(char *a, char *b, int c)
+dm_register_for_event(char *dev_name, char *lib_name)
 {
+#ifdef	DMRAID_AUTOREGISTER
+	dm_register_device(dev_name, lib_name);
+#endif
 	return 1;
 }
 
 static int
-dm_unregister_for_event(char *a, char *b, int c)
+dm_unregister_for_event(char *dev_name, char *lib_name)
 {
+#ifdef	DMRAID_AUTOREGISTER
+	dm_unregister_device(dev_name, lib_name);
+#endif
 	return 1;
 }
 
+#define LIB_NAME_LENGTH 255
 static int
 do_device(struct lib_context *lc, struct raid_set *rs, int (*f) ())
 {
 	int ret = 0;
-	struct raid_dev *rd;
+	char lib_name[LIB_NAME_LENGTH];
 
 	if (OPT_TEST(lc))
 		return 1;
 
-	return 1;		/* REMOVEME: */
+        struct dmraid_format *fmt = get_format(rs);
 
-	list_for_each_entry(rd, &rs->devs, devs) {
-		if (!(ret = f("dmraid", rd->di->path, ALL_EVENTS)))
-			break;
-	}
+        if (fmt->name != NULL) {
+                strncpy(lib_name, "libdmraid-events-",LIB_NAME_LENGTH);
+                strncat(lib_name, fmt->name, LIB_NAME_LENGTH-strlen(fmt->name)-3);
+                strncat(lib_name, ".so", 3);
+
+                ret = f(rs->name, lib_name);
+        }
 
 	return ret ? 1 : 0;
 }
@@ -761,17 +975,22 @@ activate_subset(struct lib_context *lc, struct raid_set *rs, enum dm_what what)
 	if ((ret = (handler(rs))->f(lc, &table, rs))) {
 		if (OPT_TEST(lc))
 			display_table(lc, rs->name, table);
-		else if ((ret = dm_create(lc, rs, table)))
+		else if ((ret = dm_create(lc, rs, table, rs->name)))
 			log_print(lc, "RAID set \"%s\" was activated",
 				  rs->name);
-		else
+		else {
+            		/*
+			 * Error target must be removed
+		 	 * if activation did not succeed.
+		 	 */
+			delete_error_target(lc, rs);
 			log_print(lc, "RAID set \"%s\" was not activated",
 				  rs->name);
+		}
 	} else
 		log_err(lc, "no mapping possible for RAID set %s", rs->name);
 
 	free_string(lc, &table);
-
 	return ret;
 }
 
@@ -784,6 +1003,38 @@ activate_set(struct lib_context *lc, struct raid_set *rs, enum dm_what what)
 	if (!OPT_TEST(lc) && what == DM_ACTIVATE && dm_status(lc, rs)) {
 		log_print(lc, "RAID set \"%s\" already active", rs->name);
 		return 1;
+	}
+
+	/* Before activating the whole superset, */
+	/* we should check that the metdata handler allows it */
+	if ((what == DM_ACTIVATE) && T_GROUP(rs)) {
+		struct raid_dev *rd = list_entry(rs->devs.next, typeof(*rd),
+						devs);
+		if (rd->fmt->metadata_handler) {
+			if (!rd->fmt->metadata_handler(lc, ALLOW_ACTIVATE, 
+							NULL, rs)) {
+				log_err(lc, 
+					"RAID set \"%s\" can't be activated", 
+					 rs->name);
+				return 0; 
+			}
+		}
+	}
+
+	/* Before activating the whole superset, */
+	/* we should check that the metdata handler allows it */
+	if ((what == DM_ACTIVATE) && T_GROUP(rs)) {
+		struct raid_dev *rd = list_entry(rs->devs.next, typeof(*rd),
+						devs);
+		if (rd->fmt->metadata_handler) {
+			if (!rd->fmt->metadata_handler(lc, ALLOW_ACTIVATE, 
+							NULL, rs)) {
+				log_err(lc, 
+					"RAID set \"%s\" can't be activated", 
+					 rs->name);
+				return 0; 
+			}
+		}
 	}
 
 	/* Recursively walk down the chain of stacked RAID sets */
@@ -810,10 +1061,15 @@ deactivate_superset(struct lib_context *lc, struct raid_set *rs,
 	if (OPT_TEST(lc))
 		log_print(lc, "%s [%sactive]", rs->name, status ? "" : "in");
 	else if (status)
-		ret = dm_remove(lc, rs);
+		ret = dm_remove(lc, rs, rs->name);
 	else
 		log_print(lc, "RAID set \"%s\" is not active", rs->name);
-
+    
+	/*
+	 * Special case for degraded raid5 array, 
+	 * activated with error target device .
+	 */
+	delete_error_target(lc, rs);
 	return ret;
 }
 
@@ -850,12 +1106,12 @@ change_set(struct lib_context *lc, enum activate_type what, void *v)
 	switch (what) {
 	case A_ACTIVATE:
 		ret = activate_set(lc, rs, DM_ACTIVATE) &&
-			activate_set(lc, rs, DM_REGISTER);
+		      activate_set(lc, rs, DM_REGISTER);
 		break;
 
 	case A_DEACTIVATE:
 		ret = deactivate_set(lc, rs, DM_REGISTER) &&
-			deactivate_set(lc, rs, DM_ACTIVATE);
+		      deactivate_set(lc, rs, DM_ACTIVATE);
 		break;
 
 	case A_RELOAD:

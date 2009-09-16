@@ -552,7 +552,7 @@ _find_set(struct lib_context *lc,
 		}
 	}
 
-      out:
+out:
 	log_dbg(lc, "_find_set: %sfound %s", ret ? "" : "not ", name);
 
 	return ret;
@@ -609,10 +609,10 @@ find_or_alloc_raid_set(struct lib_context *lc,
 	if (f_create)
 		f_create(rs, private);
 
-      out:
+out:
 	return rs;
 
-      err:
+err:
 	dbg_free(rs);
 	log_alloc_err(lc, __func__);
 
@@ -1454,11 +1454,10 @@ create_raidset(struct lib_context *lc, struct raid_set_descr *rsd)
 
 	return rs;
 
-      err:
+err:
 	free_raidset(lc, rs);
 	return NULL;
 }
-
 
 int
 rebuild_config_raidset(struct lib_context *lc, struct raid_set *rs)
@@ -1576,7 +1575,8 @@ group_set(struct lib_context *lc, char **argv)
 		 */
 		if (!sets[1])
 			LOG_ERR(lc, 0,
-				"either the required RAID set not found or more options required");
+				"either the required RAID set not "
+				"found or more options required");
 
 		if (sets[1][0] != '-')
 			LOG_ERR(lc, 0,
@@ -1830,7 +1830,7 @@ _dir(struct lib_context *lc, const char *handler)
 	if (!_chdir(lc, dir))
 		return dir;
 
-      out:
+out:
 	dbg_free(dir);
 	return NULL;
 }
@@ -1896,13 +1896,15 @@ delete_raidsets(struct lib_context *lc)
 				status = dm_status(lc, rs1);
 				if (status == 1)
 					LOG_ERR(lc, 0,
-						"%s is active and cannot be deleted",
-						rs1->name);
+						"%s is active and cannot "
+						"be deleted", rs1->name);
 
 				n++;
 			}
 			if (n > 1) {
-				printf("\nAbout to delete the raid super-set \"%s\" with the following RAID sets\n", rs->name);
+				printf("\nAbout to delete the raid super-set "
+				       "\"%s\" with the following RAID sets\n",
+				       rs->name);
 				list_for_each_entry(rs1, &rs->sets, list)
 					printf("%s\n", rs1->name);
 			}
@@ -1915,10 +1917,12 @@ delete_raidsets(struct lib_context *lc)
 			else
 				LOG_ERR(lc, 0, "coding error");
 		}
-		else {
+		else
 			printf("\nAbout to delete RAID set %s\n", rs->name);
-		}
-		printf("\nWARNING: The metadata stored on the raidset(s) will not be accessible after deletion\n");
+
+		printf("\nWARNING: The metadata stored on the raidset(s) "
+		       "will not be accessible after deletion\n");
+
 		if (!yes_no_prompt(lc, "Do you want to continue"))
 			return 0;
 
@@ -2146,6 +2150,9 @@ lib_perform(struct lib_context *lc, enum action action,
 
 	if (get_metadata(lc, action, p, argv))
 		ret = p->post(lc, p->pre ? p->pre(p->arg) : p->arg);
+
+	if (ret && (RMPARTITIONS & action))
+		process_sets(lc, remove_device_partitions, 0, SETS);
 
 	if (LOCK == p->lock)
 		unlock_resource(lc, NULL);

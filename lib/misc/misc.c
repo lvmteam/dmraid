@@ -273,7 +273,7 @@ led(const char *path, int status)
 	/* Check if sgpio app is installed. */
 	if ((fd = popen("which sgpio", "r"))) {
 		sgpio = fscanf(fd, "%s", com);
-		close(fd);
+		fclose(fd);
 	}
 
 	if (sgpio != 1) {

@@ -265,6 +265,7 @@ extern int partitioned_set(struct lib_context *lc, void *rs);
 extern int base_partitioned_set(struct lib_context *lc, void *rs);
 extern void discover_raid_devices(struct lib_context *lc, char **devices);
 extern void discover_partitions(struct lib_context *lc);
+extern int dso_get_members(struct lib_context *lc, int arg);
 extern unsigned int count_devices(struct lib_context *lc, enum dev_type type);
 extern enum status rd_status(struct states *states, unsigned int status,
 			     enum compare cmp);

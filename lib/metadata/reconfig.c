@@ -7,8 +7,12 @@
  * Copyright (C) 2006-2008 Heinz Mauelshagen, Red Hat GmbH
  * 		           All rights reserved
  *
- * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * Copyright (C) 2007,2009   Intel Corporation. All rights reserved.
  * November, 2007 - additions for Create, Delete, Rebuild & Raid 10.
+ * March, 2008 - additions for hot-spare check
+ * August, 2008 - check before Rebuild
+ * January, 2009 - additions for Activation, Rebuild check
+ * May, 2009 - fix for metadata update during rebuild
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -17,6 +21,8 @@ int dso = 0;
 
 #define	add_to_log(entry, log)	\
 	list_add_tail(&(entry)->changes, &(log));
+
+#define	LIB_NAME_LENGTH	255
 
 static inline int
 alloc_entry(struct change **entry, struct lib_context *lc)
@@ -43,7 +49,7 @@ dso_end_rebuild(struct lib_context *lc, int arg)
 		struct raid_set *rs = NULL;
 
 		rs = find_group(lc, sub_rs);
-		if ((rs) && S_OK(sub_rs->status)) {
+		if ((rs) && (S_OK(sub_rs->status) || S_NOSYNC(sub_rs->status))) {
 			struct raid_dev *check_rd = RD_RS(sub_rs);
 			enum status state = s_ok;
 
@@ -89,11 +95,14 @@ show_raid_stack(struct lib_context *lc)
 	list_for_each_entry(_rs, LC_RS(lc), list) {
 		struct raid_dev *_rd;
 		struct raid_set *_rss;
+
 		log_dbg(lc, "RM: GROUP name: \"%s\"", _rs->name);
+
 		list_for_each_entry(_rd, &_rs->devs, devs) {
 			log_dbg(lc, "RM: GROUP_DISK name: \"%s\"",
 				(_rd->di) ? _rd->di->path : "UNKNOWN");
 		}
+
 		list_for_each_entry(_rss, &_rs->sets, list) {
 			struct raid_dev *_rsd;
 			struct raid_set *_rsss;
@@ -128,16 +137,16 @@ add_dev_to_raid(struct lib_context *lc, struct raid_set *rs,
 {
 	int ret = 0;
 	const char *vol_name = lc->options[LC_REBUILD_SET].arg.str;
-
 	struct raid_set *sub_rs, *crs;
 	struct raid_dev *check_rd;
-
-
 	LIST_HEAD(log);		/* playback log */
+
 	sub_rs = find_set(lc, NULL, vol_name, FIND_ALL);
 	check_rd = list_entry(rs->devs.next, typeof(*rd), devs);
 
 	if (rd) {
+		struct handler_info info;
+
 		if (check_rd->fmt->create) {
 			struct raid_dev *tmp;
 			if ((ret = check_rd->fmt->create(lc, rs))) {
@@ -153,8 +162,6 @@ add_dev_to_raid(struct lib_context *lc, struct raid_set *rs,
 			log_print(lc, "create failed fmt handler missing\n");
 			goto err;
 		}
-
-		struct handler_info info;
 
 		if (lc->options[LC_REBUILD_SET].opt) {
 			if (check_rd->fmt->metadata_handler) {
@@ -174,16 +181,18 @@ add_dev_to_raid(struct lib_context *lc, struct raid_set *rs,
 			int idx = 0;
 			list_for_each_entry_safe(before_rd, tmp_rd,
 						 &sub_rs->devs, devs) {
-				if ((idx == info.data.i32)
-				    && (&rd->devs != &before_rd->devs)) {
+				if ((idx == info.data.i32) &&
+				    &rd->devs != &before_rd->devs) {
 					list_del(&rd->devs)
 						list_add_tail(&rd->devs,
 							      &before_rd->devs);
 					break;
 				}
+
 				idx++;
 			}
 		}
+
 		show_raid_stack(lc);
 		log_dbg(lc, "RM: REBUILD drivie #: \"%d\"", info.data);
 		show_raid_stack(lc);
@@ -204,9 +213,8 @@ add_dev_to_raid(struct lib_context *lc, struct raid_set *rs,
 
 	if ((sub_rs = find_set(lc, NULL, vol_name, FIND_ALL))) {
 		sub_rs->status |= s_nosync;
-		list_for_each_entry(crs, &sub_rs->sets, list) {
+		list_for_each_entry(crs, &sub_rs->sets, list)
 			crs->status |= s_nosync;
-		}
 	}
 
 	ret = change_set(lc, A_RELOAD, rs);
@@ -214,24 +222,48 @@ add_dev_to_raid(struct lib_context *lc, struct raid_set *rs,
 	if (!ret)
 		goto err;
 
+#ifdef DMRAID_AUTOREGISTER
+	/* if call is from dmraid (not from dso) */
 	if (!dso) {
+		int pending;
+		char lib_name[LIB_NAME_LENGTH] = { 0 };
+		struct dmraid_format *fmt = get_format(sub_rs);
+
 #ifdef DMRAID_LED
 		struct raid_dev *_rd;
-		list_for_each_entry(_rd, &sub_rs->devs, devs)
-			led(strrchr(_rd->di->path, '/') + 1, LED_REBUILD);
-#endif
 
-		if (check_rd->fmt->metadata_handler)
-			check_rd->fmt->metadata_handler(lc,
-							UPDATE_REBUILD_STATE,
-							NULL, (void *) rs);
+		list_for_each_entry(_rd, &sub_rs->devs, devs)
+				    led(strrchr(_rd->di->path, '/') + 1,
+					LED_REBUILD);
+#endif
+		/*
+		 * If raid is registered with libdmraid-events 
+		 * leave NOSYNC state, else update
+		 * metadata on disks to OK state.
+		 */
+		/* Create lib-events library name */
+		if (fmt->name) {
+			strncpy(lib_name, "libdmraid-events-", LIB_NAME_LENGTH);
+			strncat(lib_name, fmt->name,
+				LIB_NAME_LENGTH-strlen(fmt->name)-3);
+			strncat(lib_name, ".so", 3);
+		} else
+			goto err;
+
+		/* Check registration */
+		if (!dm_monitored_events(&pending, sub_rs->name, lib_name)) {
+			/* If NOT registered update metadata to OK state. */
+			if (check_rd->fmt->metadata_handler)
+				check_rd->fmt->metadata_handler(lc, UPDATE_REBUILD_STATE, NULL, (void *) rs);
+		}
 	}
+#endif
 
 	/* End transaction */
 	end_log(lc, &log);
 	return 0;
 
-      err:
+err:
 	revert_log(lc, &log);
 	return ret;
 }
@@ -409,7 +441,7 @@ del_dev_in_raid1(struct lib_context *lc, struct raid_set *rs,
 	end_log(lc, &log);
 	return 0;
 
-      err:
+err:
 	revert_log(lc, &log);
 	return ret;
 }
@@ -479,7 +511,8 @@ del_dev_in_set(struct lib_context *lc, struct raid_set *rs, struct raid_dev *rd)
 }
 
 /*
- * Find group of raid_set to which sub_rs belongs 
+ * Find group of raid_set to which sub_rs belongs.
+ *
  * Serves one level stacked raids.
  */
 struct raid_set *
@@ -493,7 +526,8 @@ find_group(struct lib_context *lc, struct raid_set *sub_rs)
 				if (r == sub_rs)
 					return tmp;
 				else if (SETS(r)) {
-					list_for_each_entry(r2, &r->sets, list) {
+					list_for_each_entry(r2, &r->sets,
+							    list) {
 						if (r2 == sub_rs)
 							return tmp;
 					}
@@ -524,7 +558,8 @@ _rebuild_raidset(struct lib_context *lc, struct raid_set *sub_rs,
 		log_print(lc, "Rebuild: raid0 cannot be rebuild\n");
 		return 1;
 	}
-	/* FIXME - work-aroud for status reporting */
+
+	/* FIXME - work-around for status reporting */
 	if (S_BROKEN(sub_rs->status) ||
 	    S_INCONSISTENT(sub_rs->status)) {
 		if (lc->options[LC_REBUILD_DISK].opt == 0) {
@@ -543,10 +578,7 @@ _rebuild_raidset(struct lib_context *lc, struct raid_set *sub_rs,
 		enum status state = s_ok;
 
 		if (check_rd && (check_rd->fmt->metadata_handler))
-			state = check_rd->fmt->metadata_handler(lc,
-								GET_REBUILD_STATE,
-								NULL, (void *)
-								sub_rs);
+			state = check_rd->fmt->metadata_handler(lc, GET_REBUILD_STATE, NULL, (void *) sub_rs);
 
 		if (state != s_nosync) {
 			/* cannot rebuild */
@@ -557,6 +589,7 @@ _rebuild_raidset(struct lib_context *lc, struct raid_set *sub_rs,
 				  "Rebuild: cannot rebuild from current state!\n");
 			return 1;
 		}
+
 		driveRebuild = 0;
 	} else if (!(S_NOSYNC(sub_rs->status))) {
 		/* cannot rebuild */
@@ -583,57 +616,89 @@ _rebuild_raidset(struct lib_context *lc, struct raid_set *sub_rs,
 				&& lc->options[LC_REBUILD_DISK].opt)
 			       || rd, rd))) {
 		log_dbg(lc, "rebuild: raid \"%s\" rebuild finished\n",
-			set_name);
+                set_name);
+
+		/*
+		 * Special case for degraded raid5 array, 
+		 * activated with error target device.
+		 */
+		delete_error_target(lc, sub_rs);
 	} else {
 		/* error - raid failed to be rebuilded */
 		log_print(lc, "Rebuild: raid \"%s\" rebuild failed\n",
 			  set_name);
 		return 1;
 	}
+
 	return 0;
 }
 
+/*
+ * Before rebuilding the set, we should check
+ * that the metadata handler allows it.
+ */
+static int check_allow_rebuild(struct lib_context *lc, struct raid_set *rs,
+			       char *rs_name)
+{
+	struct raid_dev *rd = list_entry(rs->devs.next, typeof(*rd), devs);
+
+	if (!rd->fmt->metadata_handler ||
+	     rd->fmt->metadata_handler(lc, ALLOW_REBUILD, NULL, rs))
+		return _rebuild_raidset(lc, rs, rs_name);
+	else
+		LOG_ERR(lc, 0, "Can't rebuild RAID set \"%s\"", rs_name);
+}
 
 int
-rebuild_raidset(struct lib_context *lc, char *set_name)
+rebuild_raidset(struct lib_context *lc, char *rs_name)
 {
-	struct raid_set *sub_rs = NULL;
 	int ret = 0;
+	struct raid_set *sub_rs;
 
-	sub_rs = find_set(lc, NULL, set_name, FIND_ALL);
-	if (sub_rs) {
-		/* for stacked subsets go throu the stack to retrive the subsets that:
-		   - do not contain subsets
-		   - are eligible for rebuild 
+	sub_rs = find_set(lc, NULL, rs_name, FIND_ALL);
+	if (!sub_rs)
+		LOG_PRINT(lc, 0, "raid volume \"%s\" not found\n", rs_name);
+
+	/*
+	 * For stacked subsets go throu the stack to retrive the subsets that:
+	 * - do not contain subsets
+	 * - are eligible for rebuild 
+	 */
+	if (SETS(sub_rs)) {
+		int i;
+		/*
+		 * Ordered table of states: causes that sub-rs are rebuilt
+		 * is order of state that are present in this table.
 		 */
-		if (SETS(sub_rs)) {
-			enum status curr_state = s_ok;
-			struct raid_set *r = NULL;
+		enum status state_tbl[] = {
+			s_ok,
+			s_nosync,
+			s_broken | s_inconsistent,
+			/* TBD change to s_inconsisten 
+			   when the states are reported 
+			  in right way */
+		};
+		struct raid_set *rs;
 
-			/* check sub-set that are in Ok state */
-			curr_state = s_ok;
-
-			/* check for all subsets that have state equal curr_state */
-			list_for_each_entry(r, &sub_rs->sets, list) {
-				if (r->status & curr_state) {
-					ret |= _rebuild_raidset(lc, r,
-								set_name);
-				}
+		/* check sub-set that are in Ok state */
+		for (i = 0; i < ARRAY_SIZE(state_tbl); i++) {
+			/*
+			 * Check for all subsets that
+			 * have state equal state_tbl[i].
+			 */
+			list_for_each_entry(rs, &sub_rs->sets, list) {
+				if (rs->status & state_tbl[i])
+					/*
+					 * Before rebuilding the set, 
+					 * we should check that the
+					 * metadata handler allows it.
+					 */
+					ret |= check_allow_rebuild(lc, rs,
+								   rs_name);
 			}
-
-			/* TBD change to s_inconsisten when the states are reported in right way */
-			curr_state = s_broken | s_inconsistent;
-			list_for_each_entry(r, &sub_rs->sets, list) {
-				if (r->status & curr_state) {
-					ret |= _rebuild_raidset(lc, r,
-								set_name);
-				}
-			}
-		} else
-			ret |= _rebuild_raidset(lc, sub_rs, set_name);
-
+		}
 	} else
-		log_print(lc, "raid volume \"%s\" not found\n", set_name);
+		ret |= check_allow_rebuild(lc, sub_rs, rs_name);
 
 	return ret;
 }
@@ -657,16 +722,16 @@ write_set_spare(struct lib_context *lc, void *v)
 				r->name);
 	}
 
-	/* Write metadata to the RAID devices of a set */
-	list_for_each_entry(rd, &rs->devs, devs) {
-		/*
-		 * FIXME: does it make sense to try the rest of the
-		 *        devices in case we fail writing one ?
-		 */
-		if (!(T_GROUP(rs))) {
+	if (!T_GROUP(rs)) {
+		/* Write metadata to the RAID devices of a set */
+		list_for_each_entry(rd, &rs->devs, devs) {
+			/*
+			 * FIXME: does it make sense to try the rest of the
+			 *        devices in case we fail writing one ?
+			 */
 			if (!write_dev(lc, rd, 0)) {
-				log_err(lc,
-					"writing RAID device \"%s\", continuing",
+				log_err(lc, "writing RAID device \"%s\", "
+					    "continuing",
 					rd->di->path);
 				ret = 0;
 			}
@@ -675,8 +740,6 @@ write_set_spare(struct lib_context *lc, void *v)
 
 	return ret;
 }
-
-
 
 static int
 add_spare_dev_to_raid(struct lib_context *lc, struct raid_set *rs)
@@ -788,7 +851,6 @@ hot_spare_add(struct lib_context *lc, struct raid_set *rs)
 
 	ret_func = fmt_hand->metadata_handler(lc, CHECK_HOT_SPARE, NULL,
 					      (void *) rs);
-
 	if (!ret_func)
 		LOG_ERR(lc, 0,
 			"hot-spare cannot be added to existing raid "

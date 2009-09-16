@@ -1,42 +1,6 @@
 
-Changelog from dmraid 1.0.0.rc14 to 1.0.0.rc15		2007.09.17
-
-FIXES:
-------
-o jm.c: fixed name handling, when whitespace added to end of name
-o nv.c: fixed endian bug (Bryn Reeves)
-
-
-FEATURES:
----------
-o added support for RAID set create/remove/rebuild and
-  event handling (for isw metadata format initially)
-
-
-MISCELANIOUS:
--------------
-
-
-
-Changelog from dmraid 1.0.0.rc13 to 1.0.0.rc14		2006.11.08
-
-FIXES:
-------
-o asr.c: fixed Adaptec HostRAID DDF1 discovery
-o ddf1_crc.c: added crc() routine to avoid linking to zlib alltogether,
-	      because Ubuntu had problems with this
-
-
-FEATURES:
----------
-
-
-MISCELANIOUS:
--------------
-
-
-
 Changelog from dmraid 1.0.0.rc12 to 1.0.0.rc13		2006.10.11
+
 
 FIXES:
 ------
@@ -46,6 +10,7 @@ o metadata.c: rd_type() returned wrong unified_type for asr
 
 
 Changelog from dmraid 1.0.0.rc11 to 1.0.0.rc12		2006.09.22
+
 
 FIXES:
 ------
@@ -58,6 +23,7 @@ FEATURES:
 o added SNIA DDF1 support (IBM)
 o added reload functionality to devmapper.c (IBM)
 o sil.[ch]: added JBOD support
+
 
 MISCELANIOUS:
 -------------

@@ -48,6 +48,7 @@ extern int add_dev_to_set(struct lib_context *lc, struct raid_set *rs,
 			  struct raid_dev *rd);
 extern int del_dev_in_set(struct lib_context *lc, struct raid_set *rs,
 			  struct raid_dev *rd);
+extern int dso_end_rebuild(struct lib_context *lc, int arg);
 extern void end_log(struct lib_context *lc, struct list_head *log);
 extern int revert_log(struct lib_context *lc, struct list_head *log);
 extern int hot_spare_add(struct lib_context *lc, struct raid_set *rs);

@@ -29,7 +29,7 @@ int ddf1_cvt_config_record(struct lib_context *lc, struct dev_info *di,
 int ddf1_cvt_spare_record(struct lib_context *lc, struct dev_info *di,
 			  struct ddf1 *ddf1, int idx);
 void ddf1_cvt_records(struct lib_context *lc, struct dev_info *di,
-		      struct ddf1 *ddf1, int in_cpu_format);
+		 struct ddf1 *ddf1, int in_cpu_format);
 void ddf1_cvt_all(struct lib_context *lc, struct ddf1 *ddf1,
 		  struct dev_info *di);
 

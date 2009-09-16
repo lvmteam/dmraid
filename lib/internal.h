@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <dmraid/lib_context.h>
+#include <dmraid/dmreg.h>
 #include <dmraid/list.h>
 #include <dmraid/locking.h>
 #include "log/log.h"

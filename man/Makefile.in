@@ -8,7 +8,7 @@ srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
 
-MAN8=dmraid.8
+MAN8=dmraid.8 dmevent_tool.8
 MAN8DIR=${mandir}/man8
 
 include $(top_srcdir)/make.tmpl

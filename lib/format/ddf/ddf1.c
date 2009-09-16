@@ -467,7 +467,7 @@ read_extended(struct lib_context *lc, struct dev_info *di, struct ddf1 *ddf1)
 
 	return 1;
 
-      bad:
+bad:
 	ddf1->vds = NULL;
 	ddf1->pds = NULL;
 	cond_free(ddf1->cfg);
@@ -538,9 +538,9 @@ try_to_find_ddf1(struct lib_context *lc,
 	if (read_extended(lc, di, ddf1))
 		return ddf1;
 
-      bad:
+bad:
 	dbg_free(ddf1);
-      err:
+err:
 	return NULL;
 }
 
@@ -698,7 +698,7 @@ name(struct lib_context *lc, struct ddf1 *ddf1, struct raid_dev *rd)
 				vd->guid[i + 2], vd->guid[i + 3]);
 	}
 
-      out:
+out:
 	return dbg_strdup(buf);	/* Only return the needed allocation */
 }
 

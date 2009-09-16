@@ -8,6 +8,7 @@ dmraid \- discover, configure and activate software (ATA)RAID
  [-f|--format FORMAT[,FORMAT...]]
  [{-P|--partchar} CHAR]
  [-p|--no_partitions]
+ [-Z|--rm_partitions]
  [--separator SEPARATOR]
  [-t|--test]
  [RAID-set...]
@@ -110,7 +111,11 @@ In case metadata format handlers are chosen with
 Useful if devices have multiple metadata signatures.
 When activating RAID sets,
 .B -p
-disables the activation of partitions on them.
+disables the activation of partitions on them, and
+.B -Z
+will make dmraid tell the kernel to remove the partitions from the disks
+underlying the set, ie if sda is part of the set, remove sda1, sda2, etc.
+This prevents applications from directly accessiong the disks bypassing dmraid.
 RAID set names given on command line don't need to be fully specified
 (eg, "dmraid -ay sil" would activate all discovered Silicon Image Medley
 RAID sets).

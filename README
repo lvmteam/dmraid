@@ -1,16 +1,16 @@
 ********************************************************************************
 *                                                                              *
-*   dmraid (Device-Mapper Software RAID support tool) 1.0.0.rc15  2006.09.17   *
+*   dmraid (Device-Mapper Software RAID support tool) 1.0.0.rc16  2006.09.16   *
 *                                                                              *
-*   (C)opyright 2004-2008  Heinz Mauelshagen, Red Hat GmbH.                    *
+*   (C)opyright 2004-2009  Heinz Mauelshagen, Red Hat GmbH.                    *
 *   All rights reserved.                                                       *
 *                                                                              *
 ********************************************************************************
 
 Feature set:
 ------------
-This software discovers, activates, deactivates and displays properties
-of software RAID sets (eg, ATARAID) and contained DOS partitions.
+This software supports RAID device discovery, RAID set activation, creation,
+removal, rebuild and display of properties for ATARAID/DDF1 metadata.
 
 dmraid uses libdevmapper and the device-mapper kernel runtime to create
 devices with respective mappings for the ATARAID sets discovered.
@@ -66,13 +66,13 @@ Build/Install:
 --------------
 To install the rpm
 
-rpm -i [--nodeps] dmraid-1.0.0.rc15.i386.rpm
+rpm -i [--nodeps] dmraid-1.0.0.rc16.x86_64.rpm
 
 - or -
 
 to build in an empty directory and install from source
 
-tar jxvf dmraid-1.0.0.rc15.tar.bz2
+tar jxvf dmraid-1.0.0.rc16.tar.bz2
 ./configure	# see ./configure --help for options
 make
 make install

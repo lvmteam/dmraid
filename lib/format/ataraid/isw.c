@@ -1,11 +1,16 @@
 /*
  * Intel Software RAID metadata format handler.
  *
- * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2009  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
- * Copyright (C) 2007,2008  Intel Corporation. All rights reserved.
+ * Copyright (C) 2007,2009  Intel Corporation. All rights reserved.
  * November, 2007 - additions for Create, Delete, Rebuild & Raid 10.
+ * March, 2008 - additions for hot-spare check
+ * August, 2008 - support for Activation, Rebuild checks
+ * January, 2009 - additions for Activation, Rebuild check
+ * May, 2009 - raid status reporting - add support for nosync state
+ * June, 2009 - add get_device_idx and get_number_of_devices functions
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -30,11 +35,11 @@
 #  include	<datastruct/byteorder.h>
 #endif
 
-#define	GB_DIV	1024/1024/2
+#define	GB_DIV		1024/1024/2
+#define RAID01MAX	4
 
 static const char *handler = HANDLER;
 
-/* Return minimum/maximum disks for a given RAID level. */
 static uint16_t
 _num_disks(uint8_t raid_level, int max)
 {
@@ -43,10 +48,10 @@ _num_disks(uint8_t raid_level, int max)
 		uint16_t min, max;
 	};
 	static struct mm mm[] = {
-		{ISW_T_RAID0, 2, 6},
-		{ISW_T_RAID1, 2, 2},
-		{ISW_T_RAID10, 4, 4},
-		{ISW_T_RAID5, 3, 6},
+		{ISW_T_RAID0,	2, 6},
+		{ISW_T_RAID1,	2, 2},
+		{ISW_T_RAID10,	4, 4},
+		{ISW_T_RAID5,	3, 6},
 	};
 	struct mm *m = ARRAY_END(mm);
 
@@ -70,26 +75,74 @@ max_num_disks(uint8_t raid_level)
 	return _num_disks(raid_level, 1);
 }
 
+/*
+ * Check an Intel SW RAID set.
+ *
+ * FIXME: more sanity checks.
+ */
+static unsigned
+devices(struct raid_dev *rd, void *context)
+{
+	return rd->type != t_spare ?
+	       ((struct isw_dev *) rd->private.ptr)->vol.map[0].num_members : 0;
+}
+
+static unsigned
+devices_per_domain(struct raid_dev *rd, void *context)
+{
+	return ((struct isw_dev *) rd->private.ptr)->vol.map[0].num_members /
+		((struct isw_dev *) rd->private.ptr)->vol.map[0].num_domains;
+}
+
 /* Check if given device belongs to a RAID10 mapping. */
 static int
 is_raid10(struct isw_dev *dev)
 {
-	return dev ? (dev->vol.map.raid_level == ISW_T_RAID10 ||
-		      (dev->vol.map.raid_level == ISW_T_RAID1 &&
-		       dev->vol.map.num_members >=
+	return dev ? (dev->vol.map[0].raid_level == ISW_T_RAID10 ||
+		      (dev->vol.map[0].raid_level == ISW_T_RAID1 &&
+		       dev->vol.map[0].num_members >=
 		       min_num_disks(ISW_T_RAID10))) : 0;
 }
 
 /* Find a disk table slot by serial number. */
+/* FIXME: this is workaround for di->serial issues to be fixed. */
+static const char *dev_info_serial_to_isw(const char *di_serial)
+{
+	int i, isw_serial_len = 0;
+	static char isw_serial[1024];
+
+	for (i = 0;
+	     di_serial[i] && isw_serial_len < sizeof(isw_serial) - 1;
+	     i++) {
+		if (!isspace(di_serial[i]))
+			/*
+			 * ':' is reserved for use in placeholder
+			 * serial numbers for missing disks.
+			 */
+			isw_serial[isw_serial_len++] =
+				(di_serial[i] == ':') ? ';' : di_serial[i];
+	}
+
+	isw_serial[isw_serial_len] = 0;
+
+	if (isw_serial_len > MAX_RAID_SERIAL_LEN)
+		memmove(isw_serial,
+			isw_serial + (isw_serial_len - MAX_RAID_SERIAL_LEN),
+			MAX_RAID_SERIAL_LEN);
+
+	return isw_serial;
+}
+
 static struct isw_disk *
 _get_disk(struct isw *isw, struct dev_info *di)
 {
 	if (di->serial) {
 		int i = isw->num_disks;
 		struct isw_disk *disk = isw->disk;
+		const char *isw_serial = dev_info_serial_to_isw(di->serial);
 
 		while (i--) {
-			if (!strncmp(di->serial, (const char *) disk[i].serial,
+			if (!strncmp(isw_serial, (const char *) disk[i].serial,
 				     MAX_RAID_SERIAL_LEN))
 				return disk + i;
 		}
@@ -155,7 +208,7 @@ name(struct lib_context *lc, struct raid_dev *rd,
 
 			while (i--) {
 				if (disk == isw->disk + i) {
-					id = i % 2;
+					id = i / 2;
 					goto ok;
 				}
 			}
@@ -164,15 +217,14 @@ name(struct lib_context *lc, struct raid_dev *rd,
 		}
 	}
 
-      ok:
+ok:
 	if ((ret = alloc_private(lc, handler,
 				 (len = _name(lc, isw, ret, 0, nt, id,
 					      dev, rd) + 1)))) {
 		_name(lc, isw, ret, len, nt, id, dev, rd);
 		len = snprintf(ret, 0, "%u", isw->family_num);
 		mk_alpha(lc, ret + HANDLER_LEN, len);
-	}
-	else
+	} else
 		log_alloc_err(lc, handler);
 
 	return ret;
@@ -222,7 +274,8 @@ _get_raid_level(enum type raid_type)
 
 	for (i = 0;
 	     types[i].unified_type != t_undef &&
-	     types[i].unified_type != raid_type; i++);
+	     types[i].unified_type != raid_type;
+	     i++);
 
 	return types[i].type;
 }
@@ -235,8 +288,8 @@ type(struct isw_dev *dev)
 	if (is_raid10(dev))
 		return t_raid1;
 
-	return dev ? rd_type(types, (unsigned) dev->vol.map.raid_level) :
-		t_group;
+	return dev ?
+	       rd_type(types, (unsigned) dev->vol.map[0].raid_level) : t_group;
 }
 
 /*
@@ -269,7 +322,7 @@ static struct isw_dev *
 advance_raiddev(struct isw_dev *dev)
 {
 	struct isw_vol *vol = &dev->vol;
-	struct isw_map *map = &vol->map;
+	struct isw_map *map = (struct isw_map *) &vol->map;
 
 	/* Correction: yes, it sits here! */
 	dev = advance_dev(dev, map, sizeof(*dev));
@@ -340,13 +393,13 @@ to_cpu(struct isw *isw, enum convert cvt)
 		/* RAID volume has 8 bit members only. */
 
 		/* RAID map. */
-		CVT32(dev->vol.map.pba_of_lba0);
-		CVT32(dev->vol.map.blocks_per_member);
-		CVT32(dev->vol.map.num_data_stripes);
-		CVT16(dev->vol.map.blocks_per_strip);
+		CVT32(dev->vol.map[0].pba_of_lba0);
+		CVT32(dev->vol.map[0].blocks_per_member);
+		CVT32(dev->vol.map[0].num_data_stripes);
+		CVT16(dev->vol.map[0].blocks_per_strip);
 
-		for (j = 0; j < dev->vol.map.num_members; j++)
-			CVT16(dev->vol.map.disk_ord_tbl[j]);
+		for (j = 0; j < dev->vol.map[0].num_members; j++)
+			CVT16(dev->vol.map[0].disk_ord_tbl[j]);
 	}
 }
 #endif
@@ -432,8 +485,7 @@ is_isw(struct lib_context *lc, struct dev_info *di, struct isw *isw)
 	/* Check version info; older versions supported. */
 	if (strncmp((const char *) isw->sig + MPB_SIGNATURE_SIZE,
 		    MPB_VERSION_LAST, MPB_VERSION_LENGTH) > 0)
-		log_print(lc,
-			  "%s: untested metadata version %s found on %s",
+		log_print(lc, "%s: untested metadata version %s found on %s",
 			  handler, isw->sig + MPB_SIGNATURE_SIZE, di->path);
 
 	return 1;
@@ -472,13 +524,12 @@ isw_read_extended(struct lib_context *lc, struct dev_info *di,
 		/* Read extended metadata to offset ISW_DISK_BLOCK_SIZE */
 		if (blocks > 1 &&
 		    !read_file(lc, handler, di->path,
-			       (void *) isw_tmp + ISW_DISK_BLOCK_SIZE,
-			       *size - ISW_DISK_BLOCK_SIZE, *isw_sboffset)) {
+			(void *) (((uint8_t*)isw_tmp) + ISW_DISK_BLOCK_SIZE),
+			*size - ISW_DISK_BLOCK_SIZE, *isw_sboffset)) {
 			dbg_free(isw_tmp);
 			isw_tmp = NULL;
 		}
-	}
-	else
+	} else
 		return 0;
 
 	dbg_free(*isw);
@@ -530,11 +581,11 @@ isw_read_metadata(struct lib_context *lc, struct dev_info *di,
 		goto out;
 	}
 
-      bad:
+bad:
 	dbg_free(isw);
 	isw = NULL;
 
-      out:
+out:
 	return (void *) isw;
 }
 
@@ -569,9 +620,9 @@ isw_write(struct lib_context *lc, struct raid_dev *rd, int erase)
 
 		memcpy(dst, src + ISW_DISK_BLOCK_SIZE, ISW_DISK_BLOCK_SIZE);
 		memcpy(dst + ISW_DISK_BLOCK_SIZE, src, ISW_DISK_BLOCK_SIZE);
-	}
-	else
+	} else
 		dst = isw;
+
 	rd->meta_areas->area = dst;
 	ret = write_metadata(lc, handler, rd, -1, erase);
 	rd->meta_areas->area = isw;
@@ -593,7 +644,7 @@ _check_map_state(struct lib_context *lc, struct raid_dev *rd,
 		 struct isw_dev *dev)
 {
 	/* FIXME: FAILED_MAP etc. */
-	switch (dev->vol.map.map_state) {
+	switch (dev->vol.map[0].map_state) {
 	case ISW_T_STATE_NORMAL:
 	case ISW_T_STATE_UNINITIALIZED:
 	case ISW_T_STATE_DEGRADED:
@@ -603,7 +654,7 @@ _check_map_state(struct lib_context *lc, struct raid_dev *rd,
 	default:
 		LOG_ERR(lc, 0,
 			"%s: unsupported map state 0x%x on %s for %s",
-			handler, dev->vol.map.map_state, rd->di->path,
+			handler, dev->vol.map[0].map_state, rd->di->path,
 			(char *) dev->volume);
 	}
 
@@ -657,7 +708,7 @@ _create_rd(struct lib_context *lc,
 
 	if ((r->type = type(dev)) == t_undef) {
 		log_err(lc, "%s: RAID type %u not supported",
-			handler, (unsigned) dev->vol.map.raid_level);
+			handler, (unsigned) dev->vol.map[0].raid_level);
 		goto free;
 	}
 
@@ -666,15 +717,15 @@ _create_rd(struct lib_context *lc,
 
 	r->di = rd->di;
 	r->fmt = rd->fmt;
-	r->offset = dev->vol.map.pba_of_lba0;
-	if ((r->sectors = dev->vol.map.blocks_per_member - RAID_DS_JOURNAL))
+	r->offset = dev->vol.map[0].pba_of_lba0;
+	if ((r->sectors = dev->vol.map[0].blocks_per_member - RAID_DS_JOURNAL))
 		goto out;
 
 	log_zero_sectors(lc, rd->di->path, handler);
 
-      free:
+free:
 	free_raid_dev(lc, &r);
-      out:
+out:
 	return r;
 }
 
@@ -682,7 +733,7 @@ _create_rd(struct lib_context *lc,
 static void
 create_rs(struct raid_set *rs, void *private)
 {
-	rs->stride = ((struct isw_dev *) private)->vol.map.blocks_per_strip;
+	rs->stride = ((struct isw_dev *) private)->vol.map[0].blocks_per_strip;
 }
 
 /* Decide about ordering sequence of RAID device. */
@@ -698,8 +749,9 @@ static void
 super_created(struct raid_set *super, void *private)
 {
 	super->type = t_raid0;
-	super->stride = ((struct isw_dev *) private)->vol.map.blocks_per_strip;
+	super->stride = ((struct isw_dev *) private)->vol.map[0].blocks_per_strip;
 }
+
 
 /*
  * rs_group contains the top-level group RAID set (type: t_group) on entry
@@ -736,8 +788,7 @@ group_rd(struct lib_context *lc,
 
 		rs->status = s_ok;
 		list_add_sorted(lc, &rs->devs, &rd->devs, dev_sort);
-	}
-	else {
+	} else {
 		/* Loop the device/volume table. */
 		for (d = 0; d < isw->num_raid_devs; d++) {
 			dev = raiddev(isw, d);
@@ -756,8 +807,7 @@ group_rd(struct lib_context *lc,
 					free_raid_dev(lc, &rd);
 					return NULL;
 				}
-			}
-			else
+			} else
 				ss = rs_group;
 
 			if (!(rs = find_or_alloc_raid_set(lc, rd->name,
@@ -828,9 +878,7 @@ isw_group(struct lib_context *lc, struct raid_dev *rd_meta)
 	 * A pointer to the top-level group RAID set
 	 * gets returned or NULL on error.
 	 */
-	struct raid_set *ret = group_rd(lc, rs_group, rd_meta);
-
-	return ret;
+	return group_rd(lc, rs_group, rd_meta);
 }
 
 static unsigned
@@ -866,7 +914,8 @@ rd_by_serial(struct raid_set *rs, const char *serial)
 
 	list_for_each_entry(rd, &rs->devs, devs) {
 		if (rd->di &&
-		    !strncmp(rd->di->serial, serial, MAX_RAID_SERIAL_LEN))
+		    !strncmp(dev_info_serial_to_isw(rd->di->serial), serial,
+						    MAX_RAID_SERIAL_LEN))
 			return rd;
 	}
 
@@ -900,9 +949,11 @@ update_metadata_after_rebuild(struct lib_context *lc, struct raid_set *rs)
 
 	/* Modify metadata related to the volume being rebuilt. */
 	vol_rebuilt = vol_rebuilt_idx ? old_vol1 : old_vol0;
-	vol_rebuilt->vol.migr_type = 0;	/* FIXME: replace magic numbers */
-	vol_rebuilt->vol.migr_state = 0;	/* FIXME: replace magic number */
-	vol_rebuilt->vol.map.failed_disk_num = 255;	/* FIXME: replace magic number */
+	vol_rebuilt->vol.migr_type = ISW_T_MIGR_TYPE_INITIALIZING;
+	vol_rebuilt->vol.migr_state = ISW_T_MIGR_STATE_NORMAL;
+
+	/* FIXME: replace magic number */
+	vol_rebuilt->vol.map[0].failed_disk_num = 255;
 
 	/* Are we going to remove the failed disk from the metadata ? */
 	remove_disk = (!old_vol0->vol.migr_type && old_vol1) ?
@@ -910,7 +961,7 @@ update_metadata_after_rebuild(struct lib_context *lc, struct raid_set *rs)
 
 	/* Calculate new metadata's size and allocate memory for it. */
 	map_size = sizeof(struct isw_map) +
-		(vol_rebuilt->vol.map.num_members - 1) *
+		(vol_rebuilt->vol.map[0].num_members - 1) *
 		sizeof(((struct isw_map *) NULL)->disk_ord_tbl);
 
 	/* If we remove a disk. */
@@ -962,6 +1013,145 @@ update_metadata_after_rebuild(struct lib_context *lc, struct raid_set *rs)
 	return new_isw;
 }
 
+/*
+ * Check devices in a RAID set.
+ *
+ * a. spares in a mirror set need to be large enough.
+ * b. # of devices correct.
+ *
+ * Set status of devices and raid set
+ */
+static enum status
+number_disks_status(struct lib_context *lc, struct raid_set *rs)
+{
+	enum status status = s_undef;
+	unsigned int dev_real_qan, dev_metadata_qan;
+	uint64_t sectors;
+	struct raid_dev *rd;
+
+	sectors = total_sectors(lc, rs);
+	/* Disks phisically exist. */
+	rs->total_devs = dev_real_qan = count_devs(lc, rs, ct_dev);
+
+	list_for_each_entry(rd, &rs->devs, devs) {
+	        dev_metadata_qan = devices(rd, NULL);
+
+	        if (T_RAID1(rs) && (dev_metadata_qan == RAID01MAX))
+			dev_metadata_qan /= ((struct isw_dev *) rd->private.ptr)->vol.map[0].num_domains;
+	 
+		rs->found_devs = dev_metadata_qan;
+	
+	        /*
+		 * If disks number of found disks equals
+		 * disk expected status status OK.
+		 */
+		if (dev_real_qan == dev_metadata_qan)
+			status = s_ok;
+		else {
+			if (dev_metadata_qan != dev_real_qan)
+				log_err(lc, "%s: wrong number of devices in "
+					"RAID set \"%s\" [%u/%u] on %s",
+					handler, rs->name, dev_real_qan,
+					dev_metadata_qan, rd->di->path);
+		
+			/*
+			 * If number of disks is incorrect,
+			 * status depends on raid type:
+			 */
+			switch(rs->type) {
+			case t_linear:	/* linear - always broken */
+			case t_raid0:	/* raid 0 - always broken */
+				status = s_broken;
+				break;
+			/* If at least 1 disk available -> inconsintent */
+			case t_raid1: /* raid 1 - min 1 disk -> inconsintent */
+				if(dev_real_qan >= 1)
+					status = s_inconsistent;
+				else if (T_SPARE(rd) && rd->sectors != sectors)
+					status = s_inconsistent;
+				else
+					status = s_broken; 
+				break;
+			/* raid 4/5 - if 1 disk missing -> inconsistent*/
+			case t_raid5_la:
+				if ((dev_real_qan == dev_metadata_qan - 1 &&
+				     dev_real_qan > 1) ||
+				    dev_real_qan > dev_metadata_qan)
+					status = s_inconsistent;
+				else
+					status = s_broken;
+				break;
+			case t_spare: /* spare - always broken */
+				status = s_broken;
+				break;        
+			default: /* other - undef */
+				status = s_undef;
+			}
+		}
+
+		rd->status = status;
+	}
+
+	return status;
+}
+
+/* Establish status of raid set and raid devices belong to it. */
+static enum status
+get_rs_status(struct lib_context *lc, struct raid_set *rs)
+{
+	int idx, inconsist_qan = 0, nosync_qan = 0;
+	enum status status;
+	struct raid_dev *check_rd;
+	struct isw *isw;
+	struct isw_dev *dev;
+	struct isw_disk *disk;
+	
+	/* If number of disks is not correct return current status. */
+	if ((status = number_disks_status(lc, rs)) != s_ok) 
+		return status;
+
+	/*
+	 * If number of disks is correct check metadata 
+	 * to set status in every device in raid set.
+	 */
+	list_for_each_entry(check_rd, &rs->devs, devs) {
+		if (!check_rd->meta_areas)
+			continue;
+
+		isw = META(check_rd, isw);
+		idx = rd_idx_by_name(isw, check_rd->name);
+		if (idx < 0)
+			return s_undef;
+
+		dev = raiddev(isw, idx);
+		disk = isw->disk;
+		/*
+		 * If array is ready to rebuild
+		 * or under rebuild state.
+		 */
+		if ((dev->vol.migr_state == 1) &&
+		    (dev->vol.migr_type == 1)) {
+			nosync_qan++;
+			check_rd->status = s_nosync;
+		} else if (dev->vol.map[0].map_state == ISW_T_STATE_DEGRADED) {
+			/* If array is marked as degraded. */
+			inconsist_qan++;
+			check_rd->status = s_inconsistent;
+		} else /* if everything is ok. */
+			check_rd->status = s_ok;
+	}
+
+	/* Set status of whole raid set. */
+	if (inconsist_qan)
+		rs->status = s_inconsistent;
+	else if (nosync_qan)
+		rs->status = s_nosync;
+	else
+		rs->status = s_ok;
+	
+	return rs->status;
+}
+
 
 /* Handle rebuild state. */
 static int
@@ -989,15 +1179,13 @@ get_rebuild_state(struct lib_context *lc,
 
 			if (dev->vol.migr_state &&
 			    dev->vol.migr_type &&
-			    dev->vol.map.failed_disk_num < isw->num_disks) {
+			    dev->vol.map[0].failed_disk_num < isw->num_disks) {
 				/*
 				 * If rd that belongs to RAID set is
 				 * pointed at by failed disk number 
 				 * the RAID set state is migration.
 				 */
-				rd = rd_by_serial(rs,
-						  (const char *) disk[dev->
-								      vol.map.failed_disk_num].serial);
+				rd = rd_by_serial(rs, (const char *) disk[dev->vol.map[0].failed_disk_num].serial);
 				if (rd)
 					/*
 					 * Found RAID device that belongs to
@@ -1005,8 +1193,8 @@ get_rebuild_state(struct lib_context *lc,
 					 * metadata.
 					 */
 					return s_nosync;
-			}
-			else if (dev->vol.map.map_state == ISW_T_STATE_DEGRADED)
+			} else if (dev->vol.map[0].map_state == \
+				   ISW_T_STATE_DEGRADED)
 				return s_inconsistent;
 		}
 
@@ -1019,6 +1207,42 @@ get_rebuild_state(struct lib_context *lc,
 	}
 
 	return s_inconsistent;
+}
+
+/* Returns number of devices in the RAID set. */
+static int
+get_number_of_devices(struct lib_context *lc, struct raid_set *rs)
+{
+	struct raid_dev *rd =
+		list_entry(rs->devs.next, struct raid_dev, devs);
+
+	return META(rd, isw)->num_disks;
+}
+
+/* Returns index of disk in RAID set. */
+static int
+get_device_idx(struct lib_context *lc, struct raid_dev *rd)
+{
+	int i;
+	struct isw *isw;
+	const char *serial;
+
+	if (!rd)
+		return -1;
+
+	isw = META(rd, isw);
+	serial = dev_info_serial_to_isw(rd->di->serial);
+
+	/* Find the index of the disk. */
+	for (i = 0; i < isw->num_disks; i++) {
+		/* Check if the disk is listed. */
+		if (!strncmp(serial, (const char *) isw->disk[i].serial,
+			     MAX_RAID_SERIAL_LEN))
+			return i;
+	}
+
+	/* Zero based device index. */
+	return -1;
 }
 
 /* isw metadata handler routine. */
@@ -1053,14 +1277,12 @@ isw_metadata_handler(struct lib_context *lc, enum handler_commands command,
 		}
 
 		break;
-
 	case GET_REBUILD_STATE:
 		return get_rebuild_state(lc, rs, rd);
-
 	case GET_REBUILD_DRIVE:
 		isw = META(rd, isw);
 		dev = raiddev(isw, 0);
-		disk = isw->disk + dev->vol.map.failed_disk_num;
+		disk = isw->disk + dev->vol.map[0].failed_disk_num;
 
 		rd = rd_by_serial(rs, (const char *) disk->serial);
 		if (rd) {
@@ -1071,14 +1293,12 @@ isw_metadata_handler(struct lib_context *lc, enum handler_commands command,
 					  "Rebuild Drive: %s Serial No: %s\n",
 					  rd->di->path, rd->di->serial);
 				ret = 1;
-			}
-			else
+			} else
 				log_err(lc,
 					"Can't provide rebuild drive path!");
 		}
 
 		break;
-
 	case GET_REBUILD_DRIVE_NO:
 		rd = list_entry(rs->devs.next, typeof(*rd), devs);
 		isw = META(rd, isw);
@@ -1090,21 +1310,33 @@ isw_metadata_handler(struct lib_context *lc, enum handler_commands command,
 		disk = isw->disk;
 
 		if (info) {
-			if (dev->vol.map.failed_disk_num <
-			    dev->vol.map.num_members) {
+			if (dev->vol.map[0].failed_disk_num <
+			    dev->vol.map[0].num_members) {
 				info->data.i32 = is_raid10(dev) ?
-					dev->vol.map.failed_disk_num /
-					dev->vol.map.num_domains :
-					dev->vol.map.failed_disk_num;
+					dev->vol.map[0].failed_disk_num %
+					dev->vol.map[0].num_domains :
+					dev->vol.map[0].failed_disk_num;
 
 				ret = 1;
-			}
-			else
+			} else
 				info->data.i32 = -1;
 		}
 
 		break;		/* case GET_REBUILD_DRIVE_NO */
-
+	case ALLOW_ACTIVATE: /* same as ALLOW_REBUILD */
+	case ALLOW_REBUILD:
+		/* Do not allow activate or rebuild, if the log is non-empty */
+		isw = META (rd, isw);
+		ret = !isw->bbm_log_size; /* Is log empty */
+		if (!ret)
+			   log_err(lc, "BBM entries detected!");
+		break; /* case ALLOW_REBUILD */
+	case GET_STATUS: /* Get status of raid set */
+		return get_rs_status(lc, rs);
+	case GET_DEVICE_IDX: /* Get index of disk. */
+		return get_device_idx(lc, info->data.ptr);
+	case GET_NUMBER_OF_DEVICES: /* Get number of RAID devices. */
+		return get_number_of_devices(lc, rs);
 	default:
 		LOG_ERR(lc, 0, "%u not yet supported", command);
 
@@ -1113,24 +1345,6 @@ isw_metadata_handler(struct lib_context *lc, enum handler_commands command,
 	return ret;
 }
 
-/*
- * Check an Intel SW RAID set.
- *
- * FIXME: more sanity checks.
- */
-static unsigned
-devices(struct raid_dev *rd, void *context)
-{
-	return rd->type != t_spare ?
-		((struct isw_dev *) rd->private.ptr)->vol.map.num_members : 0;
-}
-
-static unsigned
-devices_per_domain(struct raid_dev *rd, void *context)
-{
-	return ((struct isw_dev *) rd->private.ptr)->vol.map.num_members /
-		((struct isw_dev *) rd->private.ptr)->vol.map.num_domains;
-}
 
 static int
 check_rd(struct lib_context *lc, struct raid_set *rs,
@@ -1138,15 +1352,24 @@ check_rd(struct lib_context *lc, struct raid_set *rs,
 {
 	struct isw_dev *dev = rd->private.ptr;
 
-	/* FIXME: more status checks ? */
-	if (dev->status) {
-		LOG_ERR(lc, 0, "%s device for volume \"%s\" broken on %s "
+	if (!dev) {
+		if (rd->type == t_spare)
+			return 1;
+	} else
+		LOG_ERR(lc, 0,
+			"No information about %s device on %s "
+			"in RAID set \"%s\"", 
+			handler, rd->di->path, rs->name);            
+
+	/* If disk is ready to read and write return 1. */	
+	if ((dev->status & ISW_DEV_READ_COALESCING) &&
+	    (dev->status & ISW_DEV_WRITE_COALESCING)) {
+		return 1;
+	} else
+		LOG_ERR(lc, 0,
+			"%s device for volume \"%s\" broken on %s "
 			"in RAID set \"%s\"",
 			handler, dev->volume, rd->di->path, rs->name);
-
-	}
-
-	return 1;
 }
 
 static int
@@ -1187,19 +1410,20 @@ get_rs_basename(char *str)
 static int
 is_name_unique(struct lib_context *lc, struct raid_set *rs)
 {
-	struct raid_set *rs1, *rs2;
 	char *bn;
+	struct raid_set *rs1, *rs2;
 
 	list_for_each_entry(rs1, LC_RS(lc), list) {
 		if (rs1->type == t_group) {
 			list_for_each_entry(rs2, &rs1->sets, list) {
 				bn = get_rs_basename(rs2->name);
+
 				if (!strcmp(bn, rs->name))
 					goto out_used;
 			}
-		}
-		else {
+		} else {
 			bn = get_rs_basename(rs1->name);
+
 			if (!strcmp(bn, rs->name))
 				goto out_used;
 		}
@@ -1207,7 +1431,7 @@ is_name_unique(struct lib_context *lc, struct raid_set *rs)
 
 	return 1;
 
-      out_used:
+out_used:
 	log_dbg(lc, "%s is being used", bn);
 	return 0;
 }
@@ -1297,7 +1521,8 @@ isw_config_disks(struct lib_context *lc, struct isw_disk *disk,
 	struct raid_dev *rd;
 
 	list_for_each_entry(rd, &rs->devs, devs) {
-		strncpy((char *) disk[i].serial, rd->di->serial,
+		strncpy((char *) disk[i].serial, 
+			dev_info_serial_to_isw(rd->di->serial),
 			MAX_RAID_SERIAL_LEN);
 		disk[i].totalBlocks = rd->di->sectors;
 
@@ -1318,8 +1543,9 @@ static void
 isw_config_vol(struct raid_set *rs, struct isw_vol *vol)
 {
 	if (rs->status == s_init) {
-		vol->migr_state = 0;
-		vol->migr_type = 0;
+		vol->migr_state = ((rs->found_devs > DISK_THRESHOLD ) && (rs->type == ISW_T_RAID5)) 
+					? ISW_T_MIGR_STATE_MIGRATING : ISW_T_MIGR_STATE_NORMAL;
+		vol->migr_type = ISW_T_MIGR_TYPE_INITIALIZING;
 	}
 }
 
@@ -1353,8 +1579,7 @@ _get_stride_size(struct raid_set *rs)
 				while (so->options[i + 1] &&
 				       rs->stride > so->options[i])
 					i++;
-			}
-			else
+			} else
 				i = 0;
 
 			return so->options[i];
@@ -1402,8 +1627,11 @@ isw_config_map(struct raid_set *rs, struct isw_map *map,
 	_find_factors(rs, &div, &sub);
 	map->pba_of_lba0 = first;
 	map->blocks_per_strip = _get_stride_size(rs);
-	map->num_data_stripes = ((size/map->blocks_per_strip) + (rs->total_devs -sub -1)) / (rs->total_devs-sub); 
-	map->blocks_per_member = (map->blocks_per_strip * map->num_data_stripes) * div +
+	map->num_data_stripes =
+		(size / map->blocks_per_strip + rs->total_devs - sub - 1) /
+		(rs->total_devs - sub); 
+	map->blocks_per_member =
+		(map->blocks_per_strip * map->num_data_stripes) * div +
 		RAID_DS_JOURNAL;
 
 	map->map_state = ISW_T_STATE_NORMAL;
@@ -1414,7 +1642,7 @@ isw_config_map(struct raid_set *rs, struct isw_map *map,
 	map->failed_disk_num = ISW_DEV_NONE_FAILED;
 	map->ddf = 1; 
 
-/* FIXME */
+	/* FIXME */
 	for (i = 0; i < map->num_members; i++)
 		map->disk_ord_tbl[i] = i;
 }
@@ -1431,6 +1659,7 @@ _cal_array_size(struct isw_disk *disk, struct raid_set *rs, struct isw_dev *dev)
 	list_for_each_entry(rd, &rs->devs, devs) {
 		if (min_ds > rd->di->sectors)
 			min_ds = rd->di->sectors;
+
 		n++;
 	}
 
@@ -1439,11 +1668,11 @@ _cal_array_size(struct isw_disk *disk, struct raid_set *rs, struct isw_dev *dev)
 
 	min_ds -= DISK_RESERVED_BLOCKS;
 
-	/* blank disks */
+	/* Blank disks. */
 	if (dev) {
 		/* One volume existed and started from the beginning */
-		if (!dev->vol.map.pba_of_lba0) {
-			max_ds = dev->vol.map.blocks_per_member +
+		if (!dev->vol.map[0].pba_of_lba0) {
+			max_ds = dev->vol.map[0].blocks_per_member +
 				DISK_RESERVED_BLOCKS;
 
 			if (min_ds > max_ds)
@@ -1451,15 +1680,13 @@ _cal_array_size(struct isw_disk *disk, struct raid_set *rs, struct isw_dev *dev)
 			else
 				return 1;
 			/* An existing volume at the bottom */
-		}
-		else if (dev->vol.map.pba_of_lba0 >=
-			 RAID_VOLUME_RESERVED_BLOCKS)
-			min_ds = dev->vol.map.pba_of_lba0 -
-				RAID_VOLUME_RESERVED_BLOCKS;
+		} else if (dev->vol.map[0].pba_of_lba0 >=
+			   RAID_VOLUME_RESERVED_BLOCKS)
+			min_ds = dev->vol.map[0].pba_of_lba0 -
+				 RAID_VOLUME_RESERVED_BLOCKS;
 		else
 			return 1;
-	}
-	else {
+	} else {
 		if (min_ds > DISK_RESERVED_BLOCKS)
 			min_ds -= DISK_RESERVED_BLOCKS;
 		else
@@ -1481,28 +1708,34 @@ isw_config_dev(struct lib_context *lc, struct raid_set *rs,
 	strncpy((char *) dev2->volume, rs->name, MAX_RAID_SERIAL_LEN);
 	dev2->SizeLow = (uint32_t) tmp;
 	dev2->SizeHigh = (uint32_t) (tmp >> 32);
-	/* FIXME: isi this status ok, Radoslaw ? */
+	/* FIXME: is this status ok, Radoslaw ? */
 	dev2->status = ISW_DEV_READ_COALESCING | ISW_DEV_WRITE_COALESCING;
 	isw_config_vol(rs, &dev2->vol);
 
-	if (!dev1) {
-		isw_config_map(rs, &dev2->vol.map, tmp, 0);
-		return 1;
-	}
-
-	if (!dev1->vol.map.pba_of_lba0)	/* Start at the begginning. */
-		isw_config_map(rs, &dev2->vol.map, tmp,
-			       dev1->vol.map.blocks_per_member +
+	if (!dev1)
+		isw_config_map(rs, &dev2->vol.map[0], tmp, 0);
+	else if (!dev1->vol.map[0].pba_of_lba0)	/* Start at the begginning. */
+		isw_config_map(rs, &dev2->vol.map[0], tmp,
+			       dev1->vol.map[0].blocks_per_member +
 			       MIGR_OPT_SPACE);
 	else {
-		isw_config_map(rs, &dev2->vol.map, tmp, 0);
+		isw_config_map(rs, &dev2->vol.map[0], tmp, 0);
 
-		if (dev2->vol.map.blocks_per_member + MIGR_OPT_SPACE >
-		    dev1->vol.map.pba_of_lba0)
+		if (dev2->vol.map[0].blocks_per_member + MIGR_OPT_SPACE >
+		    dev1->vol.map[0].pba_of_lba0)
 			LOG_ERR(lc, 0, "%s: not enough space to create "
 				"requested volume", handler);
 
 	}
+	
+	if (dev2->vol.migr_state == ISW_T_MIGR_STATE_MIGRATING) {
+                 struct isw_map *map2 = 
+                     (struct isw_map *) 
+                     &dev2->vol.map[0].disk_ord_tbl[rs->found_devs];
+
+                 isw_config_map(rs, map2, tmp, 0);
+                 map2->map_state = ISW_T_STATE_UNINITIALIZED;
+        }
 
 	return 1;
 }
@@ -1517,24 +1750,20 @@ display_new_volume(struct raid_set *rs, struct isw *isw, struct isw_dev *dev)
 	if (rs->type == ISW_T_SPARE) {	/* Case if spare disk. */
 		printf("\n\n     Create a SPARE DISK with ISW metadata "
 		       "format     \n\nDISK:     ");
-	}
-	else {
+	} else {
 		rt = type(dev);
 		switch (rt) {
 		case t_raid0:
 			type_name = "RAID0";
 			break;
-
 		case t_raid1:
-			type_name = dev->vol.map.num_members ==
+			type_name = dev->vol.map[0].num_members ==
 				min_num_disks(ISW_T_RAID10) ?
 				"RAID01 (isw RAID10)" : "RAID1";
 			break;
-
 		case t_raid5_la:
 			type_name = "RAID5";
 			break;
-
 		default:
 			return;
 		}
@@ -1552,8 +1781,8 @@ display_new_volume(struct raid_set *rs, struct isw *isw, struct isw_dev *dev)
 
 		if (rt != t_raid1)
 			printf("RAID strip:     %uk (%u blocks)\n",
-			       dev->vol.map.blocks_per_strip / 2,
-			       dev->vol.map.blocks_per_strip);
+			       dev->vol.map[0].blocks_per_strip / 2,
+			       dev->vol.map[0].blocks_per_strip);
 
 		printf("DISKS:     ");
 	}
@@ -1600,8 +1829,13 @@ _isw_create_first_volume(struct lib_context *lc, struct raid_set *rs)
 			return NULL;
 		}
 
-		isw_size += sizeof(*dev) + sizeof(dev->vol.map.disk_ord_tbl) *
-			(isw->num_disks - 1);
+		isw_size += sizeof(*dev) +
+			    sizeof(dev->vol.map[0].disk_ord_tbl) *
+			    (isw->num_disks - 1);
+		if (dev->vol.migr_state == ISW_T_MIGR_STATE_MIGRATING) 
+			isw_size += sizeof(dev->vol.map[0]) + 
+				    sizeof(dev->vol.map[0].disk_ord_tbl) *
+				    (isw->num_disks - 1);
 	}
 
 	display_new_volume(rs, isw, dev);
@@ -1615,6 +1849,7 @@ _isw_create_first_volume(struct lib_context *lc, struct raid_set *rs)
 	isw->attributes = MPB_ATTRIB_CHECKSUM_VERIFY;
 	isw->num_raid_devs = (rs->type == ISW_T_SPARE) ? 0 : 1;
 	isw->family_num = isw->orig_family_num = _checksum(isw) + time(NULL);
+	isw->bbm_log_size = 0;
 	isw->check_sum = 0;
 	isw->check_sum = _checksum(isw);
 	return isw;
@@ -1697,8 +1932,12 @@ _isw_create_second_volume(struct lib_context *lc, struct raid_set *rs)
 		return NULL;
 	}
 
-	isw_size += sizeof(*dev2) + sizeof(dev2->vol.map.disk_ord_tbl) *
+	isw_size += sizeof(*dev2) + sizeof(dev2->vol.map[0].disk_ord_tbl) *
 		(isw->num_disks - 1);
+        if (dev2->vol.migr_state == ISW_T_MIGR_STATE_MIGRATING) 
+		isw_size += sizeof(dev2->vol.map[0]) + 
+			    sizeof(dev2->vol.map[0].disk_ord_tbl) *
+			    (isw->num_disks - 1);
 
 	display_new_volume(rs, isw, dev2);
 
@@ -1708,10 +1947,12 @@ _isw_create_second_volume(struct lib_context *lc, struct raid_set *rs)
 		    (const char *) sig_version) < 0)
 		strncpy((char *) isw->sig + MPB_SIGNATURE_SIZE,
 			sig_version, MPB_VERSION_LENGTH);	    
+
 	isw->mpb_size = isw_size;
 	isw->generation_num++;
 	isw->attributes = MPB_ATTRIB_CHECKSUM_VERIFY;
 	isw->num_raid_devs++;
+	isw->bbm_log_size = 0;
 	isw->check_sum = 0;
 	isw->check_sum = _checksum(isw);
 	return isw;
@@ -1840,8 +2081,7 @@ _isw_create_raidset(struct lib_context *lc, struct raid_set *rs)
 					"on the raid_dev data structure ",
 					handler);
 			}
-		}
-		else {
+		} else {
 			dbg_free(isw);
 			return 0;
 		}
@@ -1871,8 +2111,7 @@ isw_create(struct lib_context *lc, struct raid_set *rs)
 		raid_type = rs->type;
 		ret = _isw_create_raidset(lc, rs);
 		rs->type = raid_type;
-	}
-	else if (rs->status == s_nosync)
+	} else if (rs->status == s_nosync)
 		ret = update_metadata(lc, rs);
 
 	return ret;
@@ -1906,13 +2145,12 @@ event_io(struct lib_context *lc, struct event_io *e_io)
 
 	disk->status &= ~USABLE_DISK;
 	disk->status |= FAILED_DISK;
-
 	return 1;
 }
 
 static struct event_handlers isw_event_handlers = {
 	.io = event_io,
-	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
+	.rd = NULL,	/* FIXME: no device add/remove event handler yet. */
 };
 
 static void
@@ -1934,6 +2172,8 @@ _isw_log(struct lib_context *lc, struct isw *isw)
 	DP("error_log_pos: %u", isw, isw->error_log_pos);
 	DP("cache_size: %u", isw, isw->cache_size);
 	DP("orig_family_num: %u", isw, isw->orig_family_num);
+	DP ("power_cycle_count: %u", isw, isw->power_cycle_count);
+	DP ("bbm_log_size: %u", isw, isw->bbm_log_size);
 
 	for (i = 0; i < ISW_FILLERS; i++) {
 		if (isw->filler[i])
@@ -2021,7 +2261,7 @@ _isw_log(struct lib_context *lc, struct isw *isw)
 		}
 
 
-		struct isw_map *map = &dev->vol.map;
+		struct isw_map *map = &dev->vol.map[0];
 		for (m = 0; m < 2; m++) {
 			/* RAID map */
 
@@ -2140,16 +2380,18 @@ isw_remove_dev(struct lib_context *lc, struct raid_set *rs,
 	memcpy(isw_tmp, isw, size);
 
 	dev_size = sizeof(*dev) +
-		sizeof(uint32_t) * (dev->vol.map.num_members - 1);
+		sizeof(uint32_t) * (dev->vol.map[0].num_members - 1);
+	if (dev->vol.migr_state == ISW_T_MIGR_STATE_MIGRATING) dev_size += sizeof(dev->vol.map[0]) + 
+						sizeof(uint32_t) * (dev->vol.map[0].num_members - 1);
 	memcpy((char *) isw_tmp + size, dev, dev_size);
 
 	/* If remaining device is a lower version, downgrade */
-	if(dev->vol.map.raid_level == ISW_T_RAID1)
+	if(dev->vol.map[0].raid_level == ISW_T_RAID1)
 		strncpy((char *) isw_tmp->sig + MPB_SIGNATURE_SIZE,
 			MPB_VERSION_RAID1, MPB_VERSION_LENGTH);
 	
-	if((dev->vol.map.raid_level == ISW_T_RAID0) &&
-			(dev->vol.map.num_members < 3))
+	if((dev->vol.map[0].raid_level == ISW_T_RAID0) &&
+			(dev->vol.map[0].num_members < 3))
 		strncpy((char *) isw_tmp->sig + MPB_SIGNATURE_SIZE,
 			MPB_VERSION_RAID0, MPB_VERSION_LENGTH);
 	
@@ -2187,7 +2429,7 @@ _isw_delete_all(struct lib_context *lc, struct raid_set *rs_group)
 		LOG_ERR(lc, 0, "%s: the number of raid volumes is not 2",
 			handler);
 
-	if ((!(dev1 = raiddev(isw, 0))) || (!(dev2 = raiddev(isw, 1))))
+	if (!(dev1 = raiddev(isw, 0)) || !(dev2 = raiddev(isw, 1)))
 		LOG_ERR(lc, 0, "%s: failed to get two volume info", handler);
 
 	list_for_each_entry(rs, &rs_group->sets, list) {
@@ -2202,6 +2444,7 @@ _isw_delete_all(struct lib_context *lc, struct raid_set *rs_group)
 		if (!strcmp((const char *) dev2->volume, (const char *) name))
 			num++;
 	}
+
 	if (num != 2)
 		LOG_ERR(lc, 0,
 			"%s: failed to find all of the RAID sets to be "
@@ -2265,8 +2508,7 @@ isw_delete(struct lib_context *lc, struct raid_set *rs_group)
 		if (!strcmp((const char *) dev1->volume, (const char *) name)) {
 			isw_erase_metadata(lc, rs_group);
 			return 1;
-		}
-		else
+		} else
 			LOG_ERR(lc, 0, "%s: failed to find the volume %s",
 				handler, name);
 	}
@@ -2289,7 +2531,7 @@ isw_delete(struct lib_context *lc, struct raid_set *rs_group)
 static struct dmraid_format isw_format = {
 	.name = HANDLER,
 	.descr = "Intel Software RAID",
-	.caps = "0,1,01",
+	.caps = "0,1,5,01",
 	.format = FMT_RAID,
 	.read = isw_read,
 	.write = isw_write,
@@ -2305,6 +2547,7 @@ static struct dmraid_format isw_format = {
 #endif
 };
 
+/*
 static struct raid_set *
 change_set_name(struct lib_context *lc, struct list_head *list,
 		char *o_name, char *n_name)
@@ -2326,6 +2569,7 @@ change_set_name(struct lib_context *lc, struct list_head *list,
 
 	return ret;
 }
+*/
 
 
 /*
@@ -2354,19 +2598,19 @@ update_metadata_isw_dev(struct isw *new_isw,
 
 	/* Update new volume information. */
 	new_dev = raiddev(new_isw, isw_dev_idx);
-	new_dev->vol.migr_state = 1;	/* FIXME: replace magic numbers */
-	new_dev->vol.migr_type = 1;	/* FIXME: replace magic numbers */
+	new_dev->vol.migr_state = ISW_T_MIGR_STATE_MIGRATING;
+	new_dev->vol.migr_type = ISW_T_MIGR_TYPE_REBUILDING;
 
 	/* Update information in the first map. */
-	new_dev->vol.map.map_state = ISW_T_STATE_NORMAL;
-	new_dev->vol.map.failed_disk_num = failed_disk_idx;
+	new_dev->vol.map[0].map_state = ISW_T_STATE_NORMAL;
+	new_dev->vol.map[0].failed_disk_num = failed_disk_idx;
 
 	/*
 	 * FIXME: disk_ord_tbl should be updated too but at the moment
 	 * we may leave it as it is coded below without any harm.
 	 */
 	for (i = 0; i < new_isw->num_disks - 1; i++)
-		new_dev->vol.map.disk_ord_tbl[i] = i;
+		new_dev->vol.map[0].disk_ord_tbl[i] = i;
 
 	/*
 	 * FIXME: code commented out
@@ -2376,25 +2620,24 @@ update_metadata_isw_dev(struct isw *new_isw,
 	/* now let's proceed with the second, temporary map
 	   FIXME: we just copy the first map and update it a bit */
 	map_size =
-		sizeof(struct isw_map) + (new_dev->vol.map.num_members -
+		sizeof(struct isw_map) + (new_dev->vol.map[0].num_members -
 					  1) *
 		sizeof(((struct isw_map *) NULL)->disk_ord_tbl);
-	memcpy((void *) &new_dev->vol.map + map_size,
-	       (void *) &new_dev->vol.map, map_size);
+	memcpy((void *) &new_dev->vol.map[0] + map_size,
+	       (void *) &new_dev->vol.map[0], map_size);
 
 	/*
 	 * FIXME: the code below should be put into
 	 * a new function 'raid_is_rebuildable()'.
 	 */
 	((struct isw_map *)
-	 ((void *) &new_dev->vol.map + map_size))->map_state =
-		new_dev->vol.map.raid_level == ISW_T_RAID0 ?
+	 ((void *) &new_dev->vol.map[0]) + map_size)->map_state =
+		new_dev->vol.map[0].raid_level == ISW_T_RAID0 ?
 		ISW_T_STATE_FAILED : ISW_T_STATE_DEGRADED;
 
 	return (unsigned)
-		((unsigned long) &new_dev->vol.map + 2 * map_size) -
-		((unsigned long) new_isw->disk + new_isw->num_disks) -
-		isw_dev_offs;
+		((unsigned long) (((void*) &new_dev->vol.map[0]) + 2 * map_size)) -
+		((unsigned long) new_dev);
 }
 
 /* Update metadata wit hdrive to rebuild. */
@@ -2421,7 +2664,8 @@ update_metadata(struct lib_context *lc, struct raid_set *rs)
 	while (i--) {
 		/* Check if the disk is listed. */
 		list_for_each_entry(di, LC_DI(lc), list) {
-			if (!strncmp(di->serial, (const char *) disk[i].serial,
+			if (!strncmp(dev_info_serial_to_isw(di->serial),
+				     (const char *) disk[i].serial,
 				     MAX_RAID_SERIAL_LEN))
 				goto goon;
 		}
@@ -2476,6 +2720,12 @@ update_metadata(struct lib_context *lc, struct raid_set *rs)
 		}
 	}
 
+	/*
+	 * Special case for degraded raid5 array, 
+	 * activated with error target device .
+	 */
+	delete_error_target(lc, sub_rs);
+
 	if (!found)		/* Error: no disk to rebuild found - exit. */
 		LOG_ERR(lc, 0, "%s: no drive to rebuild", handler);
 
@@ -2517,7 +2767,8 @@ update_metadata(struct lib_context *lc, struct raid_set *rs)
 	new_disk->status = CONFIG_ON_DISK |
 		DISK_SMART_EVENT_SUPPORTED |
 		CLAIMED_DISK | DETECTED_DISK | USABLE_DISK | CONFIGURED_DISK;
-	strncpy((char *) new_disk->serial, di->serial, MAX_RAID_SERIAL_LEN);
+	strncpy((char *) new_disk->serial, dev_info_serial_to_isw(di->serial),
+		MAX_RAID_SERIAL_LEN);
 
 	/* build new isw_disk array */
 	for (i = 0; i < isw->num_disks; i++) {
@@ -2568,6 +2819,7 @@ update_metadata(struct lib_context *lc, struct raid_set *rs)
 
 			dbg_free(rd->meta_areas->area);
 		}
+
 		if (!rd->meta_areas || rd->status == s_init) {
 			if (rd->meta_areas)
 				dbg_free(rd->meta_areas);
@@ -2581,10 +2833,9 @@ update_metadata(struct lib_context *lc, struct raid_set *rs)
 			rd->meta_areas->area =
 				alloc_private(lc, handler, new_isw_size);
 			memcpy(rd->meta_areas->area, new_isw, new_isw_size);
-			rd->offset = new_dev->vol.map.pba_of_lba0;
-			rd->sectors = new_dev->vol.map.blocks_per_member;
-		}
-		else {
+			rd->offset = new_dev->vol.map[0].pba_of_lba0;
+			rd->sectors = new_dev->vol.map[0].blocks_per_member;
+		} else {
 			rd->meta_areas->area =
 				alloc_private(lc, handler, new_isw_size);
 			if (!rd->meta_areas->area)
@@ -2623,18 +2874,19 @@ update_metadata(struct lib_context *lc, struct raid_set *rs)
 
 			rd->di = di;
 			rd->fmt = &isw_format;
-			rd->offset = new_dev->vol.map.pba_of_lba0;
-			rd->sectors = new_dev->vol.map.blocks_per_member;
+			rd->offset = new_dev->vol.map[0].pba_of_lba0;
+			rd->sectors = new_dev->vol.map[0].blocks_per_member;
 		}
+
 		rd->meta_areas->area = alloc_private(lc, handler, new_isw_size);
 		if (!rd->meta_areas->area)
 			goto bad_free_new_disk;
+
 		set_metadata_sizoff(rd, isw_size(new_isw));
 		memcpy(rd->meta_areas->area, new_isw, new_isw_size);
 
 
 		if (rd->status == s_init) {
-
 			if (rd->name)
 				dbg_free(rd->name);
 
@@ -2654,9 +2906,9 @@ update_metadata(struct lib_context *lc, struct raid_set *rs)
 	 */
 
 	ret = 1;
-      bad_free_new_disk:
+bad_free_new_disk:
 	dbg_free(new_disk);
-      bad_free_new_isw:
+bad_free_new_isw:
 	dbg_free(new_isw);
 	return ret;
 }

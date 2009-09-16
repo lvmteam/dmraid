@@ -8,6 +8,8 @@
 #ifndef _ACTIVATE_H_
 #define _ACTIVATE_H_
 
+#define ERROR_TARG_TABLE_LEN 32
+
 enum activate_type {
 	A_ACTIVATE,
 	A_DEACTIVATE,
@@ -15,5 +17,6 @@ enum activate_type {
 };
 
 int change_set(struct lib_context *lc, enum activate_type what, void *rs);
+void delete_error_target(struct lib_context *lc, struct raid_set *rs);
 
 #endif

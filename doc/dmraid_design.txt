@@ -9,8 +9,10 @@ vendor specific (binary) driver to access them.
 It supports multiple on-disk RAID metadata formats and is open for
 extension with new ones.
 
-Initially dmraid aims to support activation of RDs and doesn't support
-*updates* of the ondisk metadata (eg, to record disk failures)
+dmraid supports activation of RDs and *updates* of the ondisk metadata
+(eg, to record disk failures) for the Intel Software RAID (IMSM) format.
+Others may follow.
+
 It can optionally erase on disk metadata in case of multiple format
 signatures on a device.
 
@@ -24,15 +26,20 @@ Functional requirements:
    RAID metadata formats:
 
    o ATARAID
+     - Adaptec HostRAID ASR
      - Highpoint 37x/45x
      - Intel Software RAID
+     - JMicron ATARAI
      - LSI Logic MegaRaid
+     - NVidia RAID
      - Promise FastTrak
      - Silicon Image Medley
+     - SNIA DDF1
+     - VIA Software RAID
+     - DOS partitions on SW RAIDs
 
-2. dmraid shall be open to future extensions by other ondisk RAID formats,
-   eg. SNIA DDF
-   (http://www.snia.org/tech_activities/ddftwg/DDFTrial-UseDraft_0_45.pdf)
+
+2. dmraid shall be open to future extensions by other ondisk RAID formats.
 
 3. dmraid shall generate the necessary dm table(s) defining
    the needed mappings to address the RAID data.
@@ -243,26 +250,37 @@ o Display
 Code directory tree:
 --------------------
 
-dmraid ---/doc
-	+-/include
-	+-/lib ---/activate
-	|	|-/datastruct
-	|	|-/device
-	|	|-/display
-	|	|-/format ---/ataraid
-	|	|	   +-/partition
-	|	|          +-/template
-	|	|-/locking
-	|	|-/log
-	|	|-/misc
-	|	|-/metadata
-	|	+-/mm
-	+-/man
-	+-/tools
+.
+|-- autoconf
+|-- doc
+|-- include
+|   `-- dmraid
+|-- lib
+|   |-- activate
+|   |-- datastruct
+|   |-- device
+|   |-- display
+|   |-- events
+|   |-- format
+|   |   |-- ataraid
+|   |   |-- ddf
+|   |   |-- partition
+|   |   `-- template
+|   |-- locking
+|   |-- log
+|   |-- metadata
+|   |-- misc
+|   |-- mm
+|   `-- register
+|-- logwatch
+|-- man
+`-- tools
+
+24 directories
 
 
-Future enhancements:
---------------------
+Enhancements coming (initially with the Intel Software RAID):
+-------------------------------------------------------------
 
 o enhance write support to update ondisk metadata
   - to restore metadata backups
@@ -279,5 +297,5 @@ o status daemon to monitor RAID set sanity
 Open questions:
 ---------------
 
-o do we need to prioritize on device-mapper targets for higher RAID levels
-  (in particular we'ld need RAID3+5 to support some ATARAID formats) ?
+o we need to prioritize on device-mapper targets for higher RAID levels
+  (in particular we'ld need RAID4+5 to support some ATARAID formats)

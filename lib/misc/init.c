@@ -15,7 +15,7 @@ libdmraid_init(int argc, char **argv)
 {
 	struct lib_context *lc;
 
-	dso = (argv[0] && strcmp(argv[0], "dso")) ? 1 : 0;
+	dso = (argv[0] && !strcmp(argv[0], "dso")) ? 1 : 0;
 
 	if ((lc = alloc_lib_context(argv))) {
 		if (!register_format_handlers(lc)) {

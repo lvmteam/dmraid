@@ -5,8 +5,9 @@
  * Copyright (C) 2004,2005 Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
- * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * Copyright (C) 2007,2008   Intel Corporation. All rights reserved.
  * November, 2007 - additions for Create, Delete, Rebuild & Raid 10. 
+ * August, 2008 - support for BBM
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,6 +48,7 @@
 #define MPB_VERSION_3OR4_DISK_ARRAY "1.2.01"
 #define MPB_VERSION_RAID5 "1.2.02"
 #define MPB_VERSION_5OR6_DISK_ARRAY "1.2.04"
+#define MPB_VERSION_ATTRIBS "1.3.00"
 #define MAX_SIGNATURE_LENGTH  32
 #define MPB_VERSION_LENGTH 6
 #define MAX_RAID_SERIAL_LEN   16
@@ -59,6 +61,7 @@
 #define RAID_DISK_RESERVED_BLOCKS 417
 #define DISK_RESERVED_BLOCKS (RAID_DISK_RESERVED_BLOCKS+RAID_VOLUME_RESERVED_BLOCKS)
 #define UNKNOWN_SCSI_ID ((uint32_t)~0)
+#define DISK_THRESHOLD 4
 
 static char * mpb_versions[] = 
 {
@@ -69,6 +72,7 @@ static char * mpb_versions[] =
 	(char *) MPB_VERSION_3OR4_DISK_ARRAY,
 	(char *) MPB_VERSION_RAID5,
 	(char *) MPB_VERSION_5OR6_DISK_ARRAY,
+	(char *) MPB_VERSION_ATTRIBS,
 };
 
 #define MPB_VERSION_LAST mpb_versions[sizeof(mpb_versions)/sizeof(char*) - 1]
@@ -141,15 +145,22 @@ struct isw_map {
 struct isw_vol {
 	uint32_t curr_migr_unit;
 	uint32_t check_point_id;
-	uint8_t migr_state;	// Normal or Migrating
-	uint8_t migr_type;	// Initializing, Rebuilding, ...
+	uint8_t migr_state;
+#define ISW_T_MIGR_STATE_NORMAL		0
+#define ISW_T_MIGR_STATE_MIGRATING	1
+	uint8_t migr_type;
+#define ISW_T_MIGR_TYPE_INITIALIZING		0
+#define ISW_T_MIGR_TYPE_REBUILDING		1
+#define ISW_T_MIGR_TYPE_VERIFYING		2
+#define ISW_T_MIGR_TYPE_GENERAL_MIGRATION	3
+#define ISW_T_MIGR_TYPE_STATE_CHANGE		4
 	uint8_t dirty;
 	uint8_t fs_state;
 	uint16_t verify_errors;
 	uint16_t verify_bad_blocks;
 #define ISW_RAID_VOL_FILLERS 4
 	uint32_t filler[ISW_RAID_VOL_FILLERS];
-	struct isw_map map;
+	struct isw_map map[1];
 	// here comes another one if migr_state
 } __attribute__ ((packed));
 
@@ -203,7 +214,9 @@ struct isw {
 	uint8_t fill[1];	/* 0x3B */
 	uint32_t cache_size;	/* 0x3c - 0x40 in mb */
 	uint32_t orig_family_num;	/* 0x40 - 0x43 original family num */
-#define	ISW_FILLERS	37
+    uint32_t power_cycle_count;	   /* 0x44 - 0x47 sumulated power cycle count for array */
+	uint32_t bbm_log_size; /* 0x48 - 0x4b size of bbm log in bytes */
+#define	ISW_FILLERS	35
 	uint32_t filler[ISW_FILLERS];	/* 0x3C - 0xD7 RAID_MPB_FILLERS */
 	struct isw_disk disk[1];	/* 0xD8 diskTbl[numDisks] */
 	// here comes isw_dev[num_raid_devs]

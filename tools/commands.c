@@ -38,7 +38,7 @@ static char const *short_opts = "a:hipP:"
 #endif
 	"rR:s::tv"
 #endif
-	"VC:S::";
+	"VC:S::Z";
 
 #ifdef HAVE_GETOPTLONG
 static struct option long_opts[] = {
@@ -73,6 +73,7 @@ static struct option long_opts[] = {
 	{"version", no_argument, NULL, 'V'},
 	{"create", required_argument, NULL, 'C'},
 	{"spare", optional_argument, NULL, 'S'},
+	{"rm_partitions", no_argument, NULL, 'Z'},
 	{NULL, no_argument, NULL, 0}
 };
 #endif /* #ifdef HAVE_GETOPTLONG */
@@ -209,6 +210,7 @@ help(struct lib_context *lc, int arg)
 		  "\t[-f|--format FORMAT[,FORMAT...]]\n"
 		  "\t[-P|--partchar CHAR]\n"
 		  "\t[-p|--no_partitions]\n"
+		  "\t[-Z|--rm_partitions]\n"
 		  "\t[--separator SEPARATOR]\n" "\t[RAID-set...]\n", c);
 	log_print(lc, "%s\t{-h|--help}\n", c);
 	log_print(lc, "%s\t{-V/--version}\n", c);
@@ -221,7 +223,7 @@ help(struct lib_context *lc, int arg)
 		  "\t[-f|--format FORMAT[,FORMAT...]]\n"
 		  "\t[-P|--partchar CHAR]\n" "\t[-p|--no_partitions]\n"
 		  "\t[--separator SEPARATOR]\n" "\t[-t|--test]\n"
-		  "\t[RAID-set...]\n", c);
+		  "\t[-Z|--rm_partitions] [RAID-set...]\n", c);
 	log_print(lc,
 		  "%s\t{-b|--block_devices} *\n"
 		  "\t[-c|--display_columns][FIELD[,FIELD...]]...\n"
@@ -274,7 +276,7 @@ static struct actions actions[] = {
 	 UNDEF,			/* Set in check_activate() by mandatory option argument. */
 	 UNDEF,
 	 ACTIVATE | DEACTIVATE | FORMAT | HELP | IGNORELOCKING | NOPARTITIONS |
-	 SEPARATOR
+	 SEPARATOR | RMPARTITIONS
 #ifndef DMRAID_MINI
 	 | DBG | TEST | VERBOSE
 #endif
@@ -293,7 +295,8 @@ static struct actions actions[] = {
 #  endif
 	 | RAID_DEVICES | RAID_SETS,
 	 ACTIVE | INACTIVE | COLUMN | DBG | DUMP | DMERASE | GROUP | HELP |
-	 IGNORELOCKING | NOPARTITIONS | SEPARATOR | TEST | VERBOSE
+	 IGNORELOCKING | NOPARTITIONS | SEPARATOR | TEST | VERBOSE |
+	 RMPARTITIONS
 #else
 	 , UNDEF
 #endif
@@ -310,7 +313,7 @@ static struct actions actions[] = {
 	{'P',
 	 PARTCHAR,
 	 ACTIVATE | DEACTIVATE,
-	 FORMAT | HELP | IGNORELOCKING | SEPARATOR
+	 FORMAT | HELP | IGNORELOCKING | SEPARATOR | RMPARTITIONS
 #ifndef DMRAID_MINI
 	 | DBG | TEST | VERBOSE
 #endif
@@ -323,7 +326,7 @@ static struct actions actions[] = {
 	{'p',
 	 NOPARTITIONS,
 	 ACTIVATE | DEACTIVATE,
-	 FORMAT | HELP | IGNORELOCKING | SEPARATOR
+	 FORMAT | HELP | IGNORELOCKING | SEPARATOR | RMPARTITIONS
 #ifndef DMRAID_MINI
 	 | DBG | TEST | VERBOSE
 #endif
@@ -572,6 +575,15 @@ static struct actions actions[] = {
 	 NO_ARGS,
 	 check_spare_argument,
 	 LC_HOT_SPARE_SET,
+	 },
+	{'Z',
+	 RMPARTITIONS,
+	 ACTIVATE, /* We cannot undo this on DEACTIVATE ! */
+	 DBG | FORMAT | HELP | IGNORELOCKING | NOPARTITIONS | VERBOSE |
+	 SEPARATOR,
+	 ARGS,
+	 NULL,
+	 0,
 	 },
 };
 

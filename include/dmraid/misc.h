@@ -62,9 +62,9 @@ div_up(uint64_t what, unsigned int by)
 #ifdef DMRAID_LED
 /* Definitions for LED support */
 #define LED_OFF		0
-#define LED_REBUILD 1
+#define LED_REBUILD	1
 
-int led(char *rd, int status);
+int led(const char *path, int status);
 #endif
 
 #endif

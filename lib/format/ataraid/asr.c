@@ -535,6 +535,7 @@ find_logical(struct asr *asr)
 	return NULL;
 }
 
+/*
 static struct raid_dev *
 find_spare(struct lib_context *lc)
 {
@@ -547,6 +548,7 @@ find_spare(struct lib_context *lc)
 
 	return NULL;
 }
+*/
 
 /* Wrapper for name() */
 static char *

@@ -81,7 +81,7 @@ init_file_locking(struct lib_context *lc)
 	lc->lock = &file_locking;
 	ret = 1;
 
-      out:
+out:
 	dbg_free(dir);
 
 	return ret;

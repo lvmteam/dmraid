@@ -12,6 +12,7 @@ SOURCES=\
 	activate/activate.c \
 	activate/devmapper.c \
 	device/ata.c \
+	device/partition.c \
 	device/scan.c \
 	device/scsi.c \
 	display/display.c \
@@ -44,25 +45,34 @@ SOURCES=\
 	format/ddf/ddf1_dump.c \
 	format/partition/dos.c
 
+ifeq ( "@STATIC_LINK", "no")
+	SOURCES += register/dmreg.c
+endif
+
 OBJECTS=$(SOURCES:%.c=%.o)
 
 LIB_STATIC=$(top_srcdir)/lib/libdmraid.a
+LIB_EVENTS_NAME=libdmraid-events-isw
 
 TARGETS=$(LIB_STATIC)
-INSTALL_TARGETS= $(LIB_STATIC)
-
-ifeq ("@KLIBC@", "no")
-  ifeq ("@LIB_SO@", "yes")
-    LIB_SHARED=$(top_srcdir)/lib/libdmraid.so
-    TARGETS += $(LIB_SHARED)
-    INSTALL_TARGETS += $(LIB_SHARED)
-  endif
-endif
-
-all:
-	@echo "$(TARGETS) $(INSTALL_TARGETS)"
+INSTALL_TARGETS=$(LIB_STATIC)
 
 include $(top_srcdir)/make.tmpl
+
+ifeq ("@KLIBC@", "no")
+	ifeq ("@STATIC_LINK@", "no")
+		LIB_SHARED=$(top_srcdir)/lib/libdmraid.so
+		LIB_EVENTS_SHARED=$(top_srcdir)/lib/$(LIB_EVENTS_NAME).so
+		TARGETS += $(LIB_SHARED) $(LIB_EVENTS_SHARED)
+		INSTALL_TARGETS += $(LIB_SHARED) $(LIB_EVENTS_SHARED)
+	endif
+endif
+
+all: $(TARGETS)
+	@echo $(TARGETS) $(INSTALL_TARGETS)
+
+$(LIB_EVENTS_SHARED):
+	$(CC) events/$(LIB_EVENTS_NAME).c $(INCLUDES) $(CFLAGS) $(LDFLAGS) -shared  -Wl,-soname,$(notdir $@).$(DMRAID_LIB_VERSION) -o $@ -ldevmapper -ldevmapper-event $(LIB_SHARED)
 
 .PHONY: install_dmraid_libs remove_dmraid_libs
 

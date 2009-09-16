@@ -63,6 +63,11 @@ ifeq ("@DMRAID_TEST@", "yes")
   CFLAGS+=-DDMRAID_TEST
 endif
 
+# Don't allow for linking against DSO with static binary.
+ifeq ("@STATIC_LINK@", "no")
+	CFLAGS+=-DDMRAID_AUTOREGISTER
+endif
+
 ifeq ("@DEBUG@", "yes")
   CFLAGS+=-g -fno-omit-frame-pointer -DDEBUG
 else
@@ -131,7 +136,7 @@ $(TARGETS): $(OBJECTS)
 
 %.so: $(OBJECTS)
 	$(CC) -shared -Wl,-soname,$(notdir $@).$(DMRAID_LIB_VERSION) \
-	-Wl,--version-script,.export.sym $(OBJECTS) -o $@
+	-Wl,--version-script,.export.sym $(OBJECTS) -o $@ -ldevmapper-event
 
 $(LIB_STATIC): $(OBJECTS)
 	$(RM) $@

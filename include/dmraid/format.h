@@ -1,9 +1,12 @@
 /*
- * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2009  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  * 
- * Copyright (C) 2007   Intel Corporation. All rights reserved.
+ * Copyright (C) 2007,2009   Intel Corporation. All rights reserved.
  * November, 2007 - additions for Create, Delete, Rebuild & Raid 10. 
+ * March, 2008 - additions for hot-spare check
+ * August, 2008 - additions for Activation, Rebuild check
+ * January, 2009 - additions for Activation, Rebuild check
  *
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -75,6 +78,11 @@ enum handler_commands {
 	GET_REBUILD_DRIVE,
 	GET_REBUILD_DRIVE_NO,
 	CHECK_HOT_SPARE,
+	ALLOW_ACTIVATE,
+	ALLOW_REBUILD,
+	GET_STATUS,
+	GET_DEVICE_IDX,
+	GET_NUMBER_OF_DEVICES,
 	/* ... */
 };
 

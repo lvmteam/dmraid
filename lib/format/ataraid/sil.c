@@ -212,11 +212,11 @@ sil_read_metadata(struct lib_context *lc, struct dev_info *di,
 		goto out;
 	}
 
-      bad:
+bad:
 	free_sils(sils, 0);
 	sils = NULL;
 
-      out:
+out:
 	return (void *) sils;
 }
 
@@ -621,7 +621,7 @@ setup_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	return (rd->name = name(lc, rd, sil->type == SIL_T_RAID10)) ? 1 : 0;
 
-      bad:
+bad:
 	free_sils(sils, 0);
 
 	return 0;

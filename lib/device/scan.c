@@ -217,7 +217,7 @@ removable_device(struct lib_context *lc, char *dev_path)
 
 	dbg_free(sysfs_file);
 
-      out:
+out:
 	dbg_free(sysfs_path);
 
 	return ret;
@@ -288,7 +288,7 @@ get_size(struct lib_context *lc, char *path, char *name, int sysfs)
 
 	close(fd);
 
-      out:
+out:
 	dbg_free(dev_path);
 
 	if (!ret && di)
@@ -335,7 +335,7 @@ discover_devices(struct lib_context *lc, char **devnodes)
 	closedir(d);
 	ret = 1;
 
-      out:
+out:
 	if (p)
 		dbg_free(p);
 

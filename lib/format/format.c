@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2007   Intel Corporation. All rights reserved.
  * November, 2007 - additions for Create, Delete, Rebuild & Raid 10. 
+ * May, 2009 - raid status reporting - add support for nosync state
  * 
  * See file LICENSE at the top of this source tree for license information.
  */
@@ -21,7 +22,7 @@
  * Comment next line out to avoid pre-registration
  * checks on metadata format handlers.
  */
-#define	CHECK_FORMAT_HANDLER
+#undef	CHECK_FORMAT_HANDLER
 #ifdef	CHECK_FORMAT_HANDLER
 /*
  * Check that mandatory members of a metadata form handler are present.
@@ -260,6 +261,7 @@ write_metadata(struct lib_context *lc, const char *handler,
 	return 1;
 }
 
+
 /*
  * Check devices in a RAID set.
  *
@@ -277,7 +279,7 @@ _check_raid_set(struct lib_context *lc, struct raid_set *rs,
 				void *context),
 		void *f_check_context, const char *handler)
 {
-	unsigned int devs;
+	unsigned int dev_tot_qan;
 	uint64_t sectors;
 	struct raid_dev *rd;
 
@@ -285,36 +287,88 @@ _check_raid_set(struct lib_context *lc, struct raid_set *rs,
 		return;
 
 	sectors = total_sectors(lc, rs);
-	rs->total_devs = devs = count_devs(lc, rs, ct_dev);
+	rs->total_devs = dev_tot_qan = count_devs(lc, rs, ct_dev);
 	list_for_each_entry(rd, &rs->devs, devs) {
-		unsigned int devices = f_devices(rd, f_devices_context);
+		unsigned int dev_found_qan = f_devices(rd, f_devices_context);
+
 		/* FIXME: error if the metadatas aren't all the same? */
-		rs->found_devs = devices;
+		rs->found_devs = dev_found_qan;
 
 		log_dbg(lc, "checking %s device \"%s\"", handler, rd->di->path);
-		if (T_SPARE(rd) && rs->type == t_raid1 &&	/* FIXME: rs->type check ? */
-		    rd->sectors != sectors) {
-			rd->status = s_inconsistent;
-			log_err(lc, "%s: size mismatch in set \"%s\", spare "
-				"\"%s\"", handler, rs->name, rd->di->path);
-			continue;
-		}
 
-		if (devs != devices &&
-		    f_check && !f_check(lc, rs, rd, f_check_context)) {
-			rd->status = s_broken;
-			log_err(lc, "%s: wrong # of devices in RAID "
-				"set \"%s\" [%u/%u] on %s",
-				handler, rs->name, devs, devices, rd->di->path);
-		} else
+	        /*
+		 * If disks number of found disks equals
+		 * disk expected status -> status OK
+		 */
+		if ((dev_tot_qan == dev_found_qan) && f_check &&
+                    f_check(lc, rs, rd, f_check_context))
 			rd->status = s_ok;
+		else if (dev_tot_qan != dev_found_qan) {
+			log_err(lc,
+				"%s: wrong # of devices in RAID "
+				"set \"%s\" [%u/%u] on %s",
+				handler, rs->name, dev_tot_qan,
+				dev_found_qan, rd->di->path);
+		
+			/* If incorrect number of disks, status depends on raid type. */
+			switch(rs->type) {
+			case t_linear:	/* raid 0 - always broken */
+			case t_raid0:	/* raid 0 - always broken */
+				rd->status = s_broken;
+				break;
+			/* raid 1 - if at least 1 disk -> inconsistent */
+			case t_raid1:
+				if (dev_tot_qan >= 1)
+					rd->status = s_inconsistent;
+				else if (T_SPARE(rd) && rd->sectors != sectors) {
+			            	rd->status = s_inconsistent;
+			            	log_err(lc,
+					    	"%s: size mismatch in "
+						"set \"%s\", spare \"%s\"",
+						handler, rs->name,
+						rd->di->path);
+				} else
+					rd->status = s_broken; 
+				break;
+			/* raid 4/5 - if 1 disk missing- inconsistent */ 
+			case t_raid4:
+			case t_raid5_ls:
+			case t_raid5_rs:
+			case t_raid5_la:
+			case t_raid5_ra:
+				if((dev_tot_qan == (dev_found_qan-1) &&
+				    dev_tot_qan > 1 &&
+				    f_check &&
+				    f_check(lc, rs, rd, f_check_context)) ||
+				   dev_tot_qan > dev_found_qan)
+					rd->status = s_inconsistent;
+				else
+					rd->status = s_broken;
+				break;
+			/* raid 6 - if up to 2 disks missing- inconsistent */ 
+			case t_raid6:
+				if ((dev_tot_qan >= (dev_found_qan - 2) &&
+				     f_check &&
+				     f_check(lc, rs, rd, f_check_context)) ||
+				    dev_tot_qan > dev_found_qan)
+					rd->status = s_inconsistent;
+				else
+					rd->status = s_broken;
+				break;
+			case t_spare: /* spare - always broken */
+				rd->status = s_broken;
+				break;        
+			default: /* other - undef */
+				rd->status = s_undef;
+			}
+		}
 	}
 }
 
 /*
  * Update RAID set state based on operational subsets/devices.
  *
- * In case of a RAID set hierachy, check availability of subsets
+ f a RAID set hierachy, check availability of subsets
  * and set superset to broken in case *all* subsets are broken.
  * If at least one is still available, set to inconsistent.
  *
@@ -323,41 +377,68 @@ _check_raid_set(struct lib_context *lc, struct raid_set *rs,
  */
 static void
 _set_rs_status(struct lib_context *lc, struct raid_set *rs,
-	       unsigned int i, unsigned int operational)
+	       unsigned int i, unsigned int operational, 
+	       unsigned int inconsist, unsigned int subsets_raid1001,
+	       unsigned int nosync)
 {
+	if (subsets_raid1001) {
+		if (subsets_raid1001 == 1)
+			rs->status = s_broken;
+		else if (subsets_raid1001 == 2)
+			rs->status = s_ok;
+
+		return;
+	}
+
 	if (operational == i)
 		rs->status = s_ok;
 	else if (operational)
 		rs->status = s_inconsistent;
+	else if (inconsist)
+		rs->status = s_inconsistent;
+	else if (nosync)
+		rs->status = s_nosync;
 	else
 		rs->status = s_broken;
-
+	
 	log_dbg(lc, "set status of set \"%s\" to %u", rs->name, rs->status);
 }
 
 static int
 set_rs_status(struct lib_context *lc, struct raid_set *rs)
 {
-	unsigned int i = 0, operational = 0;
+	unsigned int i = 0, operational = 0, subsets_raid1001 = 0,
+		     inconsist = 0, nosync = 0;
 	struct raid_set *r;
 	struct raid_dev *rd;
 
 	/* Set status of subsets. */
 	list_for_each_entry(r, &rs->sets, list) {
 		/* Check subsets to set status of superset. */
-		i++;
+		if ((rs->type == t_raid0 && r->type == t_raid1) ||
+		     (rs->type == t_raid1 && r->type == t_raid0))
+			subsets_raid1001++; /* Count subsets for raid 10/01 */
+
+		i++; /* Count subsets*/
+
 		if (S_OK(r->status) || S_INCONSISTENT(r->status))
-			operational++;
+			operational++; /* Count operational subsets. */
 	}
 
 	/* Check status of devices... */
 	list_for_each_entry(rd, &rs->devs, devs) {
-		i++;
+		i++; /* Count disks*/
+
 		if (S_OK(rd->status))
-			operational++;
+			operational++; /* Count disks in "ok" raid*/
+        	else if (S_INCONSISTENT(rd->status))
+			inconsist++; /* Count disks in degraded raid*/
+        	else if (S_NOSYNC(rd->status))
+			nosync++;
 	}
 
-	_set_rs_status(lc, rs, i, operational);
+	_set_rs_status(lc, rs, i, operational, inconsist,
+		       subsets_raid1001, nosync);
 	return S_BROKEN(rs->status) ? 0 : 1;
 }
 
@@ -369,7 +450,7 @@ set_rs_status(struct lib_context *lc, struct raid_set *rs)
  */
 int
 check_raid_set(struct lib_context *lc, struct raid_set *rs,
-	       unsigned int (*f_devices) (struct raid_dev * rd,
+	       unsigned int (*f_devices) (struct raid_dev *rd,
 					  void *context),
 	       void *f_devices_context,
 	       int (*f_check) (struct lib_context * lc, struct raid_set * r,
@@ -377,18 +458,32 @@ check_raid_set(struct lib_context *lc, struct raid_set *rs,
 	       void *f_check_context, const char *handler)
 {
 	struct raid_set *r;
+	struct raid_dev *rd; 
 
 	list_for_each_entry(r, &rs->sets, list)
 		check_raid_set(lc, r, f_devices, f_devices_context,
 			       f_check, f_check_context, handler);
 
-	/* Never check group RAID sets. */
-	if (!T_GROUP(rs))
-		_check_raid_set(lc, rs, f_devices, f_devices_context,
-				f_check, f_check_context, handler);
+	/* Never check group RAID sets nor sets without devices. */
+	if (!T_GROUP(rs) && DEVS(rs)) {
+		rd = list_entry(rs->devs.next, struct raid_dev, devs);   
+		/*
+		 * Call handler function to get status of raid devices 
+		 * according metadata state and number of disks in array.
+		 */
+	       if (rd->fmt->metadata_handler)
+			rs->status = rd->fmt->metadata_handler(lc, GET_STATUS,
+							       NULL, rs);
+	       else
+			/* Else take default actions in generic module */ 
+			_check_raid_set(lc, rs, f_devices, f_devices_context,
+					f_check, f_check_context, handler);
+	}
 
+	/* Set status for supersets and subsets */
 	return set_rs_status(lc, rs);
 }
+
 
 /* Initialize a RAID sets type and stride. */
 int

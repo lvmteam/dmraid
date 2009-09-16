@@ -164,7 +164,7 @@ check_table(struct lib_context *lc, char *table)
  * Return 1 for sucess; 0 for failure*/
 static int
 dmraid_uuid(struct lib_context *lc, struct raid_set *rs,
-	    char *uuid, uint uuid_len)
+	    char *uuid, uint uuid_len, char *name)
 {
 	int r;
 
@@ -172,13 +172,13 @@ dmraid_uuid(struct lib_context *lc, struct raid_set *rs,
 	memset(uuid, 0, uuid_len);
 
 	/* Create UUID string from subsystem prefix and RAID set name. */
-	r = snprintf(uuid, uuid_len, "DMRAID-%s", rs->name) < uuid_len;
+	r = snprintf(uuid, uuid_len, "DMRAID-%s", name) < uuid_len;
 	return r < 0 ? 0 : (r < uuid_len);
 }
 
 /* Create a task, set its name and run it. */
 static int
-run_task(struct lib_context *lc, struct raid_set *rs, char *table, int type)
+run_task(struct lib_context *lc, struct raid_set *rs, char *table, int type, char *name)
 {
 	/*
 	 * DM_UUID_LEN is defined in dm-ioctl.h as 129 characters;
@@ -191,13 +191,13 @@ run_task(struct lib_context *lc, struct raid_set *rs, char *table, int type)
 	struct dm_task *dmt;
 
 	_init_dm();
-	ret = (dmt = dm_task_create(type)) && dm_task_set_name(dmt, rs->name);
+	ret = (dmt = dm_task_create(type)) && dm_task_set_name(dmt, name);
 	if (ret && table)
 		ret = parse_table(lc, dmt, table);
 
 	if (ret) {
 		if (DM_DEVICE_CREATE == type) {
-			ret = dmraid_uuid(lc, rs, uuid, DM_UUID_LEN) &&
+			ret = dmraid_uuid(lc, rs, uuid, DM_UUID_LEN, name) &&
 				dm_task_set_uuid(dmt, uuid) && dm_task_run(dmt);
 		} else
 			ret = dm_task_run(dmt);
@@ -209,12 +209,12 @@ run_task(struct lib_context *lc, struct raid_set *rs, char *table, int type)
 
 /* Create a mapped device. */
 int
-dm_create(struct lib_context *lc, struct raid_set *rs, char *table)
+dm_create(struct lib_context *lc, struct raid_set *rs, char *table, char *name)
 {
 	int ret;
 
 	/* Create <dev_name> */
-	ret = run_task(lc, rs, table, DM_DEVICE_CREATE);
+	ret = run_task(lc, rs, table, DM_DEVICE_CREATE, name);
 
 	/*
 	 * In case device creation failed, check if target
@@ -231,7 +231,7 @@ int
 dm_suspend(struct lib_context *lc, struct raid_set *rs)
 {
 	/* Suspend <dev_name> */
-	return run_task(lc, rs, NULL, DM_DEVICE_SUSPEND);
+	return run_task(lc, rs, NULL, DM_DEVICE_SUSPEND, rs->name);
 }
 
 /* Resume a mapped device. */
@@ -239,7 +239,7 @@ int
 dm_resume(struct lib_context *lc, struct raid_set *rs)
 {
 	/* Resume <dev_name> */
-	return run_task(lc, rs, NULL, DM_DEVICE_RESUME);
+	return run_task(lc, rs, NULL, DM_DEVICE_RESUME, rs->name);
 }
 
 /* Reload a mapped device. */
@@ -249,7 +249,7 @@ dm_reload(struct lib_context *lc, struct raid_set *rs, char *table)
 	int ret;
 
 	/* Create <dev_name> */
-	ret = run_task(lc, rs, table, DM_DEVICE_RELOAD);
+	ret = run_task(lc, rs, table, DM_DEVICE_RELOAD, rs->name);
 
 	/*
 	 * In case device creation failed, check if target
@@ -263,10 +263,10 @@ dm_reload(struct lib_context *lc, struct raid_set *rs, char *table)
 
 /* Remove a mapped device. */
 int
-dm_remove(struct lib_context *lc, struct raid_set *rs)
+dm_remove(struct lib_context *lc, struct raid_set *rs, char *name)
 {
 	/* Remove <dev_name> */
-	return run_task(lc, rs, NULL, DM_DEVICE_REMOVE);
+	return run_task(lc, rs, NULL, DM_DEVICE_REMOVE, name);
 }
 
 /* Retrieve status of a mapped device. */

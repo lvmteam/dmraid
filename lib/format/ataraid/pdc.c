@@ -155,7 +155,7 @@ is_signature(struct pdc *pdc)
 /* Read and try to discover Promise signature. */
 static void *
 pdc_read_metadata(struct lib_context *lc, struct dev_info *di,
-		  size_t * size, uint64_t * offset, union read_info *info)
+		  size_t *size, uint64_t *offset, union read_info *info)
 {
 	struct pdc *ret;
 	unsigned ma, sub;
@@ -171,6 +171,9 @@ pdc_read_metadata(struct lib_context *lc, struct dev_info *di,
 	};
 	unsigned *s = end_sectors;
 	uint64_t sector;
+
+	*size = sizeof(*ret);
+	pdc_sectors_max = di->sectors - div_up(*size, 512);
 
 	if (!(ret = alloc_private(lc, handler,
 				  PDC_MAX_META_AREAS * sizeof(*ret))))
@@ -210,7 +213,7 @@ pdc_read_metadata(struct lib_context *lc, struct dev_info *di,
 			s = begin_sectors;
 	} while (!info->u32 && sub--);
 
-      out:
+out:
 	/* No metadata signature(s) found. */
 	if (!info->u32) {
 		dbg_free(ret);
@@ -370,9 +373,9 @@ _create_rd(struct lib_context *lc, struct raid_dev *rd,
 
 	log_zero_sectors(lc, r->di->path, handler);
 
-      bad_free:
+bad_free:
 	free_raid_dev(lc, &r);
-      out:
+out:
 	return r;
 }
 

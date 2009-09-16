@@ -25,14 +25,14 @@ struct template {
 	uint32_t magic;		/* and/or metadata has a 'magic' number ? */
 #define	TEMPLATE_MAGIC_OK	0xABCDEF
 
-	uint8_t type;		/* RAID level */
+	uint8_t	type;		/* RAID level */
 #define	TEMPLATE_T_SPAN	0
 #define	TEMPLATE_T_RAID0 1
 
 	uint8_t disk_number;	/* Absolute disk number in set. */
 	/* etc. */
 
-	... ....		/* members for numbers of disks, whatever... */
+	.......			/* members for numbers of disks, whatever... */
 } __attribute__ ((packed));
 #endif
 
