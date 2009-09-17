@@ -12,8 +12,13 @@ License: GPLv2+
 Group: System Environment/Base
 URL: http://people.redhat.com/heinzm/sw/dmraid
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires: device-mapper >= 1.02.02-2, device-mapper-devel, libselinux-devel, libsepol-devel
-Requires: dmraid-events kpartx
+BuildRequires: device-mapper >= 1.02.02-2
+BuildRequires: device-mapper-devel
+BuildRequires: device-mapper-event
+BuildRequires: libselinux-devel
+BuildRequires: libsepol-devel
+Requires: dmraid-events
+Requires: kpartx
 Requires(postun): ldconfig
 Requires(post): ldconfig
 Source: ftp://people.redhat.com/heinzm/sw/dmraid/src/%{name}-%{version}.tar.bz2
