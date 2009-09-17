@@ -133,8 +133,9 @@ AC_ARG_ENABLE(shared_lib,
 
 echo $ac_n "checking whether to disable testing with mapped devices""... $ac_c" 1>&6
 dnl Disable testing with mapped devices
-AC_ARG_ENABLE(testing, [  --disable-testing       Disable testing with mapped devices],  \
-DMRAID_TEST=no, DMRAID_TEST=yes)
+AC_ARG_ENABLE(testing, [  --disable-testing        Enable testing with mapped devices],  \
+DMRAID_TEST=$enableval, DMRAID_TEST=yes)
+
 
 echo "$ac_t""$DEBUG" 1>&6
 
@@ -163,6 +164,10 @@ fi
 
 if test x$DMRAID_LED = xyes; then
         CFLAGS="$CFLAGS -DDMRAID_LED"
+fi
+
+if test x$DMRAID_TEST = xyes; then
+        CFLAGS="$CFLAGS -DDMRAID_TEST"
 fi
 
 if test x$DMRAID_INTEL_LED = xyes; then
@@ -229,7 +234,6 @@ AC_SUBST(CFLAGS)
 AC_SUBST(CLDFLAGS)
 AC_SUBST(DEBUG)
 AC_SUBST(DEBUG_MALLOC)
-AC_SUBST(DMRAID_TEST)
 AC_SUBST(DMRAID_VERSION)
 AC_SUBST(DMRAID_LIB_VERSION)
 AC_SUBST(DIETLIBC)

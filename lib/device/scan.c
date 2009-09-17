@@ -87,7 +87,7 @@ dm_test_device(struct lib_context *lc, char *path)
 	struct stat s;
 
 	return !lstat(path, &s) &&
-		S_ISLNK(s.st_mode) &&
+/*		S_ISLNK(s.st_mode) && */ /* No symlinks any more. */
 		!strncmp(get_basename(lc, path), "dm-", 3);
 }
 
