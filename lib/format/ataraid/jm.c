@@ -25,18 +25,18 @@ static int member(struct jm *jm);
 static char *
 name(struct lib_context *lc, struct raid_dev *rd, unsigned int subset)
 {
-	int i;
-	size_t len;
+	size_t i, len;
 	struct jm *jm = META(rd, jm);
-	char buf[JM_NAME_LEN + 1], *ret, *name = (char *) jm->name;
+	char *ret, *name = (char *) jm->name;
+	char buf[JM_NAME_LEN + 1] = { '\0' };
 
-	/* Name always 0 terminated or whitespace at end ? */
+	/* Sanitize name, make sure it's null terminated */
 	strncpy(buf, name, JM_NAME_LEN);
-	len = strlen(buf);
-	i = len < JM_NAME_LEN ? len : JM_NAME_LEN;
-	buf[i] = 0;
-	while (i-- && isspace(buf[i]))
-		buf[i] = 0;
+	while (i && isspace(buf[i])) {
+		name[i]='\0';
+		buf[i]='\0';
+		--i;
+	}
 
 	len = strlen(buf) + sizeof(HANDLER) + (jm->mode == JM_T_RAID01 ? 3 : 2);
 	if ((ret = dbg_malloc(len))) {
