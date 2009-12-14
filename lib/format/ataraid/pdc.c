@@ -202,8 +202,11 @@ pdc_read_metadata(struct lib_context *lc, struct dev_info *di,
 							break;
 
 					/* Memorize main metadata sector. */
-					} else if (!info->u32)
+					} else if (!info->u32) {
 						info->u32 = *s;
+						*offset = sub ? di->sectors - *s :
+								*s;
+					}
 				}
 			}
 		}
