@@ -50,8 +50,8 @@
 #define	u_int64_t	uint64_t
 #endif
 
-#define min(a, b) (a) < (b) ? (a) : (b)
-#define max(a, b) (a) > (b) ? (a) : (b)
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof(*a))
 #define ARRAY_END(a)   (a + ARRAY_SIZE(a))
 
