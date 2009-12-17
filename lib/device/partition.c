@@ -23,20 +23,27 @@ _remove_subset_partitions(struct lib_context *lc, struct raid_set *rs)
 
 	list_for_each_entry(rd, &rs->devs, devs) {
 		int fd = open(rd->di->path, O_RDWR);
+
 		if (fd < 0)
 			LOG_ERR(lc, 0, "opening %s: %s\n", rd->di->path,
 				strerror(errno));
 
 		/* There is no way to enumerate partitions */
 		for (part.pno = 1; part.pno <= 256; part.pno++) {
-			if (ioctl(fd, BLKPG, &io) < 0 && errno != ENXIO &&
-					(part.pno < 16 || errno != EINVAL))
+			if (ioctl(fd, BLKPG, &io) < 0 &&
+			    errno != ENXIO &&
+			    (part.pno < 16 || errno != EINVAL)) {
+				close(fd);
 				LOG_ERR(lc, 0,
 					"removing part %d from %s: %s\n",
 					part.pno, rd->di->path,
 					strerror(errno));
+			}
 		}
+
+		close(fd);
 	}
+
 	return 1;
 }
 
