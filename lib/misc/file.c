@@ -32,7 +32,6 @@ mk_dir_recursive(struct lib_context *lc, const char *dir)
 	} while (s);
 
 	dbg_free(orig);
-
 	return ret;
 }
 
@@ -62,9 +61,9 @@ rw_file(struct lib_context *lc, const char *who, int flags,
 		ssize_t(*func) ();
 		const char *what;
 	} rw_spec[] = {
-		{
-		read, "read"}, {
-	write, "writ"},}, *rw = rw_spec + ((flags & O_WRONLY) ? 1 : 0);
+		{ read, "read"},
+		{ write, "writ"},
+	}, *rw = rw_spec + ((flags & O_WRONLY) ? 1 : 0);
 
 	if ((fd = open(path, flags, lc->mode)) == -1)
 		LOG_ERR(lc, 0, "opening \"%s\"", path);
@@ -84,7 +83,6 @@ rw_file(struct lib_context *lc, const char *who, int flags,
 		ret = 1;
 
 	close(fd);
-
 	return ret;
 }
 
