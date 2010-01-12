@@ -33,7 +33,8 @@ main(int argc, char **argv)
 		 * If both are ok -> perform the required action.
 		 */
 		ret = handle_args(lc, argc, &argv) &&
-			init_locking(lc) && perform(lc, argv);
+		      init_locking(lc) &&
+		      perform(lc, argv);
 
 		/* Cleanup the library context. */
 		libdmraid_exit(lc);

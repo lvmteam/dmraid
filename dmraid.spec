@@ -7,7 +7,7 @@
 Summary: dmraid (Device-mapper RAID tool and library)
 Name: dmraid
 Version: 1.0.0.rc16
-Release: 2%{?dist}
+Release: 3%{?dist}
 License: GPLv2+
 Group: System Environment/Base
 URL: http://people.redhat.com/heinzm/sw/dmraid
@@ -77,7 +77,7 @@ make DESTDIR=$RPM_BUILD_ROOT
 
 %install
 rm -rf $RPM_BUILD_ROOT
-install -m 755 -d $RPM_BUILD_ROOT{%{_libdir},/sbin,%{_sbindir},%{_bindir},%{_libdir},%{_includedir}/dmraid/,/var/lock/dmraid,/etc/cron.d/,/etc/logwatch/conf/services/,/etc/logwatch/scripts/services/}
+install -m 755 -d $RPM_BUILD_ROOT{%{_libdir},/sbin,%{_sbindir},%{_bindir},%{_libdir},%{_includedir}/dmraid/,/var/lock/dmraid,/etc/cron.d/,/etc/logwatch/conf/services/,/etc/logwatch/scripts/services/,/var/cache/logwatch/dmeventd/}
 make DESTDIR=$RPM_BUILD_ROOT install
 ln -s dmraid $RPM_BUILD_ROOT/sbin/dmraid.static
 
@@ -99,7 +99,7 @@ install -m 755 lib/libdmraid-events-isw.so \
 install -m 644 logwatch/dmeventd.conf $RPM_BUILD_ROOT/etc/logwatch/conf/services/dmeventd.conf
 install -m 755 logwatch/dmeventd $RPM_BUILD_ROOT/etc/logwatch/scripts/services/dmeventd
 install -m 644 logwatch/dmeventd_cronjob.txt $RPM_BUILD_ROOT/etc/cron.d/dmeventd-logwatch
-install -m 0700 /dev/null $RPM_BUILD_ROOT/etc/logwatch/scripts/services/dmeventd_syslogpattern.txt
+install -m 0700 /dev/null $RPM_BUILD_ROOT/var/cache/logwatch/dmeventd/syslogpattern.txt
 
 rm -f $RPM_BUILD_ROOT/%{_libdir}/libdmraid.a
 
@@ -136,9 +136,13 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 %config(noreplace) /etc/logwatch/*
 %config(noreplace) /etc/cron.d/dmeventd-logwatch
-%ghost /etc/logwatch/scripts/services/dmeventd_syslogpattern.txt
+%dir /var/cache/logwatch/dmeventd
+%ghost /var/cache/logwatch/dmeventd/syslogpattern.txt
 
 %changelog
+* Tue Jan 12 2010  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-3
+- Add logwatch files and move pattern file to /var/cache
+
 * Mon Nov 2 2009  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-2
 - Fix manual path in specfile
 - fix manual pages for dmraid.static and dm_dso_reg_tool

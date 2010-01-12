@@ -36,8 +36,7 @@
 # Set the location of the folder to store last time stamp
 # (This is used to record the last log sent out so repeats 
 #  are not mailed in error.)
-$syslogpattern_file =
-        "/etc/logwatch/scripts/services/dmeventd_syslogpattern.txt";
+$syslogpattern_file = "/var/cache/logwatch/dmeventd/syslogpattern.txt";
 
 if (-e $syslogpattern_file) {
 	open(FD, "+<", $syslogpattern_file) or die $!;        

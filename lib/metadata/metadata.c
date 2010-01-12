@@ -82,8 +82,8 @@ struct actions {
 	enum args args;		/* Arguments allowed ? */
 
 	/* Function to call on hit or NULL */
-	int (*f_set) (struct lib_context * lc, int arg);
-	int arg;		/* Argument for above function call */
+	int (*f_set) (struct lib_context * lc, struct actions *action);
+	int arg;		/* Argument for above function call. */
 };
 
 /*************************************/

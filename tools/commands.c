@@ -108,7 +108,7 @@ check_optarg(struct lib_context *lc, const char option, struct optarg_def *def)
 
 /* Check activate/deactivate option arguments. */
 static int
-check_activate(struct lib_context *lc, int arg)
+check_activate(struct lib_context *lc, struct actions *a)
 {
 	struct optarg_def def[] = {
 		{ "yes", ACTIVATE},
@@ -122,7 +122,7 @@ check_activate(struct lib_context *lc, int arg)
 #ifndef	DMRAID_MINI
 /* Check active/inactive option arguments. */
 static int
-check_active(struct lib_context *lc, int arg)
+check_active(struct lib_context *lc, struct actions *a)
 {
 	struct optarg_def def[] = {
 		{ "active",   ACTIVE},
@@ -134,9 +134,8 @@ check_active(struct lib_context *lc, int arg)
 	return check_optarg(lc, 's', def);
 }
 
-/* Check and store option arguments. */
-static int
-check_identifiers(struct lib_context *lc, int o)
+/* lc_inc_opt wrapper to allow for (struct actions) call interface. */
+static int _lc_inc_opt(struct lib_context *lc, struct actions *a)
 {
 	if (optarg) {
 		const char delim = *OPT_STR_SEPARATOR(lc);
@@ -144,17 +143,40 @@ check_identifiers(struct lib_context *lc, int o)
 
 		p = remove_white_space(lc, p, strlen(p));
 		p = collapse_delimiter(lc, p, strlen(p), delim);
-		if (!lc_strcat_opt(lc, o, p, delim))
-			return 0;
+
+		/* Hack to handle eg. "-cc". */
+		while (*p == a->option) {
+			lc_inc_opt(lc, a->arg);
+			p++;
+		}
 	}
 
-	lc_inc_opt(lc, o);
+	lc_inc_opt(lc, a->arg);
+	return 1;
+}
+
+/* Check and store option arguments. */
+static int
+check_identifiers(struct lib_context *lc, struct actions *a)
+{
+	if (optarg) {
+		char *p = optarg;
+
+		_lc_inc_opt(lc, a);
+		p += lc_opt(lc, a->arg) - 1;
+		if (*p && !lc_strcat_opt(lc, a->arg, p, *OPT_STR_SEPARATOR(lc)))
+			return 0;
+
+		return 1;
+	}
+
+	lc_inc_opt(lc, a->arg);
 	return 1;
 }
 
 /* Check and store option argument/output field separator. */
 static int
-check_separator(struct lib_context *lc, int arg)
+check_separator(struct lib_context *lc, struct actions *a)
 {
 	if (strlen(optarg) != 1)
 		LOG_ERR(lc, 0, "invalid separator \"%s\"", optarg);
@@ -164,7 +186,7 @@ check_separator(struct lib_context *lc, int arg)
 
 /* Check create option arguments. */
 static int
-check_create_argument(struct lib_context *lc, int arg)
+check_create_argument(struct lib_context *lc, struct actions *a)
 {
 	size_t len;
 
@@ -175,31 +197,32 @@ check_create_argument(struct lib_context *lc, int arg)
 	if (*optarg == '-')
 		LOG_ERR(lc, 0, "the raid set name is missing");
 
-	lc_inc_opt(lc, arg);
+	lc_inc_opt(lc, a->arg);
 	return 1;
 }
 
 /* 'Check' spare option argument. */
 static int
-check_spare_argument(struct lib_context *lc, int arg)
+check_spare_argument(struct lib_context *lc, struct actions *a)
 {
-	lc_inc_opt(lc, arg);
+	lc_inc_opt(lc, a->arg);
 	return 1;
 }
 #endif
 
 /* Check and store option for partition separator. */
 static int
-check_part_separator(struct lib_context *lc, int arg)
+check_part_separator(struct lib_context *lc, struct actions *a)
 {
 	/* We're not actually checking that it's only one character... if
 	   somebody wants to use more, it shouldn't hurt anything. */
 	return lc_stralloc_opt(lc, LC_PARTCHAR, optarg) ? 1 : 0;
 }
 
+
 /* Display help information */
 static int
-help(struct lib_context *lc, int arg)
+help(struct lib_context *lc, struct actions *a)
 {
 	char *c = lc->cmd;
 
@@ -342,7 +365,7 @@ static struct actions actions[] = {
 	 UNDEF,
 	 COLUMN | DBG | HELP | IGNORELOCKING | SEPARATOR | VERBOSE,
 	 ARGS,
-	 lc_inc_opt,
+	 _lc_inc_opt,
 	 LC_DEVICES,
 	 },
 
@@ -363,7 +386,7 @@ static struct actions actions[] = {
 	 ALL_FLAGS,
 	 ALL_FLAGS,
 	 ARGS,
-	 lc_inc_opt,
+	 _lc_inc_opt,
 	 LC_DEBUG,
 	 },
 
@@ -373,7 +396,7 @@ static struct actions actions[] = {
 	 RAID_DEVICES,
 	 COLUMN | DBG | FORMAT | HELP | IGNORELOCKING | SEPARATOR | VERBOSE,
 	 ARGS,
-	 lc_inc_opt,
+	 _lc_inc_opt,
 	 LC_DUMP,
 	 },
 
@@ -394,7 +417,7 @@ static struct actions actions[] = {
 	 ACTIVE | INACTIVE | DBG | COLUMN | FORMAT | HELP | IGNORELOCKING
 	 | SEPARATOR | VERBOSE,
 	 ARGS,
-	 lc_inc_opt,
+	 _lc_inc_opt,
 	 LC_GROUP,
 	 },
 
@@ -415,7 +438,7 @@ static struct actions actions[] = {
 	 UNDEF,
 	 ALL_FLAGS,
 	 ARGS,
-	 lc_inc_opt,
+	 _lc_inc_opt,
 	 LC_IGNORELOCKING,
 	 },
 
@@ -529,7 +552,7 @@ static struct actions actions[] = {
 	 ACTIVATE | DEACTIVATE | DBG | FORMAT | HELP | IGNORELOCKING |
 	 NOPARTITIONS | VERBOSE,
 	 ARGS,
-	 lc_inc_opt,
+	 _lc_inc_opt,
 	 LC_TEST,
 	 },
 
@@ -539,7 +562,7 @@ static struct actions actions[] = {
 	 ALL_FLAGS,
 	 ALL_FLAGS,
 	 ARGS,
-	 lc_inc_opt,
+	 _lc_inc_opt,
 	 LC_VERBOSE,
 	 },
 #endif /* #ifndef DMRAID_MINI */
@@ -602,7 +625,7 @@ set_action(struct lib_context *lc, int o)
 			a->allowed |= a->needed;
 
 			if (a->f_set)	/* Optionally call function. */
-				return a->f_set(lc, a->arg);
+				return a->f_set(lc, a);
 
 			break;
 		}
