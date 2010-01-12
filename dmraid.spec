@@ -142,6 +142,7 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Tue Jan 12 2010  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-3
 - Add logwatch files and move pattern file to /var/cache
+- Fix multiple options (eg. "-ccc") not recognized properly
 
 * Mon Nov 2 2009  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-2
 - Fix manual path in specfile
