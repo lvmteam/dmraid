@@ -7,7 +7,7 @@
 Summary: dmraid (Device-mapper RAID tool and library)
 Name: dmraid
 Version: 1.0.0.rc16
-Release: 3%{?dist}
+Release: 4%{?dist}
 License: GPLv2+
 Group: System Environment/Base
 URL: http://people.redhat.com/heinzm/sw/dmraid
@@ -22,10 +22,6 @@ Requires: kpartx
 Obsoletes: dmraid-libs < %{version}-%{release}
 Provides: dmraid-libs = %{version}-%{release}
 Source: ftp://people.redhat.com/heinzm/sw/dmraid/src/%{name}-%{version}.tar.bz2
-
-Patch0: dmraid-1.0.0.rc16-test_devices.patch
-Patch1: ddf1_lsi_persistent_name.patch
-Patch2: pdc_raid10_failure.patch
 
 %description
 DMRAID supports RAID device discovery, RAID set activation, creation,
@@ -65,9 +61,6 @@ Device failure reporting has to be activated manually by activating the
 
 %prep
 %setup -q -n dmraid/%{version}
-%patch0 -p1
-%patch1 -p1
-%patch2 -p1
 
 %build
 %define _libdir /%{_lib}
@@ -90,10 +83,10 @@ install -m 644 include/dmraid/*.h $RPM_BUILD_ROOT%{_includedir}/dmraid/
 # If requested, install the libdmraid and libdmraid-events (for dmeventd) DSO
 install -m 755 lib/libdmraid.so \
 	$RPM_BUILD_ROOT%{_libdir}/libdmraid.so.%{version}
-(cd $RPM_BUILD_ROOT/%{_libdir} ; ln -sf libdmraid.so.%{version} libdmraid.so)
+(cd $RPM_BUILD_ROOT/%{_libdir} ; ln -sf libdmraid.so.%{version} libdmraid.so ; ln -sf libdmraid.so.%{version} libdmraid.so.1)
 install -m 755 lib/libdmraid-events-isw.so \
 	$RPM_BUILD_ROOT%{_libdir}/libdmraid-events-isw.so.%{version}
-(cd $RPM_BUILD_ROOT/%{_libdir} ; ln -sf libdmraid-events-isw.so.%{version} libdmraid-events-isw.so)
+(cd $RPM_BUILD_ROOT/%{_libdir} ; ln -sf libdmraid-events-isw.so.%{version} libdmraid-events-isw.so ; ln -sf libdmraid-events-isw.so.%{version} libdmraid-events-isw.so.1)
 
 # Install logwatch config file and script for dmeventd
 install -m 644 logwatch/dmeventd.conf $RPM_BUILD_ROOT/etc/logwatch/conf/services/dmeventd.conf
@@ -140,6 +133,10 @@ rm -rf $RPM_BUILD_ROOT
 %ghost /var/cache/logwatch/dmeventd/syslogpattern.txt
 
 %changelog
+* Tue Jan 12 2010  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-4
+- Change dmraid DSO version to "1" and allow for display of 
+  extended internal library version
+
 * Tue Jan 12 2010  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-3
 - Add logwatch files and move pattern file to /var/cache
 - Fix multiple options (eg. "-ccc") not recognized properly
