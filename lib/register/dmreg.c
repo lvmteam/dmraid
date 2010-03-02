@@ -475,7 +475,7 @@ int dm_unregister_device(char *dev_name, char *dso_name)
 		printf("ERROR: device \"%s\" %s\n", dev_name,
 		       pending ?
 		       "has a registration event pending and "
-		       "cannot be unregistered until completed":
+		       "cannot be unregistered until completed" :
 		       "is not currently being monitored");
 		return 1;
 	}
