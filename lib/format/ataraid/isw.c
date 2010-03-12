@@ -1,7 +1,7 @@
 /*
  * Intel Software RAID metadata format handler.
  *
- * Copyright (C) 2004-2009  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2010  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
  * Copyright (C) 2007,2009  Intel Corporation. All rights reserved.
@@ -169,6 +169,7 @@ static size_t
 _name(struct lib_context *lc, struct isw *isw, char *str, size_t len,
       enum name_type nt, int num, struct isw_dev *dev, struct raid_dev *rd)
 {
+	int n;
 	struct {
 		const char *fmt, *what;
 	} formats[] = {
@@ -189,7 +190,13 @@ _name(struct lib_context *lc, struct isw *isw, char *str, size_t len,
 			f += (is_raid10(dev) ? 1 : 0);
 	}
 
-	return snprintf(str, len, f->fmt, isw->family_num, f->what, num);
+	n = snprintf(str, len, f->fmt, isw->family_num, f->what, num);
+
+	/* As '->volume' could contain anything, we sanitise the name. */
+	if (n > 0)
+		mk_alphanum(lc, str, n);
+
+	return n;
 }
 
 static char *

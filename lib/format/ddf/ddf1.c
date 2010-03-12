@@ -4,7 +4,7 @@
  * Copyright (C) 2005-2006 IBM, All rights reserved.
  * Written by Darrick Wong <djwong@us.ibm.com>
  *
- * Copyright (C) 2006-2008 Heinz Mauelshagen, Red Hat GmbH
+ * Copyright (C) 2006-2010 Heinz Mauelshagen, Red Hat GmbH
  *                         All rights reserved.
  *
  * See file LICENSE at the top of this source tree for license information.
@@ -689,6 +689,9 @@ name(struct lib_context *lc, struct ddf1 *ddf1, struct raid_dev *rd)
 		i = prefix + 16;
 		while (!isgraph(buf[--i]));
 		buf[i + 1] = 0;
+
+		/* As buf could contain anything, we sanitise the name. */
+		mk_alphanum(lc, buf, i);
 	} else {
 		char *b;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2005  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2010  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
  * Copyright (C) 2007   Intel Corporation. All rights reserved.
@@ -18,6 +18,7 @@ extern void libdmraid_exit(struct lib_context *lc);
 
 extern void sysfs_workaround(struct lib_context *lc);
 extern void mk_alpha(struct lib_context *lc, char *str, size_t len);
+extern void mk_alphanum(struct lib_context *lc, char *str, size_t len);
 extern char *get_basename(struct lib_context *lc, char *str);
 extern char *get_dirname(struct lib_context *lc, char *str);
 extern char *remove_white_space(struct lib_context *lc, char *str, size_t len);

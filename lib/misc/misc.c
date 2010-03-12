@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2010  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
  * Copyright (C) 2007   Intel Corporation. All rights reserved.
@@ -63,6 +63,21 @@ mk_alpha(struct lib_context *lc, char *str, size_t len)
 	for (; len && *str; len--, str++) {
 		if (isdigit(*str))
 			*str += 'a' - '0';
+	}
+}
+
+/*
+ * Convert a string to only have alphanum or '-' or '_'. [Neil Brown]
+ * All others become '_'
+ */
+void
+mk_alphanum(struct lib_context *lc, char *str, size_t len)
+{
+	for (; len && *str; len--, str++) {
+		if (!isalnum(*str) &&
+		    *str != '-' &&
+		    *str != '_')
+			*str = '_';
 	}
 }
 
