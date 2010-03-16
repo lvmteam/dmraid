@@ -79,17 +79,17 @@ dmevent_tool: $(top_srcdir)/lib/libdmraid.a
 	      -L$(DESTDIR)$(libdir) $(DMRAIDLIBS) $(DMEVENTTOOLLIBS) $(DMRAIDLIBS) $(LIBS) 
 
 install_dmraid_tools: $(TARGETS)
-	@echo "Installing $(TARGETS) in $(sbindir)"; \
-	mkdir -p $(sbindir); \
-	$(INSTALL) $(STRIP) $(TARGETS) $(sbindir)
+	@echo "Installing $(TARGETS) in $(DESTDIR)$(sbindir)"; \
+	mkdir -p $(DESTDIR)$(sbindir); \
+	$(INSTALL) $(STRIP) $(TARGETS) $(DESTDIR)$(sbindir)
 
 install: install_dmraid_tools
 
 remove_dmraid_tools:
-	@echo "Removing $(TARGETS) from $(sbindir)"; \
+	@echo "Removing $(TARGETS) from $(DESTDIR)$(sbindir)"; \
 	for f in $(TARGETS); \
 	do \
-		rm -f $(sbindir)/$$f; \
+		rm -f $(DESTDIR)$(sbindir)/$$f; \
 	done
 
 remove:	remove_dmraid_tools

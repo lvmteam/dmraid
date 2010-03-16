@@ -16,21 +16,21 @@ include $(top_srcdir)/make.tmpl
 .PHONY:	install_dmraid_man remove_dmraid_man
 
 install_dmraid_man:
-	@echo "Installing $(MAN8) in $(MAN8DIR)"; \
-	mkdir -p $(MAN8DIR); \
+	@echo "Installing $(MAN8) in $(DESTDIR)$(MAN8DIR)"; \
+	mkdir -p $(DESTDIR)$(MAN8DIR); \
 	for f in $(MAN8); \
 	do \
-	   $(RM) $(MAN8DIR)/$$f; \
-	   @INSTALL@ -D -m 444 $$f $(MAN8DIR)/$$f; \
+	   $(RM) $(DESTDIR)$(MAN8DIR)/$$f; \
+	   @INSTALL@ -D -m 444 $$f $(DESTDIR)$(MAN8DIR)/$$f; \
 	done
 
 install:	install_dmraid_man
 
 remove_dmraid_man:
-	@echo "Removing $(MAN8) in $(MAN8DIR)"; \
+	@echo "Removing $(MAN8) in $(DESTDIR)$(MAN8DIR)"; \
 	for f in $(MAN8); \
 	do \
-	   $(RM) $(MAN8DIR)/$$f; \
+	   $(RM) $(DESTDIR)$(MAN8DIR)/$$f; \
 	done
 
 remove:	remove_dmraid_man

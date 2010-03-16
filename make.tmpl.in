@@ -21,9 +21,10 @@ LD_DEPS += @LD_DEPS@
 SOFLAG += @SOFLAG@
 
 # Setup directory variables
-prefix = $(DESTDIR)@prefix@
-exec_prefix = $(DESTDIR)@exec_prefix@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
 bindir = @bindir@
+datadir = @datarootdir@
 ifeq ("@KLIBC@", "no")
   libdir = @libdir@
   sbindir = @sbindir@
@@ -31,9 +32,9 @@ ifeq ("@KLIBC@", "no")
   infodir = @infodir@
   mandir = @mandir@
 else
-  libdir = $(DESTDIR)@KLIBC_LIB_DIR@
-  sbindir = $(DESTDIR)@KLIBC_SBIN_DIR@
-  includedir = $(DESTDIR)@KLIBC_INCLUDE_DIR@
+  libdir = @KLIBC_LIB_DIR@
+  sbindir = @KLIBC_SBIN_DIR@
+  includedir = @KLIBC_INCLUDE_DIR@
   infodir = @infodir@
   mandir = @mandir@
 endif

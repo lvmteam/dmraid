@@ -16,15 +16,15 @@ include $(top_srcdir)/make.tmpl
 .PHONY: install_dmraid_headers remove_dmraid_headers
 
 install_dmraid_headers: $(HEADERS)
-	@echo "Installing $(HEADERS) in $(includedir)/dmraid"
-	mkdir -p $(includedir)/dmraid
-	$(INSTALL) $(STRIP) $(HEADERS) $(includedir)/dmraid
+	@echo "Installing $(HEADERS) in $(DESTDIR)$(includedir)/dmraid"
+	mkdir -p $(DESTDIR)$(includedir)/dmraid
+	$(INSTALL) $(STRIP) $(HEADERS) $(DESTDIR)$(includedir)/dmraid
 
 install: install_dmraid_headers
 
 remove_dmraid_headers:
-	@echo "Removing $(HEADERS) from $(includedir)/dmraid"
-	rm -f $(includedir)/dmraid
+	@echo "Removing $(HEADERS) from $(DESTDIR)$(includedir)/dmraid"
+	rm -f $(DESTDIR)$(includedir)/dmraid
 
 remove:        remove_dmraid_headers
 

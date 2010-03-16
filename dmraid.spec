@@ -6,7 +6,7 @@
 
 Summary: dmraid (Device-mapper RAID tool and library)
 Name: dmraid
-Version: 1.0.0.rc16
+Version: 1.0.0.rc16t
 Release: 4%{?dist}
 License: GPLv2+
 Group: System Environment/Base
@@ -65,8 +65,8 @@ Device failure reporting has to be activated manually by activating the
 %build
 %define _libdir /%{_lib}
 
-%configure --prefix=${RPM_BUILD_ROOT}/usr --sbindir=${RPM_BUILD_ROOT}/sbin --libdir=${RPM_BUILD_ROOT}/%{_libdir} --mandir=${RPM_BUILD_ROOT}/%{_mandir} --includedir=${RPM_BUILD_ROOT}/%{_includedir} --enable-debug --enable-libselinux --enable-libsepol --disable-static_link --enable-led --enable-intel_led
-make DESTDIR=$RPM_BUILD_ROOT
+%configure --prefix=/usr --sbindir=/sbin --libdir=%{_libdir} --mandir=%{_mandir} --includedir=%{_includedir} --enable-debug --enable-libselinux --enable-libsepol --disable-static_link --enable-led --enable-intel_led
+make
 
 %install
 rm -rf $RPM_BUILD_ROOT
@@ -78,15 +78,7 @@ ln -s dmraid $RPM_BUILD_ROOT/sbin/dmraid.static
 (cd $RPM_BUILD_ROOT/sbin ; ln -f dmevent_tool dm_dso_reg_tool)
 (cd $RPM_BUILD_ROOT/%{_mandir}/man8 ; ln -f dmevent_tool.8 dm_dso_reg_tool.8 ; ln -f dmraid.8 dmraid.static.8)
 
-install -m 644 include/dmraid/*.h $RPM_BUILD_ROOT%{_includedir}/dmraid/
-
-# If requested, install the libdmraid and libdmraid-events (for dmeventd) DSO
-install -m 755 lib/libdmraid.so \
-	$RPM_BUILD_ROOT%{_libdir}/libdmraid.so.%{version}
-(cd $RPM_BUILD_ROOT/%{_libdir} ; ln -sf libdmraid.so.%{version} libdmraid.so ; ln -sf libdmraid.so.%{version} libdmraid.so.1)
-install -m 755 lib/libdmraid-events-isw.so \
-	$RPM_BUILD_ROOT%{_libdir}/libdmraid-events-isw.so.%{version}
-(cd $RPM_BUILD_ROOT/%{_libdir} ; ln -sf libdmraid-events-isw.so.%{version} libdmraid-events-isw.so ; ln -sf libdmraid-events-isw.so.%{version} libdmraid-events-isw.so.1)
+install -m 644 include/dmraid/*.h $RPM_BUILD_ROOT/%{_includedir}/dmraid/
 
 # Install logwatch config file and script for dmeventd
 install -m 644 logwatch/dmeventd.conf $RPM_BUILD_ROOT/etc/logwatch/conf/services/dmeventd.conf
@@ -150,7 +142,7 @@ rm -rf $RPM_BUILD_ROOT
 - move libraries to /lib* in order to avoid catch22
   with unmountable /usr
 
-* Wed Sep 09 2008 Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-1
+* Wed Oct 09 2008 Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-1
 - Updated
 
 * Wed Sep 17 2008 Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc15

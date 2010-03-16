@@ -77,19 +77,20 @@ $(LIB_EVENTS_SHARED):
 .PHONY: install_dmraid_libs remove_dmraid_libs
 
 install_dmraid_libs: $(INSTALL_TARGETS)
-	@echo "Installing $(INSTALL_TARGETS) in $(libdir)"; \
-	mkdir -p $(libdir); \
+	@echo "Installing $(INSTALL_TARGETS) in $(DESTDIR)$(libdir)"; \
+	mkdir -p $(DESTDIR)$(libdir); \
 	for f in $(INSTALL_TARGETS); \
 	do \
 		n=$$(basename $${f}) ; \
-		if [[ "$$n" =~ '.so$$' ]]; then \
+ 		if [[ "$$n" =~ .so$$ ]]; then \
 			$(INSTALL) -m 555 $(STRIP) \
-				$$f $(libdir)/$${n}.@DMRAID_LIB_VERSION@; \
-			$(LN_S) -f $${n}.@DMRAID_LIB_VERSION@ $(libdir)/$${n}; \
+				$$f $(DESTDIR)$(libdir)/$${n}.@DMRAID_LIB_VERSION@; \
+			$(LN_S) -f $${n}.@DMRAID_LIB_VERSION@ $(DESTDIR)$(libdir)/$${n}; \
 		else \
-			$(INSTALL) -m 555 $(STRIP) $$f $(libdir)/$${n}; \
+			$(INSTALL) -m 555 $(STRIP) $$f $(DESTDIR)$(libdir)/$${n}; \
 		fi \
 	done
+
 
 install: install_dmraid_libs
 
@@ -98,8 +99,10 @@ remove_dmraid_libs:
 	for f in $(INSTALL_TARGETS); \
 	do \
 		n=$$(basename $${f}) ; \
-		rm -f $(libdir)/$${n}.@DMRAID_LIB_VERSION@; \
-		rm -f $(libdir)/$${n}; \
+		rm -f $(DESTDIR)$(libdir)/$${n}.@DMRAID_LIB_VERSION@; \
+		rm -f $(DESTDIR)$(libdir)/$${n}; \
 	done
+
+
 
 remove:	remove_dmraid_libs
