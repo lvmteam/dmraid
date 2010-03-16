@@ -27,20 +27,8 @@
  */
 
 /*
- * FIXME before releasing in RHEL5 (Heinz Mauelshagen):
- *
- * o symbols naming consistency
- *
- * Likely after 5.3:
- * o integrate code with dmraid package
- * o support metadata updates
- * o use libsysfs rather than duplicated code to access sysfs
- * o remove any limitations to SATA, because dmraid must be device agnostic;
- *   ie. the devices being registered with dmeventd have to be derived from
- *   libdmraid metadata discovery; this essentially means a rewrite!
- *
  * FIXED:
- * o stremaline event processing functions
+ * o streamline event processing functions
  * o register/event processing major:minor usage concept
  * o cover error paths
  * o locking race vs. registration in event processing
@@ -101,13 +89,11 @@ enum rebuild_type { REBUILD_START, REBUILD_END };
 static const char *default_dmraid_events_lib = "libdmraid-events.so";
 static const char *sys_dm_dm = "dm-";
 static const char *sys_block_path = "/sys/block/";
-static const char *sys_dm_path = "/sys/block/dm-";
 static const char *sys_scsi_path = "/sys/class/scsi_device/";
 static const char *sys_slaves_dir = "/slaves";
 static const char *sys_scsi_dev_blk = "/device/block";
 static const char sys_scsi_dev_blk_delims[] = { '/', ':' };
 static const char *sys_dev_dir = "/dev";
-static const char *syslog_ident = "libdmraid-events";
 
 /* Logging. */
 enum log_type { LOG_NAMES, LOG_PORTS, LOG_OPEN_FAILURE, LOG_NONE };
@@ -1070,7 +1056,7 @@ static enum disk_state_type _process_stripe_event(struct dm_task *dmt,
 						  char *params)
 {
 	int argc, i, num_devs, ret = D_INSYNC;
-	char **args, *dev_status_str, *p;
+	char **args = NULL, *dev_status_str, *p;
 	const char *rs_name = dm_task_get_name(dmt);
 	struct dso_raid_set *rs = _find_raid_set(rs_name, NULL, 1);
 	struct dso_raid_dev *dev;
@@ -1135,7 +1121,7 @@ static enum disk_state_type _process_mirror_event(struct dm_task *dmt,
 {
 	int argc, i, log_argc, num_devs, ret = D_INSYNC;
 	char **args = NULL, *dev_status_str,
-	     *log_status_str, *p, *sync_str;
+	     *log_status_str = NULL, *p, *sync_str;
 	const char *rs_name = dm_task_get_name(dmt);
 	struct dso_raid_set *rs = _find_raid_set(rs_name, NULL, 1);
 
@@ -1517,16 +1503,17 @@ out:
  *
  * Return 1 for success and 0 for failure.
  */ 
-int register_device(const char *rs_name, const char *uuid,
+int register_device(const char *rs_name_in, const char *uuid,
 		    int major, int minor,
 		    void **unused __attribute((unused)))
 {
+	char *rs_name;
 	struct dso_raid_set *rs, *rs_new;
 
 	/* FIXME: need to run first to get syslog() to work. */
 	_check_sgpio();
 
-	rs_name = basename(rs_name);
+	rs_name = basename((char *) rs_name_in);
 
 	/* Check for double registration attempt. */
 	pthread_mutex_lock(&_register_mutex);
@@ -1581,13 +1568,14 @@ int register_device(const char *rs_name, const char *uuid,
  *
  * Return 1 for success and 0 for failure.
  */ 
-int unregister_device(const char *rs_name, const char *uuid,
+int unregister_device(const char *rs_name_in, const char *uuid,
 		      int major, int minor,
 		      void **unused __attribute((unused)))
 {
+	char *rs_name;
 	struct dso_raid_set *prev, *rs;
 
-	rs_name = basename(rs_name);
+	rs_name = basename((char *) rs_name_in);
 
 	pthread_mutex_lock(&_register_mutex);
 
