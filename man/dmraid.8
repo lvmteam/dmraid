@@ -6,6 +6,7 @@ dmraid \- discover, configure and activate software (ATA)RAID
  {-a|--activate} {y|n|yes|no} 
  [-d|--debug]... [-v|--verbose]... [-i|--ignorelocking]
  [-f|--format FORMAT[,FORMAT...]]
+ [-I|--ignoremonitoring]
  [{-P|--partchar} CHAR]
  [-p|--no_partitions]
  [-Z|--rm_partitions]
@@ -105,6 +106,16 @@ below).
 .TP
 .I \-a, \-\-activate {y|n} [RAID set...]
 Activates or deactivates all or particular software RAID set.
+Activates or deactivates device monitoring automatically unless the
+.B [-I|--ignoremonitoring]
+option is given at the same time, hence preventing any dmeventd device
+monitoring daemon interaction. If
+.B -I
+is being used on initial RAID set activation,
+.B -ay
+can be used later to activate device monitoring on such active RAID sets
+if the RAID format supports it. See dmevent_tool(8) for device monitoring
+management via this tool.
 In case metadata format handlers are chosen with
 .B -f
 , only RAID sets with such format(s) can be activated or deactivated.
@@ -176,6 +187,15 @@ Display help text.
 .I {-i|--ignorelocking}
 Don't take out any locks. Useful in early boot where no read/write
 access to /var is available.
+
+.TP
+.I {-I|--ignoremonitoring}
+Don't activate or deactivate device monitoring with
+.B -ay
+or
+.B -an
+respectively. This avoids interaction with the dmeventd device
+monitoring daemon altogether.
 
 .TP
 .I {-l|--list_formats}
