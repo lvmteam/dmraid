@@ -441,7 +441,7 @@ int dm_register_device(char *dev_name, char *dso_name)
 
 	errors = _dm_raid_state(dev_name);
 	if (errors < 0)
-		return 1;
+		return 0;
 
 	if (errors) {
 		printf("ERROR: device \"%s\" \n"

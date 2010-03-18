@@ -32,7 +32,7 @@ int add_dev_to_array(struct lib_context *lc, struct raid_set *rs,
  */
 static char const *short_opts = "a:hipP:"
 #ifndef	DMRAID_MINI
-	"bc::dDEf:glxM:"
+	"bc::dDEf:gIlxM:"
 #ifdef	DMRAID_NATIVE_LOG
 	"n"
 #endif
@@ -74,6 +74,7 @@ static struct option long_opts[] = {
 	{"create", required_argument, NULL, 'C'},
 	{"spare", optional_argument, NULL, 'S'},
 	{"rm_partitions", no_argument, NULL, 'Z'},
+	{"ignoremonitoring", no_argument, NULL, 'I'},
 	{NULL, no_argument, NULL, 0}
 };
 #endif /* #ifdef HAVE_GETOPTLONG */
@@ -229,8 +230,8 @@ help(struct lib_context *lc, struct actions *a)
 #ifdef	DMRAID_MINI
 	log_print(lc, "%s: Device-Mapper Software RAID tool "
 		  "[Early Boot Version]\n", c);
-	log_print(lc, "%s\t{-a|--activate} {y|n|yes|no} [-i|--ignorelocking]\n"
-		  "\t[-f|--format FORMAT[,FORMAT...]]\n"
+	log_print(lc, "%s\t{-a|--activate} {y|n|yes|no} [-i|--ignorelocking]\n" 
+		  "\t[-f|--format fORMAT[,FORMAT...]]\n"
 		  "\t[-P|--partchar CHAR]\n"
 		  "\t[-p|--no_partitions]\n"
 		  "\t[-Z|--rm_partitions]\n"
@@ -244,6 +245,7 @@ help(struct lib_context *lc, struct actions *a)
 	log_print(lc,
 		  "%s\t{-a|--activate} {y|n|yes|no} *\n"
 		  "\t[-f|--format FORMAT[,FORMAT...]]\n"
+		  "\t[-I|--ignoremonitoring]\n"
 		  "\t[-P|--partchar CHAR]\n" "\t[-p|--no_partitions]\n"
 		  "\t[--separator SEPARATOR]\n" "\t[-t|--test]\n"
 		  "\t[-Z|--rm_partitions] [RAID-set...]\n", c);
@@ -301,7 +303,7 @@ static struct actions actions[] = {
 	 ACTIVATE | DEACTIVATE | FORMAT | HELP | IGNORELOCKING | NOPARTITIONS |
 	 SEPARATOR | RMPARTITIONS
 #ifndef DMRAID_MINI
-	 | DBG | TEST | VERBOSE
+	 | DBG | TEST | VERBOSE | IGNOREMONITORING
 #endif
 	 , ARGS,
 	 check_activate,
@@ -311,15 +313,15 @@ static struct actions actions[] = {
 	/* Format option. */
 	{'f',
 	 FORMAT,
-	 ACTIVATE | DEACTIVATE
+	 ACTIVATE | DEACTIVATE | IGNORELOCKING
 #ifndef DMRAID_MINI
 #  ifdef DMRAID_NATIVE_LOG
 	 | NATIVE_LOG
 #  endif
 	 | RAID_DEVICES | RAID_SETS,
 	 ACTIVE | INACTIVE | COLUMN | DBG | DUMP | DMERASE | GROUP | HELP |
-	 IGNORELOCKING | NOPARTITIONS | SEPARATOR | TEST | VERBOSE |
-	 RMPARTITIONS
+	 NOPARTITIONS | SEPARATOR | TEST | VERBOSE | RMPARTITIONS |
+	 IGNOREMONITORING
 #else
 	 , UNDEF
 #endif
@@ -338,7 +340,7 @@ static struct actions actions[] = {
 	 ACTIVATE | DEACTIVATE,
 	 FORMAT | HELP | IGNORELOCKING | SEPARATOR | RMPARTITIONS
 #ifndef DMRAID_MINI
-	 | DBG | TEST | VERBOSE
+	 | DBG | TEST | VERBOSE | IGNOREMONITORING
 #endif
 	 , ARGS,
 	 check_part_separator,
@@ -351,7 +353,7 @@ static struct actions actions[] = {
 	 ACTIVATE | DEACTIVATE,
 	 FORMAT | HELP | IGNORELOCKING | SEPARATOR | RMPARTITIONS
 #ifndef DMRAID_MINI
-	 | DBG | TEST | VERBOSE
+	 | DBG | TEST | VERBOSE | IGNOREMONITORING
 #endif
 	 , ARGS,
 	 NULL,
@@ -608,6 +610,18 @@ static struct actions actions[] = {
 	 NULL,
 	 0,
 	 },
+#ifndef DMRAID_MINI
+	/* ignoremonitoring option. */
+	{'I',
+	 IGNOREMONITORING,
+	 ACTIVATE | DEACTIVATE,
+	 DBG | FORMAT | HELP | IGNORELOCKING | NOPARTITIONS | VERBOSE |
+	 SEPARATOR,
+	 ARGS,
+	 _lc_inc_opt,
+	 LC_IGNOREMONITORING,
+	 },
+#endif
 };
 
 /*

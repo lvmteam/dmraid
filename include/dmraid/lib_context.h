@@ -46,7 +46,8 @@ enum lc_options {
 	LC_CREATE,
 	LC_REBUILD_SET,
 	LC_REBUILD_DISK,
-	LC_HOT_SPARE_SET,	/* Add new options below this one ! */
+	LC_HOT_SPARE_SET,
+	LC_IGNOREMONITORING,	/* Add new options below this one ! */
 	LC_OPTIONS_SIZE,	/* Must be the last enumerator. */
 };
 
@@ -65,8 +66,9 @@ enum lc_options {
 #define	OPT_VERBOSE(lc)		(lc_opt(lc, LC_VERBOSE))
 #define	OPT_PARTCHAR(lc)	(lc_opt(lc, LC_PARTCHAR))
 #define	OPT_CREATE(lc)		(lc_opt(lc, LC_CREATE))
-#define OPT_HOT_SPARE_SET(lc)	(lc_opt(lc, LC_HOT_SPARE_SET))
 #define OPT_REBUILD_DISK(lc)	(lc_opt(lc, LC_REBUILD_DISK))
+#define OPT_HOT_SPARE_SET(lc)	(lc_opt(lc, LC_HOT_SPARE_SET))
+#define OPT_IGNOREMONITORING(lc) (lc_opt(lc, LC_IGNOREMONITORING))
 
 /* Return option value. */
 #define	OPT_STR(lc, o)		(lc->options[o].arg.str)
@@ -170,6 +172,9 @@ enum action {
 
 #endif
 	RMPARTITIONS = 0x40000000,
+#ifndef DMRAID_MINI
+	IGNOREMONITORING = 0x80000000,
+#endif
 };
 
 /* Arguments allowed ? */

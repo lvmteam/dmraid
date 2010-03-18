@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2008  Heinz Mauelshagen, Red Hat GmbH.
+ * Copyright (C) 2004-2010  Heinz Mauelshagen, Red Hat GmbH.
  *                          All rights reserved.
  *
  * Copyright (C) 2007,2009   Intel Corporation. All rights reserved.
@@ -845,23 +845,17 @@ libdmraid_make_table(struct lib_context *lc, struct raid_set *rs)
 enum dm_what { DM_ACTIVATE, DM_REGISTER };
 
 /* Register devices of the RAID set with the dmeventd. */
-#define	ALL_EVENTS 0xffffffff
+#ifdef	DMRAID_AUTOREGISTER
 static int
 dm_register_for_event(char *dev_name, char *lib_name)
 {
-#ifdef	DMRAID_AUTOREGISTER
-	dm_register_device(dev_name, lib_name);
-#endif
-	return 1;
+	return !dm_register_device(dev_name, lib_name);
 }
 
 static int
 dm_unregister_for_event(char *dev_name, char *lib_name)
 {
-#ifdef	DMRAID_AUTOREGISTER
-	dm_unregister_device(dev_name, lib_name);
-#endif
-	return 1;
+	return !dm_unregister_device(dev_name, lib_name);
 }
 
 #define LIB_NAME_LENGTH 255
@@ -870,35 +864,34 @@ do_device(struct lib_context *lc, struct raid_set *rs, int (*f) ())
 {
 	int ret = 0;
 	char lib_name[LIB_NAME_LENGTH];
+        struct dmraid_format *fmt;
 
 	if (OPT_TEST(lc))
 		return 1;
 
-        struct dmraid_format *fmt = get_format(rs);
-
-        if (fmt->name != NULL) {
-                strncpy(lib_name, "libdmraid-events-",LIB_NAME_LENGTH);
-                strncat(lib_name, fmt->name, LIB_NAME_LENGTH-strlen(fmt->name)-3);
-                strncat(lib_name, ".so", 3);
-
-                ret = f(rs->name, lib_name);
+	fmt = get_format(rs);
+	if (fmt->name) {
+		snprintf(lib_name, sizeof(lib_name), "libdmraid-events-%s.so",
+			 fmt->name);
+		ret = f(rs->name, lib_name);
         }
 
-	return ret ? 1 : 0;
+	return ret;
 }
 
 static int
-register_devices(struct lib_context *lc, struct raid_set *rs)
+register_device(struct lib_context *lc, struct raid_set *rs)
 {
 	return do_device(lc, rs, dm_register_for_event);
 }
 
 /* Unregister devices of the RAID set with the dmeventd. */
 static int
-unregister_devices(struct lib_context *lc, struct raid_set *rs)
+unregister_device(struct lib_context *lc, struct raid_set *rs)
 {
 	return do_device(lc, rs, dm_unregister_for_event);
 }
+#endif /* #ifdef	DMRAID_AUTOREGISTER */
 
 /* Reload a single set. */
 static int
@@ -940,14 +933,6 @@ reload_set(struct lib_context *lc, struct raid_set *rs)
 {
 	struct raid_set *r;
 
-	/* FIXME: Does it matter if the set is (in)active? */
-#if 0
-	if (!OPT_TEST(lc) && what == DM_ACTIVATE && dm_status(lc, rs)) {
-		log_print(lc, "RAID set \"%s\" already active", rs->name);
-		return 1;
-	}
-#endif
-
 	/* Recursively walk down the chain of stacked RAID sets */
 	list_for_each_entry(r, &rs->sets, list) {
 		/* Activate set below this one */
@@ -969,12 +954,16 @@ activate_subset(struct lib_context *lc, struct raid_set *rs, enum dm_what what)
 	if (T_GROUP(rs))
 		return 1;
 
-	if (what == DM_REGISTER &&
-	    fmt->metadata_handler)
-		return register_devices(lc, rs);
+	if (what == DM_REGISTER)
+#ifdef	DMRAID_AUTOREGISTER
+		return (!OPT_IGNOREMONITORING(lc) && fmt->metadata_handler) ?
+		       register_device(lc, rs) : 1;
+#else
+		return 1;
+#endif
 
 	/* Call type handler */
-	if ((ret = (handler(rs))->f(lc, &table, rs))) {
+	if ((ret = handler(rs)->f(lc, &table, rs))) {
 		if (OPT_TEST(lc))
 			display_table(lc, rs->name, table);
 		else if ((ret = dm_create(lc, rs, table, rs->name)))
@@ -1057,9 +1046,14 @@ deactivate_superset(struct lib_context *lc, struct raid_set *rs,
 	int ret = 1, status;
 	struct dmraid_format *fmt = get_format(rs);
 
-	if (what == DM_REGISTER &&
-	    fmt->metadata_handler)
-		return unregister_devices(lc, rs);
+	if (what == DM_REGISTER) {
+#ifdef	DMRAID_AUTOREGISTER
+		return (!OPT_IGNOREMONITORING(lc) && fmt->metadata_handler) ?
+			unregister_device(lc, rs) : 1;
+#else
+		return 1;
+#endif
+	}
 
 	status = dm_status(lc, rs);
 	if (OPT_TEST(lc))

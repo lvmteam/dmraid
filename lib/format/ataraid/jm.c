@@ -32,6 +32,7 @@ name(struct lib_context *lc, struct raid_dev *rd, unsigned int subset)
 
 	/* Sanitize name, make sure it's null terminated */
 	strncpy(buf, name, JM_NAME_LEN);
+	i = strlen(buf);
 	while (i && isspace(buf[i])) {
 		name[i]='\0';
 		buf[i]='\0';

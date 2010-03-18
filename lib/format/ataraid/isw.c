@@ -193,7 +193,7 @@ _name(struct lib_context *lc, struct isw *isw, char *str, size_t len,
 	n = snprintf(str, len, f->fmt, isw->family_num, f->what, num);
 
 	/* As '->volume' could contain anything, we sanitise the name. */
-	if (n > 0)
+	if (str && n > 0)
 		mk_alphanum(lc, str, n);
 
 	return n;
