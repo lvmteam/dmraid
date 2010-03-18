@@ -16,6 +16,7 @@ SOURCES  = \
 	device/scan.c \
 	device/scsi.c \
 	display/display.c \
+	events/libdmraid-events-isw.c \
 	format/format.c \
 	locking/locking.c \
 	log/log.c \

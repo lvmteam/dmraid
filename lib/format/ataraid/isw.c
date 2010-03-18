@@ -1389,8 +1389,8 @@ _isw_check(struct lib_context *lc, struct raid_set *rs)
 			check_raid_set(lc, r, devices_per_domain, NULL,
 				       check_rd, NULL, handler);
 		else
-			check_raid_set(lc, r, devices, NULL, check_rd,
-				       NULL, handler);
+			check_raid_set(lc, r, devices, NULL,
+				       check_rd, NULL, handler);
 	}
 
 	return 1;
@@ -2133,33 +2133,6 @@ isw_check(struct lib_context *lc, struct raid_set *rs)
 		return T_GROUP(rs) ? _isw_check(lc, rs) : 0;
 }
 
-/*
- * IO error event handler.
- */
-static int
-event_io(struct lib_context *lc, struct event_io *e_io)
-{
-	struct raid_dev *rd = e_io->rd;
-	struct isw *isw = META(rd, isw);
-	struct isw_disk *disk;
-
-	if (!(disk = get_disk(lc, rd->di, isw)))
-		LOG_ERR(lc, 0, "%s: disk", handler);
-
-	/* Avoid write trashing. */
-	if (S_BROKEN(status(lc, rd)))
-		return 0;
-
-	disk->status &= ~USABLE_DISK;
-	disk->status |= FAILED_DISK;
-	return 1;
-}
-
-static struct event_handlers isw_event_handlers = {
-	.io = event_io,
-	.rd = NULL,	/* FIXME: no device add/remove event handler yet. */
-};
-
 static void
 _isw_log(struct lib_context *lc, struct isw *isw)
 {
@@ -2547,7 +2520,6 @@ static struct dmraid_format isw_format = {
 	.group = isw_group,
 	.check = isw_check,
 	.metadata_handler = isw_metadata_handler,
-	.events = &isw_event_handlers,
 	.scope = t_scope_global /* | t_scope_local */ ,
 #ifdef DMRAID_NATIVE_LOG
 	.log = isw_log,

@@ -305,6 +305,7 @@ hpt37x_check(struct lib_context *lc, struct raid_set *rs)
 /*
  * IO error event handler.
  */
+#if 0
 static int
 event_io(struct lib_context *lc, struct event_io *e_io)
 {
@@ -318,11 +319,7 @@ event_io(struct lib_context *lc, struct event_io *e_io)
 	hpt->magic = HPT37X_MAGIC_BAD;
 	return 1;
 }
-
-static struct event_handlers hpt37x_event_handlers = {
-	.io = event_io,
-	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
-};
+#endif
 
 #ifdef DMRAID_NATIVE_LOG
 /*
@@ -376,7 +373,6 @@ static struct dmraid_format hpt37x_format = {
 	.write = hpt37x_write,
 	.group = hpt37x_group,
 	.check = hpt37x_check,
-	.events = &hpt37x_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
 	.log = hpt37x_log,
 #endif

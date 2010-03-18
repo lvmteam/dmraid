@@ -523,6 +523,7 @@ pdc_check(struct lib_context *lc, struct raid_set *rs)
 /*
  * IO error event handler.
  */
+#if 0
 static int
 event_io(struct lib_context *lc, struct event_io *e_io)
 {
@@ -536,11 +537,7 @@ event_io(struct lib_context *lc, struct event_io *e_io)
 	PDC_SET_BROKEN(pdc);
 	return 1;
 }
-
-static struct event_handlers pdc_event_handlers = {
-	.io = event_io,
-	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
-};
+#endif
 
 #ifdef DMRAID_NATIVE_LOG
 /* Log native information about a Promise RAID device. */
@@ -619,7 +616,6 @@ static struct dmraid_format pdc_format = {
 	.write = pdc_write,
 	.group = pdc_group,
 	.check = pdc_check,
-	.events = &pdc_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
 	.log = pdc_log,
 #endif

@@ -391,7 +391,6 @@ static struct dmraid_format dos_format = {
 	.write = NULL,		/* Not supported */
 	.group = dos_group,
 	.check = dos_check,
-	.events = NULL,		/* Not supported */
 #ifdef DMRAID_NATIVE_LOG
 	.log = NULL,		/* Not supported; use fdisk and friends */
 #endif

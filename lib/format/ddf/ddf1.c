@@ -626,6 +626,7 @@ dev_sort(struct list_head *pos, struct list_head *new)
 /*
  * IO error event handler.
  */
+#if 0
 static int
 event_io(struct lib_context *lc, struct event_io *e_io)
 {
@@ -634,6 +635,7 @@ event_io(struct lib_context *lc, struct event_io *e_io)
 
 	LOG_ERR(lc, 0, "%s: PANIC - don't know about event_io!", handler);
 }
+#endif
 
 #if 0
 	/* FIXME: This should not use META() directly? */
@@ -897,11 +899,6 @@ ddf1_check(struct lib_context *lc, struct raid_set *rs)
 			      NULL, handler);
 }
 
-static struct event_handlers ddf1_event_handlers = {
-	.io = event_io,
-	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
-};
-
 #ifdef DMRAID_NATIVE_LOG
 /*
  * Log native information about the RAID device.
@@ -922,7 +919,6 @@ static struct dmraid_format ddf1_format = {
 	.write = ddf1_write,
 	.group = ddf1_group,
 	.check = ddf1_check,
-	.events = &ddf1_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
 	.log = ddf1_log,
 #endif

@@ -318,6 +318,7 @@ via_check(struct lib_context *lc, struct raid_set *rs)
 /*
  * IO error event handler.
  */
+#if 0
 static int
 event_io(struct lib_context *lc, struct event_io *e_io)
 {
@@ -332,12 +333,7 @@ event_io(struct lib_context *lc, struct event_io *e_io)
 
 	return 1;
 }
-
-static struct event_handlers via_event_handlers = {
-	.io = event_io,
-	.rd = NULL,		/* FIXME: no device add/remove event handler yet. */
-};
-
+#endif
 
 #ifdef DMRAID_NATIVE_LOG
 /*
@@ -394,7 +390,6 @@ static struct dmraid_format via_format = {
 	.write = via_write,
 	.group = via_group,
 	.check = via_check,
-	.events = &via_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
 	.log = via_log,
 #endif

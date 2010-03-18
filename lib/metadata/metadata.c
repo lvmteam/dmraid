@@ -921,7 +921,7 @@ want_set(struct lib_context *lc, struct raid_set *rs, char *name)
 				   "dropping unwanted RAID set \"%s\"",
 				   rs->name);
 			/*
-			 * ddf1 carries a private pointer to it's contianing
+			 * ddf1 carries a private pointer to it's containing
 			 * set which is cleared as part of the check. So we
 			 * must call it's check method before freeing the
 			 * set. Whats more, it looks like ddf1 check can

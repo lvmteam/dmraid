@@ -1020,11 +1020,10 @@ static int _rebuild(enum rebuild_type rebuild_type, const char *dev_name)
 		break;
 
 	case REBUILD_END:
-		if (!_lib_main('F', dev_name)) {
+		if (!_lib_main('F', dev_name) ||
+		    !_lib_main('r', dev_name))
 			syslog(LOG_NOTICE, "Rebuild of RAID set %s complete",
 					dev_name);
-			_lib_main('r', dev_name); 
-		} 
 			
 		/* Turn all RAID set LEDs off anyway, since it's in-sync.*/
 		/* Used also for manual rebuild. */

@@ -50,23 +50,9 @@ struct event_rd {
 };
 
 /*
- * List of event handler functions to call for the metadata format handler.
- *
- * Return 1 for event taken, RAID device write necessary.
- * Return 0 for error and/or write unnecessary.
- */
-struct event_handlers {
-	/* Handle IO error */
-	int (*io) (struct lib_context * lc, struct event_io * e_io);
-
-	/* Handle RAID device add/remove. */
-	int (*rd) (struct lib_context * lc, struct event_rd * e_rd);
-};
-
-/*
  * Hot-spare search types list: it can be searched locally/globally 
  */
-enum scope {
+enum hot_spare_scope {
 	t_scope_local = 0x01,
 	t_scope_global = 0x02
 };
@@ -151,15 +137,11 @@ struct dmraid_format {
 				 enum handler_commands command,
 				 struct handler_info * info, void *ptr);
 
-	/*
-	 * Event handlers (eg, I/O error).
-	 */
-	struct event_handlers *events;
-
 	/* 
 	 * Hot-spare disk search scope 
 	 */
-	enum scope scope;
+	enum hot_spare_scope scope;
+
 	/*
 	 * Display RAID disk metadata native.
 	 */

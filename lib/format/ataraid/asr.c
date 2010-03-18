@@ -560,6 +560,7 @@ js_name(struct lib_context *lc, struct raid_dev *rd, unsigned subset)
 /*
  * IO error event handler.
  */
+#if 0
 static int
 event_io(struct lib_context *lc, struct event_io *e_io)
 {
@@ -583,6 +584,7 @@ event_io(struct lib_context *lc, struct event_io *e_io)
 
 	return 1;		/* Indicate that this is indeed a failure. */
 }
+#endif
 
 /*
  * Helper routines for asr_group()
@@ -1042,11 +1044,6 @@ asr_check(struct lib_context *lc, struct raid_set *rs)
 			      NULL, handler);
 }
 
-static struct event_handlers asr_event_handlers = {
-	.io = event_io,
-	.rd = NULL,	/* FIXME: no device add/remove event handler yet. */
-};
-
 /* Dump a reserved block */
 static void
 dump_rb(struct lib_context *lc, struct asr_reservedblock *rb)
@@ -1146,7 +1143,6 @@ static struct dmraid_format asr_format = {
 	.write = asr_write,
 	.group = asr_group,
 	.check = asr_check,
-	.events = &asr_event_handlers,
 #ifdef DMRAID_NATIVE_LOG
 	.log = asr_log,
 #endif
