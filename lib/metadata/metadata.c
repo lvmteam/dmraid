@@ -2102,7 +2102,6 @@ get_metadata(struct lib_context *lc, enum action action,
 	if (!(M_RAID & p->metadata))
 		return 1;
 
-#ifndef	DMRAID_MINI
 	/* Discover RAID disks and keep RAID metadata (eg, hpt45x) */
 	discover_raid_devices(lc,
 # ifdef	DMRAID_NATIVE_LOG
@@ -2111,9 +2110,6 @@ get_metadata(struct lib_context *lc, enum action action,
 # else
 			      (RAID_DEVICES & action) ? argv : NULL);
 # endif
-#else
-	discover_raid_devices(lc, NULL);
-#endif
 
 	if (!OPT_HOT_SPARE_SET(lc) && !OPT_CREATE(lc)
 	    && !count_devices(lc, RAID)) {

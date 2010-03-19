@@ -26,21 +26,6 @@ void plog(struct lib_context *lc, int level, int lf, const char *file,
 	  int line, const char *format, ...);
 int log_alloc_err(struct lib_context *lc, const char *who);
 
-#  ifdef DMRAID_MINI
-
-#define log_info(lc, x...)
-#define log_info_nnl(lc, x...)
-#define log_notice(lc, x...)
-#define log_notice_nnl(lc, x...)
-#define log_warn(lc, x...)
-#define log_warn_nn(lc, x...)
-#define log_debug(lc, x...)
-#define log_debug_nnl(lc, x...)
-#define log_dbg(lc, x...)
-#define log_dbg_nnl(lc, x...)
-
-#  else
-
 #define _log_info(lc, lf, x...) plog(lc, _PLOG_INFO, lf, __FILE__, __LINE__, x)
 #define log_info(lc, x...) _log_info(lc, 1, x)
 #define log_info_nnl(lc, x...) _log_info(lc, 0, x)
@@ -60,8 +45,6 @@ int log_alloc_err(struct lib_context *lc, const char *who);
 #define log_debug_nnl(lc, x...) _log_debug(lc, 0, x)
 #define log_dbg(lc, x...) log_debug(lc, x)
 #define log_dbg_nnl(lc, x...) log_debug_nnl(lc, x)
-
-#  endif
 
 #define	log_level(lc, level, x...) plog(lc, level, 1, __FILE__, __LINE__, x)
 #define	log_level_nnl(lc, level, x...) plog(lc, level, 0, __FILE__, __LINE__, x)

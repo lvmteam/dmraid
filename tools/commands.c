@@ -31,50 +31,43 @@ int add_dev_to_array(struct lib_context *lc, struct raid_set *rs,
  * Command line options.
  */
 static char const *short_opts = "a:hipP:"
-#ifndef	DMRAID_MINI
 	"bc::dDEf:gIlxM:"
 #ifdef	DMRAID_NATIVE_LOG
 	"n"
 #endif
-	"rR:s::tv"
-#endif
-	"VC:S::Z";
+	"rR:s::tvVC:S::Z";
 
 #ifdef HAVE_GETOPTLONG
 static struct option long_opts[] = {
 	{"activate", required_argument, NULL, 'a'},
-	{"format", required_argument, NULL, 'f'},
-	{"partchar", required_argument, NULL, 'P'},
-	{"no_partitions", no_argument, NULL, 'p'},
-# ifndef DMRAID_MINI
 	{"block_devices", no_argument, NULL, 'b'},
-	{"display_columns", optional_argument, NULL, 'c'},
+	{"create", required_argument, NULL, 'C'},
 	{"debug", no_argument, NULL, 'd'},
-	{"dump_metadata", no_argument, NULL, 'D'},
-	{"erase_metadata", no_argument, NULL, 'E'},
+	{"display_columns", optional_argument, NULL, 'c'},
 	{"display_group", no_argument, NULL, 'g'},
-# endif
+	{"dump_metadata", no_argument, NULL, 'D'},
+	{"format", required_argument, NULL, 'f'},
+	{"erase_metadata", no_argument, NULL, 'E'},
 	{"help", no_argument, NULL, 'h'},
 	{"ignorelocking", no_argument, NULL, 'i'},
-# ifndef DMRAID_MINI
+	{"ignoremonitoring", no_argument, NULL, 'I'},
 	{"list_formats", no_argument, NULL, 'l'},
 	{"media", required_argument, NULL, 'M'},
 #  ifdef DMRAID_NATIVE_LOG
 	{"native_log", no_argument, NULL, 'n'},
 #  endif
+	{"no_partitions", no_argument, NULL, 'p'},
+	{"partchar", required_argument, NULL, 'P'},
 	{"raid_devices", no_argument, NULL, 'r'},
 	{"rebuild", required_argument, NULL, 'R'},
-	{"sets", optional_argument, NULL, 's'},
 	{"remove", no_argument, NULL, 'x'},
+	{"rm_partitions", no_argument, NULL, 'Z'},
+	{"sets", optional_argument, NULL, 's'},
 	{"separator", required_argument, NULL, SEPARATOR},	/* long only. */
+	{"spare", optional_argument, NULL, 'S'},
 	{"test", no_argument, NULL, 't'},
 	{"verbose", no_argument, NULL, 'v'},
-# endif
 	{"version", no_argument, NULL, 'V'},
-	{"create", required_argument, NULL, 'C'},
-	{"spare", optional_argument, NULL, 'S'},
-	{"rm_partitions", no_argument, NULL, 'Z'},
-	{"ignoremonitoring", no_argument, NULL, 'I'},
 	{NULL, no_argument, NULL, 0}
 };
 #endif /* #ifdef HAVE_GETOPTLONG */
@@ -120,7 +113,6 @@ check_activate(struct lib_context *lc, struct actions *a)
 	return check_optarg(lc, 'a', def);
 }
 
-#ifndef	DMRAID_MINI
 /* Check active/inactive option arguments. */
 static int
 check_active(struct lib_context *lc, struct actions *a)
@@ -209,7 +201,6 @@ check_spare_argument(struct lib_context *lc, struct actions *a)
 	lc_inc_opt(lc, a->arg);
 	return 1;
 }
-#endif
 
 /* Check and store option for partition separator. */
 static int
@@ -227,18 +218,6 @@ help(struct lib_context *lc, struct actions *a)
 {
 	char *c = lc->cmd;
 
-#ifdef	DMRAID_MINI
-	log_print(lc, "%s: Device-Mapper Software RAID tool "
-		  "[Early Boot Version]\n", c);
-	log_print(lc, "%s\t{-a|--activate} {y|n|yes|no} [-i|--ignorelocking]\n" 
-		  "\t[-f|--format fORMAT[,FORMAT...]]\n"
-		  "\t[-P|--partchar CHAR]\n"
-		  "\t[-p|--no_partitions]\n"
-		  "\t[-Z|--rm_partitions]\n"
-		  "\t[--separator SEPARATOR]\n" "\t[RAID-set...]\n", c);
-	log_print(lc, "%s\t{-h|--help}\n", c);
-	log_print(lc, "%s\t{-V/--version}\n", c);
-#else
 	log_print(lc, "%s: Device-Mapper Software RAID tool\n", c);
 	log_print(lc,
 		  "* = [-d|--debug]... [-v|--verbose]... [-i|--ignorelocking]\n");
@@ -285,7 +264,6 @@ help(struct lib_context *lc, struct actions *a)
 		  "\t{-S|--spare [RAID-set]} \n"
 		  "\t{-M|--media \"device-path\"}\n", c);
 	log_print(lc, "%s\t{-V/--version}\n", c);
-#endif
 	return 1;
 }
 
@@ -298,69 +276,16 @@ help(struct lib_context *lc, struct actions *a)
 static struct actions actions[] = {
 	/* [De]activate option. */
 	{'a',
-	 UNDEF,			/* Set in check_activate() by mandatory option argument. */
+	 UNDEF,	 /* Set in check_activate() by mandatory option argument. */
 	 UNDEF,
-	 ACTIVATE | DEACTIVATE | FORMAT | HELP | IGNORELOCKING | NOPARTITIONS |
-	 SEPARATOR | RMPARTITIONS
-#ifndef DMRAID_MINI
-	 | DBG | TEST | VERBOSE | IGNOREMONITORING
-#endif
-	 , ARGS,
+	 ACTIVATE | DBG | DEACTIVATE | FORMAT | HELP | IGNORELOCKING |
+	 IGNOREMONITORING | NOPARTITIONS | RMPARTITIONS | SEPARATOR |
+	 TEST | VERBOSE,
+	 ARGS,
 	 check_activate,
 	 0,
 	 },
 
-	/* Format option. */
-	{'f',
-	 FORMAT,
-	 ACTIVATE | DEACTIVATE | IGNORELOCKING
-#ifndef DMRAID_MINI
-#  ifdef DMRAID_NATIVE_LOG
-	 | NATIVE_LOG
-#  endif
-	 | RAID_DEVICES | RAID_SETS,
-	 ACTIVE | INACTIVE | COLUMN | DBG | DUMP | DMERASE | GROUP | HELP |
-	 NOPARTITIONS | SEPARATOR | TEST | VERBOSE | RMPARTITIONS |
-	 IGNOREMONITORING
-#else
-	 , UNDEF
-#endif
-	 , ARGS,
-#ifndef DMRAID_MINI
-	 check_identifiers,
-#else
-	 NULL,
-#endif
-	 LC_FORMAT,
-	 },
-
-	/* Partition separator. */
-	{'P',
-	 PARTCHAR,
-	 ACTIVATE | DEACTIVATE,
-	 FORMAT | HELP | IGNORELOCKING | SEPARATOR | RMPARTITIONS
-#ifndef DMRAID_MINI
-	 | DBG | TEST | VERBOSE | IGNOREMONITORING
-#endif
-	 , ARGS,
-	 check_part_separator,
-	 0,
-	 },
-
-	/* Partition option. */
-	{'p',
-	 NOPARTITIONS,
-	 ACTIVATE | DEACTIVATE,
-	 FORMAT | HELP | IGNORELOCKING | SEPARATOR | RMPARTITIONS
-#ifndef DMRAID_MINI
-	 | DBG | TEST | VERBOSE | IGNOREMONITORING
-#endif
-	 , ARGS,
-	 NULL,
-	 0,
-	 },
-
-#ifndef	DMRAID_MINI
 	/* Block devices option. */
 	{'b',
 	 BLOCK_DEVICES,
@@ -375,11 +300,21 @@ static struct actions actions[] = {
 	{'c',
 	 COLUMN,
 	 BLOCK_DEVICES | RAID_DEVICES | RAID_SETS,
-	 ACTIVE | INACTIVE | DBG | DUMP | FORMAT | GROUP | HELP | IGNORELOCKING
-	 | SEPARATOR | VERBOSE,
+	 ACTIVE | INACTIVE | DBG | DUMP | FORMAT | GROUP | HELP |
+	 IGNORELOCKING | SEPARATOR | VERBOSE,
 	 ARGS,
 	 check_identifiers,
 	 LC_COLUMN,
+	 },
+
+	/* RAID set creation. */
+	{'C',
+	 CREATE,
+	 UNDEF,
+	 DBG | HELP | IGNORELOCKING | IGNOREMONITORING | VERBOSE,
+	 NO_ARGS,
+	 check_create_argument,
+	 LC_CREATE,
 	 },
 
 	/* Debug option. */
@@ -412,18 +347,33 @@ static struct actions actions[] = {
 	 0,
 	 },
 
+	/* Format option. */
+	{'f',
+	 FORMAT,
+	 ACTIVATE | DEACTIVATE |
+#  ifdef DMRAID_NATIVE_LOG
+	 NATIVE_LOG |
+#  endif
+	 RAID_DEVICES | RAID_SETS,
+	 ACTIVE | INACTIVE | COLUMN | DBG | DUMP | DMERASE | GROUP | HELP |
+	 IGNORELOCKING | NOPARTITIONS | SEPARATOR | TEST |
+	 VERBOSE | RMPARTITIONS,
+	 ARGS,
+	 check_identifiers,
+	 LC_FORMAT,
+	 },
+
 	/* RAID groups option. */
 	{'g',
 	 GROUP,
 	 RAID_SETS,
-	 ACTIVE | INACTIVE | DBG | COLUMN | FORMAT | HELP | IGNORELOCKING
-	 | SEPARATOR | VERBOSE,
+	 ACTIVE | INACTIVE | DBG | COLUMN | FORMAT | HELP |
+	 IGNORELOCKING | SEPARATOR | VERBOSE,
 	 ARGS,
 	 _lc_inc_opt,
 	 LC_GROUP,
 	 },
 
-#endif
 	/* Help option. */
 	{'h',
 	 HELP,
@@ -444,10 +394,147 @@ static struct actions actions[] = {
 	 LC_IGNORELOCKING,
 	 },
 
-#ifndef	DMRAID_MINI
+	/* ignoremonitoring option. */
+	{'I',
+	 IGNOREMONITORING,
+	 ACTIVATE | DEACTIVATE,
+	 DBG | FORMAT | HELP | IGNORELOCKING | NOPARTITIONS |
+	 PARTCHAR | RMPARTITIONS | SEPARATOR | VERBOSE,
+	 ARGS,
+	 _lc_inc_opt,
+	 LC_IGNOREMONITORING,
+	 },
+
 	/* List metadata format handlers option. */
 	{'l',
 	 LIST_FORMATS,
+	 UNDEF,
+	 DBG | HELP | IGNORELOCKING | VERBOSE,
+	 NO_ARGS,
+	 NULL,
+	 0,
+	 },
+
+	/* Media/drive option */
+	{'M',
+	 MEDIA,
+	 UNDEF,
+	 DBG | HELP | IGNORELOCKING | VERBOSE | REBUILD,
+	 ARGS,
+	 check_identifiers,
+	 LC_REBUILD_DISK,
+	 },
+
+#ifdef DMRAID_NATIVE_LOG
+	/* Native log option. */
+	{'n',
+	 NATIVE_LOG,
+	 UNDEF,
+	 DBG | FORMAT | HELP | IGNORELOCKING | SEPARATOR | VERBOSE,
+	 ARGS,
+	 NULL,
+	 0,
+	 },
+
+#endif
+	/* No partitions option. */
+	{'p',
+	 NOPARTITIONS,
+	 ACTIVATE | DEACTIVATE,
+	 FORMAT | HELP | IGNORELOCKING | SEPARATOR | RMPARTITIONS
+	 | DBG | TEST | VERBOSE | IGNOREMONITORING,
+	 ARGS,
+	 NULL,
+	 0,
+	 },
+
+	/* Partition separator character option. */
+	{'P',
+	 PARTCHAR,
+	 ACTIVATE | DEACTIVATE,
+	 FORMAT | HELP | IGNORELOCKING | SEPARATOR | RMPARTITIONS
+	 | DBG | TEST | VERBOSE | IGNOREMONITORING,
+	 ARGS,
+	 check_part_separator,
+	 0,
+	 },
+
+	/* Display RAID devices option. */
+	{'r',
+	 RAID_DEVICES,
+	 UNDEF,
+	 COLUMN | DBG | DUMP | DMERASE | FORMAT | HELP | IGNORELOCKING |
+	 SEPARATOR | VERBOSE,
+	 ARGS,
+	 NULL,
+	 0,
+	 },
+
+	/* rebuild option */
+	{'R',
+	 REBUILD,
+	 UNDEF,
+	 DBG | HELP | IGNORELOCKING | VERBOSE,
+	 ARGS,
+	 check_identifiers,
+	 LC_REBUILD_SET,
+	 },
+
+	/* Spare disk creation. */
+	{'S',
+	 SPARE,
+	 UNDEF,
+	 DBG | HELP | IGNORELOCKING | VERBOSE,
+	 NO_ARGS,
+	 check_spare_argument,
+	 LC_HOT_SPARE_SET,
+	 },
+
+	/* Display RAID sets option. */
+	{'s',
+	 RAID_SETS,
+	 UNDEF,
+	 ACTIVE | INACTIVE | COLUMN | DBG | FORMAT | GROUP | HELP |
+	 IGNORELOCKING | DEL_SETS | SEPARATOR | VERBOSE,
+	 ARGS,
+	 check_active,
+	 0,
+	 },
+
+	/* Seperator for identifiers (eg. ':' to seperate like "sil:isw"). */
+	{SEPARATOR,
+	 SEPARATOR,
+	 COLUMN | FORMAT,
+	 ALL_FLAGS,
+	 ARGS,
+	 check_separator,
+	 0,
+	 },
+
+	/* Test run option. */
+	{'t',
+	 TEST,
+	 ACTIVATE | DEACTIVATE,
+	 ACTIVATE | DEACTIVATE | DBG | FORMAT | HELP | IGNORELOCKING |
+	 IGNOREMONITORING | NOPARTITIONS | VERBOSE,
+	 ARGS,
+	 _lc_inc_opt,
+	 LC_TEST,
+	 },
+
+	/* Verbose option. */
+	{'v',
+	 VERBOSE,
+	 ALL_FLAGS,
+	 ALL_FLAGS,
+	 ARGS,
+	 _lc_inc_opt,
+	 LC_VERBOSE,
+	 },
+
+	/* Version option. */
+	{'V',
+	 VERSION,
 	 UNDEF,
 	 DBG | HELP | IGNORELOCKING | VERBOSE,
 	 NO_ARGS,
@@ -466,162 +553,15 @@ static struct actions actions[] = {
 	 0,
 	 },
 
-#  ifdef DMRAID_NATIVE_LOG
-	/* Native log option. */
-	{'n',
-	 NATIVE_LOG,
-	 UNDEF,
-	 DBG | FORMAT | HELP | IGNORELOCKING | SEPARATOR | VERBOSE,
-	 ARGS,
-	 NULL,
-	 0,
-	 },
-
-#  endif
-	/* Display RAID devices option. */
-	{'r',
-	 RAID_DEVICES,
-	 UNDEF,
-	 COLUMN | DBG | DUMP | DMERASE | FORMAT | HELP | IGNORELOCKING |
-	 SEPARATOR | VERBOSE,
-	 ARGS,
-	 NULL,
-	 0,
-	 },
-
-	/* rebuild option */
-	{'R',
-	 REBUILD,
-	 UNDEF,
-#ifdef DMRAID_MINI
-	 HELP, IGNORELOCKING,
-#else
-	 DBG | HELP | IGNORELOCKING | VERBOSE,
-#endif
-	 ARGS,
-#ifndef DMRAID_MINI
-	 check_identifiers,
-#else
-	 NULL,
-#endif
-	 LC_REBUILD_SET,
-	 },
-
-	/* Media/drive option */
-	{'M',
-	 MEDIA,
-	 UNDEF,
-#ifdef DMRAID_MINI
-	 HELP, IGNORELOCKING,
-#else
-	 DBG | HELP | IGNORELOCKING | VERBOSE | REBUILD,
-#endif
-	 ARGS,
-#ifndef DMRAID_MINI
-	 check_identifiers,
-#else
-	 NULL,
-#endif
-	 LC_REBUILD_DISK,
-	 },
-
-	/* Display RAID sets option. */
-	{'s',
-	 RAID_SETS,
-	 UNDEF,
-	 ACTIVE | INACTIVE | COLUMN | DBG | FORMAT | GROUP | HELP |
-	 IGNORELOCKING | DEL_SETS | SEPARATOR | VERBOSE,
-	 ARGS,
-	 check_active,
-	 0,
-	 },
-
-	/* Display RAID sets option. */
-	{SEPARATOR,
-	 SEPARATOR,
-	 COLUMN | FORMAT,
-	 ALL_FLAGS,
-	 ARGS,
-	 check_separator,
-	 0,
-	 },
-
-
-	/* Test run option. */
-	{'t',
-	 TEST,
-	 ACTIVATE | DEACTIVATE,
-	 ACTIVATE | DEACTIVATE | DBG | FORMAT | HELP | IGNORELOCKING |
-	 NOPARTITIONS | VERBOSE,
-	 ARGS,
-	 _lc_inc_opt,
-	 LC_TEST,
-	 },
-
-	/* Verbose option. */
-	{'v',
-	 VERBOSE,
-	 ALL_FLAGS,
-	 ALL_FLAGS,
-	 ARGS,
-	 _lc_inc_opt,
-	 LC_VERBOSE,
-	 },
-#endif /* #ifndef DMRAID_MINI */
-
-	/* Version option. */
-	{'V',
-	 VERSION,
-	 UNDEF,
-#ifdef DMRAID_MINI
-	 HELP, IGNORELOCKING,
-#else
-	 DBG | HELP | IGNORELOCKING | VERBOSE,
-#endif
-	 NO_ARGS,
-	 NULL,
-	 0,
-	 },
-
-	/* RAID set creation. */
-	{'C',
-	 CREATE,
-	 UNDEF,
-	 DBG | HELP | IGNORELOCKING | VERBOSE,
-	 NO_ARGS,
-	 check_create_argument,
-	 LC_CREATE,
-	 },
-	/* Spare disk creation. */
-	{'S',
-	 SPARE,
-	 UNDEF,
-	 DBG | HELP | IGNORELOCKING | VERBOSE,
-	 NO_ARGS,
-	 check_spare_argument,
-	 LC_HOT_SPARE_SET,
-	 },
 	{'Z',
 	 RMPARTITIONS,
 	 ACTIVATE, /* We cannot undo this on DEACTIVATE ! */
-	 DBG | FORMAT | HELP | IGNORELOCKING | NOPARTITIONS | VERBOSE |
-	 SEPARATOR,
+	 DBG | FORMAT | HELP | IGNORELOCKING | IGNOREMONITORING |
+	 NOPARTITIONS | VERBOSE | SEPARATOR,
 	 ARGS,
 	 NULL,
 	 0,
 	 },
-#ifndef DMRAID_MINI
-	/* ignoremonitoring option. */
-	{'I',
-	 IGNOREMONITORING,
-	 ACTIVATE | DEACTIVATE,
-	 DBG | FORMAT | HELP | IGNORELOCKING | NOPARTITIONS | VERBOSE |
-	 SEPARATOR,
-	 ARGS,
-	 _lc_inc_opt,
-	 LC_IGNOREMONITORING,
-	 },
-#endif
 };
 
 /*
@@ -675,7 +615,6 @@ check_actions(struct lib_context *lc, char **argv)
 	if (!action)
 		LOG_ERR(lc, 0, "options missing\n");
 
-#ifndef DMRAID_MINI
 	if ((action & (DBG | VERBOSE)) == action)
 		LOG_ERR(lc, 0, "more options needed with -d/-v");
 
@@ -683,7 +622,6 @@ check_actions(struct lib_context *lc, char **argv)
 		action |= DUMP;
 		lc_inc_opt(lc, LC_DUMP);
 	}
-#endif
 
 	return 1;
 }
@@ -813,7 +751,6 @@ rebuild(struct lib_context *lc, int arg)
  * Perform pre/post functions for requested actions.
  */
 /* Post Activate/Deactivate RAID set. */
-#ifndef DMRAID_MINI
 /* Pre and post display_set() functions. */
 static int
 _display_sets_arg(int arg)
@@ -876,9 +813,6 @@ _hot_spare_add(struct lib_context *lc, int type)
 	return 1;
 }
 
-#endif
-
-
 /*
  * Function abstraction which takes pre- and post-function calls
  * to prepare an argument in pre() to be used by post().
@@ -909,7 +843,6 @@ struct prepost prepost[] = {
 	 activate_or_deactivate_sets,
 	 },
 
-#ifndef DMRAID_MINI
 	/* Display block devices. */
 	{BLOCK_DEVICES,
 	 M_DEVICE,
@@ -981,8 +914,6 @@ struct prepost prepost[] = {
 	 0,
 	 _display_sets,
 	 },
-
-#endif
 
 	/* Display version. */
 	{VERSION,
