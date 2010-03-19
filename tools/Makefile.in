@@ -28,7 +28,7 @@ ifeq ("@KLIBC@", "no")
 	endif
 endif
 
-DMRAIDLIBS=-ldmraid
+DMRAIDLIBS=-ldmraid -lpthread
 
 ifeq ("@KLIBC@", "yes")
 	DMRAIDLIBS += -ldevmapper_klibc
