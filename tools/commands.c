@@ -30,12 +30,11 @@ int add_dev_to_array(struct lib_context *lc, struct raid_set *rs,
 /*
  * Command line options.
  */
-static char const *short_opts = "a:hipP:"
-	"bc::dDEf:gIlxM:"
+static char const *short_opts = "a:bc::C:dDEf:ghiIlM:"
 #ifdef	DMRAID_NATIVE_LOG
 	"n"
 #endif
-	"rR:s::tvVC:S::Z";
+	"pP:rR:s::S::tvVxZ";
 
 #ifdef HAVE_GETOPTLONG
 static struct option long_opts[] = {
@@ -46,8 +45,8 @@ static struct option long_opts[] = {
 	{"display_columns", optional_argument, NULL, 'c'},
 	{"display_group", no_argument, NULL, 'g'},
 	{"dump_metadata", no_argument, NULL, 'D'},
-	{"format", required_argument, NULL, 'f'},
 	{"erase_metadata", no_argument, NULL, 'E'},
+	{"format", required_argument, NULL, 'f'},
 	{"help", no_argument, NULL, 'h'},
 	{"ignorelocking", no_argument, NULL, 'i'},
 	{"ignoremonitoring", no_argument, NULL, 'I'},
@@ -618,6 +617,7 @@ check_actions(struct lib_context *lc, char **argv)
 	if ((action & (DBG | VERBOSE)) == action)
 		LOG_ERR(lc, 0, "more options needed with -d/-v");
 
+	/* Enforce metadata dump on (mistaken) erase. */
 	if (action & DMERASE) {
 		action |= DUMP;
 		lc_inc_opt(lc, LC_DUMP);
@@ -636,6 +636,7 @@ check_actions_arguments(struct lib_context *lc)
 	LOG_ERR(lc, 0, "invalid format for -f at (see -l)");
 }
 
+/* Save name of rebuild disk. */
 int
 save_drive_name(struct lib_context *lc, char *drive)
 {
@@ -643,6 +644,7 @@ save_drive_name(struct lib_context *lc, char *drive)
 	return lc_strcat_opt(lc, LC_REBUILD_DISK, drive, ',') ? 1 : 0;
 }
 
+/* Save name of hot spare disk. */
 static int
 save_spare_name(struct lib_context *lc, char **argv)
 {

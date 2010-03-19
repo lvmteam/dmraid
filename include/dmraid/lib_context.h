@@ -54,21 +54,21 @@ enum lc_options {
 /* Options access macros. */
 /* Return option counter. */
 #define	OPT_COLUMN(lc)		(lc_opt(lc, LC_COLUMN))
+#define	OPT_CREATE(lc)		(lc_opt(lc, LC_CREATE))
 #define	OPT_DEBUG(lc)		(lc_opt(lc, LC_DEBUG))
 #define	OPT_DEVICES(lc)		(lc_opt(lc, LC_DEVICES))
 #define	OPT_DUMP(lc)		(lc_opt(lc, LC_DUMP))
-#define	OPT_GROUP(lc)		(lc_opt(lc, LC_GROUP))
 #define	OPT_FORMAT(lc)		(lc_opt(lc, LC_FORMAT))
+#define	OPT_GROUP(lc)		(lc_opt(lc, LC_GROUP))
+#define OPT_HOT_SPARE_SET(lc)	(lc_opt(lc, LC_HOT_SPARE_SET))
 #define	OPT_IGNORELOCKING(lc)	(lc_opt(lc, LC_IGNORELOCKING))
+#define OPT_IGNOREMONITORING(lc) (lc_opt(lc, LC_IGNOREMONITORING))
+#define	OPT_PARTCHAR(lc)	(lc_opt(lc, LC_PARTCHAR))
+#define OPT_REBUILD_DISK(lc)	(lc_opt(lc, LC_REBUILD_DISK))
 #define	OPT_SEPARATOR(lc)	(lc_opt(lc, LC_SEPARATOR))
 #define	OPT_SETS(lc)		(lc_opt(lc, LC_SETS))
 #define	OPT_TEST(lc)		(lc_opt(lc, LC_TEST))
 #define	OPT_VERBOSE(lc)		(lc_opt(lc, LC_VERBOSE))
-#define	OPT_PARTCHAR(lc)	(lc_opt(lc, LC_PARTCHAR))
-#define	OPT_CREATE(lc)		(lc_opt(lc, LC_CREATE))
-#define OPT_REBUILD_DISK(lc)	(lc_opt(lc, LC_REBUILD_DISK))
-#define OPT_HOT_SPARE_SET(lc)	(lc_opt(lc, LC_HOT_SPARE_SET))
-#define OPT_IGNOREMONITORING(lc) (lc_opt(lc, LC_IGNOREMONITORING))
 
 /* Return option value. */
 #define	OPT_STR(lc, o)		(lc->options[o].arg.str)

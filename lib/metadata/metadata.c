@@ -1901,23 +1901,21 @@ delete_raidsets(struct lib_context *lc)
 
 				n++;
 			}
+
 			if (n > 1) {
 				printf("\nAbout to delete the raid super-set "
 				       "\"%s\" with the following RAID sets\n",
 				       rs->name);
 				list_for_each_entry(rs1, &rs->sets, list)
 					printf("%s\n", rs1->name);
-			}
-			else if (n == 1) {
+			} else if (n == 1) {
 				rs1 = list_entry(rs->sets.next,
 						 struct raid_set, list);
 				printf("\nAbout to delete RAID set %s\n",
 				       rs1->name);
-			}
-			else
+			} else
 				LOG_ERR(lc, 0, "coding error");
-		}
-		else
+		} else
 			printf("\nAbout to delete RAID set %s\n", rs->name);
 
 		printf("\nWARNING: The metadata stored on the raidset(s) "
@@ -1932,7 +1930,6 @@ delete_raidsets(struct lib_context *lc)
 				rd->fmt->name);
 
 		rd->fmt->delete(lc, rs);
-
 	}
 
 	return 1;
