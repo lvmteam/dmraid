@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2004-2005  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
+# Copyright (C) 2004-2010  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
 #
 # See file LICENSE at the top of this source tree for license information.
 #
@@ -9,9 +9,9 @@ top_srcdir = @top_srcdir@
 top_builddir = @top_builddir@
 VPATH = @srcdir@
 DIETLIBC = @DIETLIBC@
-KIBC = @KLIBC@
+KLIBC = @KLIBC@
 
-INCLUDES += -I $(src_dir)
+INCLUDES += -I$(src_dir)
 
 SOURCES=\
 	dmraid.c \
@@ -21,7 +21,7 @@ SOURCES=\
 TARGETS=\
 	dmraid
 
-include $(top_srcdir)/make.tmpl
+include $(top_builddir)/make.tmpl
 
 ifeq ("@KLIBC@", "no")
 	ifeq ("@STATIC_LINK@", "no")
@@ -29,7 +29,7 @@ ifeq ("@KLIBC@", "no")
 	endif
 endif
 
-DMRAIDLIBS=-ldmraid -lpthread
+DMRAIDLIBS=-ldmraid
 
 # FIXME: use pkg-config here to get the list of needed librarie
 #  pkg-config --libs  devmapper
@@ -61,25 +61,21 @@ ifeq ("@KLIBC@", "no")
 	endif
 endif
 
-# Dynamic linker library
-LIBS += -ldl
-
 all: $(TARGETS)
 
 .PHONY: install_dmraid_tools remove_dmraid_tools
 
 dmraid:	$(OBJECTS) $(top_builddir)/lib/libdmraid.a
-	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) -L$(top_srcdir)/lib \
-	      -L$(DESTDIR)$(libdir) $(DMRAIDLIBS) $(DMEVENTTOOLLIBS) $(DMRAIDLIBS) $(LIBS) 
+	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) -L$(top_builddir)/lib $(DMRAIDLIBS) $(LIBS)
 
-dmevent_tool: $(top_srcdir)/lib/libdmraid.a
-	$(CC) -o $@ $@.c $(INCLUDES) $(LDFLAGS) -L$(top_srcdir)/lib \
-	      -L$(DESTDIR)$(libdir) $(DMRAIDLIBS) $(DMEVENTTOOLLIBS) $(DMRAIDLIBS) $(LIBS) 
+dmevent_tool: $(top_builddir)/lib/libdmraid.a
+	$(CC) -o $@ $@.c $(INCLUDES) $(LDFLAGS) -L$(top_builddir)/lib \
+	  $(DMRAIDLIBS) $(DMEVENTTOOLLIBS) $(LIBS)
 
 install_dmraid_tools: $(TARGETS)
 	@echo "Installing $(TARGETS) in $(DESTDIR)$(sbindir)"; \
-	mkdir -p $(DESTDIR)$(sbindir); \
-	$(INSTALL) $(STRIP) $(TARGETS) $(DESTDIR)$(sbindir)
+	$(INSTALL_DIR) $(DESTDIR)$(sbindir); \
+	$(INSTALL_PROGRAM) $(TARGETS) $(DESTDIR)$(sbindir)
 
 install: install_dmraid_tools
 
