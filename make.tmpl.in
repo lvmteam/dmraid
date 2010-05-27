@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2004-2005  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
+# Copyright (C) 2004-2010  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
 #
 # See file LICENSE at the top of this source tree for license information.
 #
@@ -12,6 +12,7 @@ CC = @CC@
 RANLIB = @RANLIB@
 SHELL = /bin/sh
 INSTALL = @INSTALL@
+MKDIR_P = @MKDIR_P@
 LN_S = @LN_S@
 LIBS = @LIBS@
 CFLAGS += @CFLAGS@
@@ -39,7 +40,8 @@ else
 endif
 
 # setup misc variables
-DMRAID_LIB_VERSION = @DMRAID_LIB_VERSION@
+DMRAID_VERSION := $(shell cat $(top_srcdir)/tools/VERSION)
+DMRAID_LIB_VERSION := $(shell sed --quiet 's/^.*\(DMRAID_LIB_VERSION\)[[^_]].*"\(.*\)"/\2/p' $(top_srcdir)/lib/version.h)
 INSTALL_PROGRAM = $(INSTALL) $(STRIP)
 INSTALL_DIR = $(INSTALL) -d
 INSTALL_DATA = $(INSTALL) -m 644 -p
@@ -49,7 +51,7 @@ ifndef MAKEFLAGS
 MAKEFLAGS = @JOBS@
 endif
 
-SUFFIXES=.c .o .so .a
+SUFFIXES=.c .d .o .so .a
 
 CFLAGS+=-fPIC -Wall -Wundef -Wcast-align -Wwrite-strings -Winline
 
@@ -90,6 +92,7 @@ STRIP=
 DEPS=$(top_srcdir)/make.tmpl $(top_srcdir)/tools/VERSION Makefile
 
 OBJECTS=$(SOURCES:%.c=%.o)
+OBJECTS2=$(SOURCES2:%.c=%.o)
 
 SUBDIRS.install := $(SUBDIRS:=.install)
 SUBDIRS.remove := $(SUBDIRS:=.remove)
@@ -124,14 +127,22 @@ $(SUBDIRS.distclean):
 $(TARGETS): $(OBJECTS)
 
 %.o: %.c
-	$(CC) -MM -MF ${@:%.o=%.d} $(INCLUDES) $(CFLAGS) $<; \
 	$(CC) -c $(INCLUDES) $(CFLAGS) $< -o $@
 
-%.so: $(OBJECTS) .export.sym
+%.d: %.c
+	$(MKDIR_P) $(dir $@); \
+	set -e; \
+	FILE=`echo $@ | sed 's/\\//\\\\\\//g;s/\\.d//g'`; \
+	DEPS=`echo $(DEPS) | sed -e 's/\\//\\\\\\//g'`; \
+	$(CC) -MM $(INCLUDES) $(DEFS) $(CFLAGS) -o $@ $<; \
+	sed -i "s/\(.*\)\.o[ :]*/$$FILE.o $$FILE.d $$FILE.pot: $$DEPS /g" $@; \
+	[ -s $@ ] || $(RM) $@
+
+%.so: $(OBJECTS) $(top_srcdir)/lib/.export.sym
 
 %.so: $(OBJECTS)
 	$(CC) -shared -Wl,-soname,$(notdir $@).$(DMRAID_LIB_VERSION) \
-	-Wl,--version-script,.export.sym $(OBJECTS) -o $@ -ldevmapper-event
+	-Wl,--version-script,$(top_srcdir)/lib/.export.sym $(OBJECTS) -o $@ -ldevmapper-event
 
 $(LIB_STATIC): $(OBJECTS)
 	$(RM) $@
@@ -147,10 +158,11 @@ distclean: $(SUBDIRS.distclean)
 	      config.cache config.log config.status \
 	      Makefile make.tmpl core tools/version.h
 
-ifneq ($(MAKECMDGOALS),clean)
-  ifneq ($(MAKECMDGOALS),distclean)
+ifeq (,$(findstring $(MAKECMDGOALS), clean distclean))
     ifdef SOURCES
        -include $(SOURCES:.c=.d)
     endif
-  endif
+    ifdef SOURCES2
+       -include $(SOURCES2:.c=.d)
+    endif
 endif

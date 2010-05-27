@@ -20,6 +20,7 @@ AC_PROG_AWK
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
+AC_PROG_MKDIR_P
 AC_PROG_RANLIB
 
 dnl Enables linking to klibc
@@ -194,18 +195,6 @@ dnl it calls gcc -E without considering CFLAGS ...
 if test x$KLIBC != xyes; then
 	dnl Check for getopt
 	AC_CHECK_HEADERS(getopt.h, CFLAGS="$CFLAGS -DHAVE_GETOPTLONG")
-fi
-
-if test "-f tools/VERSION"; then
-  DMRAID_VERSION="`cat tools/VERSION`"
-else
-  DMRAID_VERSION="Unknown"
-fi
-
-if test "-f lib/version.h"; then
-  DMRAID_LIB_VERSION="`sed --quiet 's/^.*\(DMRAID_LIB_VERSION\)[[^_]].*"\(.*\)"/\2/p' lib/version.h`"
-else
-  DMRAID_LIB_VERSION="Unknown"
 fi
 
 AC_SUBST(CC)
