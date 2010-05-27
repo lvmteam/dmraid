@@ -74,70 +74,79 @@ AC_ARG_WITH(group,
   [ GROUP="$withval" ],
   [ GROUP="root" ])
 
-echo $ac_n "checking whether to enable debugging""... $ac_c" 1>&6
 dnl Enable Debugging
-AC_ARG_ENABLE(debug, [  --enable-debug          Enable debugging],  \
-DEBUG=yes, DEBUG=no)
-echo "$ac_t""$DEBUG" 1>&6
+AC_ARG_ENABLE(debug, 
+  AC_HELP_STRING([--enable-debug], [Enable debugging]),
+  [DEBUG=$enableval], [DEBUG=no])
+AC_MSG_CHECKING([whether to enable debugging])
+AC_MSG_RESULT([$DEBUG])
 
-echo $ac_n "checking whether to enable malloc debugging""... $ac_c" 1>&6
 dnl Enable malloc debugging
-AC_ARG_ENABLE(debug_malloc, [  --enable-debug_malloc   Enable malloc debugging],  \
-DEBUG_MALLOC=yes, DEBUG_MALLOC=no)
-echo "$ac_t""$DEBUG" 1>&6
+AC_ARG_ENABLE(debug_malloc, 
+  AC_HELP_STRING([--enable-debug_malloc], [Enable malloc debugging]),
+  [DEBUG_MALLOC=$enableval], [DEBUG_MALLOC=no])
+AC_MSG_CHECKING([whether to enable malloc debugging])
+AC_MSG_RESULT([$DEBUG_MALLOC])
 
 dnl Enables linking to dietlibc
-AC_ARG_ENABLE(dietlibc, [  --enable-dietlibc       Use this to link the tools to dietlibc ], DIETLIBC=yes, DIETLIBC=no)
+AC_ARG_ENABLE(dietlibc, 
+  AC_HELP_STRING([--enable-dietlibc], [Use this to link the tools to dietlibc]),
+  [DIETLIBC=$enableval], [DIETLIBC=no])
 
 if test x$DIETLIBC = xyes; then
 	if test x$KLIBC = xyes; then
-		AC_MSG_ERROR(You can' enable both dietlibc and klibc!)
-		exit 1
+		AC_MSG_ERROR([You cannot enable both dietlibc and klibc!])
 	fi
         CC="diet gcc"
 	FLAVOUR="dietlibc "
 fi
 
-AC_ARG_ENABLE(jobs,  [  --enable-jobs=NUM       Number of jobs to run simultaneously], JOBS=-j$enableval, JOBS=-j1)
-
-dnl Enables linking to libselinux
-AC_ARG_ENABLE(libselinux, [  --enable-libselinux     Use this to link the tools to libselinux ], LIBSELINUX=$enableval, LIBSELINUX=no)
-
-dnl Enables linking to libselinux
-AC_ARG_ENABLE(libsepol, [  --enable-libsepol       Use this to link the tools to libsepol ], LIBSEPOL=$enableval, LIBSEPOL=no)
+AC_ARG_ENABLE(jobs,
+  AC_HELP_STRING([--enable-jobs=NUM], [Number of make jobs to run simultaneously]),
+  [JOBS=-j$enableval], [JOBS=-j1])
 
 dnl Enables mini binary
-AC_ARG_ENABLE(mini, [  --enable-mini           Use this to create a minimal binary suitable
-                          for early boot environments],  DMRAID_MINI=$enableval, DMRAID_MINI=no)
+AC_ARG_ENABLE(mini,
+  AC_HELP_STRING([--enable-mini], 
+    [Use this to create a minimal binary suitable for early boot environments]),
+  [DMRAID_MINI=$enableval], [DMRAID_MINI=no])
 
 dnl Enables LED support
-AC_ARG_ENABLE(led, [  --enable-led            Use this to enable LED support],  DMRAID_LED=$enableval, DMRAID_LED=no)
+AC_ARG_ENABLE(led, 
+  AC_HELP_STRING([--enable-led], [Use this to enable LED support]),
+  [DMRAID_LED=$enableval], [DMRAID_LED=no])
 
 dnl Enables Intel LED support
-AC_ARG_ENABLE(intel_led, [  --enable-intel_led      Use this to enable Intel LED support],  DMRAID_INTEL_LED=$enableval, DMRAID_INTEL_LED=no)
+AC_ARG_ENABLE(intel_led,
+  AC_HELP_STRING([--enable-intel_led], [Use this to enable Intel LED support]),
+  [DMRAID_INTEL_LED=$enableval], [DMRAID_INTEL_LED=no])
 
-echo $ac_n "checking whether to disable native metadata logging""... $ac_c" 1>&6
 dnl Disable native metadata logging
-AC_ARG_ENABLE(native_log, [  --disable-native_log    Disable native metadata logging. Default is enabled],  \
-DMRAID_NATIVE_LOG=$enableval, DMRAID_NATIVE_LOG=yes)
-echo "$ac_t""$DMRAID_NATIVE_LOG" 1>&6
+AC_ARG_ENABLE(native_log,
+  AC_HELP_STRING([--disable-native_log], [Disable native metadata logging [[enabled]]]),
+  [DMRAID_NATIVE_LOG=$enableval], [DMRAID_NATIVE_LOG=yes])
+AC_MSG_CHECKING([whether to disable native metadata logging])
+AC_MSG_RESULT([$DMRAID_NATIVE_LOG])
 
 dnl Enables staticly linked tools
-AC_ARG_ENABLE(static_link, [  --enable-static_link    Use this to link the tools to the dmraid and devmapper
-                          libraries statically.  Default is dynamic linking],  STATIC_LINK=$enableval, STATIC_LINK=no)
+AC_ARG_ENABLE(static_link,
+  AC_HELP_STRING([--enable-static_link],
+    [Use this to link the tools to the dmraid and devmapper libraries statically.
+    Default is dynamic linking]),
+  [STATIC_LINK=$enableval], [STATIC_LINK=no])
 
 dnl Enables shared libdmraid
 AC_ARG_ENABLE(shared_lib,
-                           [  --enable-shared_lib     Use this to generate shared libdmraid and link the
-                          tools to it. Default is static libdmraid],  LIB_SO=$enableval, LIB_SO=no)
+  AC_HELP_STRING([--enable-shared_lib], [Use this to generate shared
+    libdmraid and link the tools to it. Default is static libdmraid]),
+  [LIB_SO=$enableval], [LIB_SO=no])
 
-echo $ac_n "checking whether to disable testing with mapped devices""... $ac_c" 1>&6
 dnl Disable testing with mapped devices
-AC_ARG_ENABLE(testing, [  --disable-testing        Enable testing with mapped devices],  \
-DMRAID_TEST=$enableval, DMRAID_TEST=yes)
-
-
-echo "$ac_t""$DEBUG" 1>&6
+AC_ARG_ENABLE(testing,
+  AC_HELP_STRING([--disable-testing], [Disable testing with mapped devices]),
+  [DMRAID_TEST=$enableval], [DMRAID_TEST=yes])
+AC_MSG_CHECKING([whether to disable testing with mapped devices])
+AC_MSG_RESULT([$DMRAID_TEST])
 
 if test x$LIB_SO = xyes; then
 	FLAVOUR="shared "
@@ -146,8 +155,7 @@ fi
 if test x$STATIC_LINK = xyes; then
 	FLAVOUR="static "
 	if test x$LIB_SO = xyes; then
-		AC_MSG_ERROR(You can' enable both shared_lib and static_link!)
-		exit 1
+		AC_MSG_ERROR([You cannot enable both shared_lib and static_link!])
 	fi
 fi
 
@@ -193,23 +201,6 @@ AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
 AC_CHECK_FUNCS(mkdir rmdir uname)
 
-dnl check for termcap (Shamelessly copied from parted 1.4.17)
-if test x$READLINE = xyes; then
-	AC_SEARCH_LIBS(tgetent, ncurses curses termcap termlib, ,
-		AC_MSG_ERROR(
-termcap could not be found which is required for the
---enable-readline option (which is enabled by default).  Either disable readline
-support with --disable-readline or download and install termcap from:
-	ftp.gnu.org/gnu/termcap
-Note: if you are using precompiled packages you will also need the development
-  package as well (which may be called termcap-devel or something similar).
-Note: (n)curses also seems to work as a substitute for termcap.  This was
-  not found either - but you could try installing that as well.
-)
-	exit
-	)
-fi
-
 dnl Klibc do not currently support getopt_long, but the test passes anyhow as
 dnl it calls gcc -E without considering CFLAGS ...
 if test x$KLIBC != xyes; then
@@ -242,8 +233,6 @@ AC_SUBST(JOBS)
 AC_SUBST(LD_DEPS)
 AC_SUBST(FLAVOUR)
 AC_SUBST(LIBS)
-AC_SUBST(LIBSELINUX)
-AC_SUBST(LIBSEPOL)
 AC_SUBST(LIB_SO)
 AC_SUBST(OWNER)
 AC_SUBST(SOFLAG)
@@ -251,12 +240,12 @@ AC_SUBST(STATIC_LINK)
 
 dnl First and last lines should not contain files to generate in order to 
 dnl keep utility scripts running properly
-AC_OUTPUT( 								\
-include/Makefile						 	\
-lib/Makefile							 	\
-man/Makefile								\
-tools/Makefile								\
-tools/version.h								\
-Makefile								\
-make.tmpl                                                               \
+AC_OUTPUT(
+include/Makefile
+lib/Makefile
+man/Makefile
+tools/Makefile
+tools/version.h
+Makefile
+make.tmpl
 )
