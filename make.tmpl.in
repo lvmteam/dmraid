@@ -87,10 +87,6 @@ INCLUDES+=-I. -I$(top_srcdir)/include -I$(top_srcdir)/lib
 
 STRIP=
 
-ifdef DESTDIR
-  INCLUDES+=-I$(DESTDIR)/usr/include
-endif
-
 DEPS=$(top_srcdir)/make.tmpl $(top_srcdir)/tools/VERSION Makefile
 
 OBJECTS=$(SOURCES:%.c=%.o)
