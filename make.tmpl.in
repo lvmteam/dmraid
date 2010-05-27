@@ -39,10 +39,10 @@ else
 endif
 
 # setup misc variables
-# define the ownership variables for the binaries and man pages
-OWNER = @OWNER@
-GROUP = @GROUP@
 DMRAID_LIB_VERSION = @DMRAID_LIB_VERSION@
+INSTALL_PROGRAM = $(INSTALL) $(STRIP)
+INSTALL_DIR = $(INSTALL) -d
+INSTALL_DATA = $(INSTALL) -m 644 -p
 
 # The number of jobs to run, if blank, defaults to the make standard
 ifndef MAKEFLAGS

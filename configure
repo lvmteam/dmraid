@@ -640,14 +640,10 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 STATIC_LINK
 SOFLAG
-OWNER
 LIB_SO
-LIBSEPOL
-LIBSELINUX
 FLAVOUR
 LD_DEPS
 JOBS
-GROUP
 DIETLIBC
 DMRAID_LIB_VERSION
 DMRAID_VERSION
@@ -731,8 +727,6 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_klibc
-with_user
-with_group
 enable_debug
 enable_debug_malloc
 enable_dietlibc
@@ -1383,7 +1377,7 @@ Optional Features:
   --enable-debug          Enable debugging
   --enable-debug_malloc   Enable malloc debugging
   --enable-dietlibc       Use this to link the tools to dietlibc
-  --enable-jobs=NUM       Number of jobs to run simultaneously
+  --enable-jobs=NUM       Number of make jobs to run simultaneously
   --enable-mini           Use this to create a minimal binary suitable for
                           early boot environments
   --enable-led            Use this to enable LED support
@@ -1395,12 +1389,6 @@ Optional Features:
   --enable-shared_lib     Use this to generate shared libdmraid and link the
                           tools to it. Default is static libdmraid
   --disable-testing       Disable testing with mapped devices
-
-Optional Packages:
-  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
-  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-user=USER        Set the owner of installed files
-  --with-group=GROUP      Set the group owner of installed files
 
 Some influential environment variables:
   CC          C compiler command
@@ -5196,24 +5184,6 @@ fi
 
 
 
-
-# Check whether --with-user was given.
-if test "${with_user+set}" = set; then
-  withval=$with_user;  OWNER="$withval"
-else
-   OWNER="root"
-fi
-
-
-
-# Check whether --with-group was given.
-if test "${with_group+set}" = set; then
-  withval=$with_group;  GROUP="$withval"
-else
-   GROUP="root"
-fi
-
-
 # Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then
   enableval=$enable_debug; DEBUG=$enableval
@@ -5943,10 +5913,6 @@ if test "-f lib/version.h"; then
 else
   DMRAID_LIB_VERSION="Unknown"
 fi
-
-
-
-
 
 
 
