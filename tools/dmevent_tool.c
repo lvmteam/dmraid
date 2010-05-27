@@ -123,7 +123,7 @@ void _test_user_id(void)
 }
 
 /* Increment option counters. */
-static _process_opt(int opt, const char *cmd)
+static void _process_opt(int opt, const char *cmd)
 {
 	struct opt_def_struct {
 		const char opt;		/* Option character. */
@@ -214,7 +214,7 @@ static void _process_options(int argc, char **argv, const char *cmd)
 /* main: Process command line options + arguments. */
 int main(int argc, char **argv)
 {
-	int opt, ret = 0;
+	int ret = 0;
 	char *cmd = basename(argv[0]);
 	enum display_opt display_option;
 
@@ -225,11 +225,12 @@ int main(int argc, char **argv)
 		display_option = ALL;
 		if (!optc[OPT_r] && optc[OPT_u])
 			display_option = UNREGISTERED;
-		else if (optc[OPT_r] && !optc[OPT_u])
+		else if (optc[OPT_r] && !optc[OPT_u]) {
 			if (optc[OPT_a])
 				display_option = REGISTERED_WITH_UUID;
 			else if (optc[OPT_m])
 				display_option = REGISTERED_NO_UUID;
+		}
 		dm_all_monitored(display_option);
 	}
 	else if (optc[OPT_r])
