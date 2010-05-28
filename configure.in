@@ -16,6 +16,7 @@ dnl Get system type
 AC_CANONICAL_SYSTEM
 
 dnl Checks for programs.
+AC_PROG_SED
 AC_PROG_AWK
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -60,8 +61,16 @@ if test x$KLIBC != xyes; then
 	esac
 fi
 
-dnl -- prefix is /usr by default, the exec_prefix default is setup later
-AC_PREFIX_DEFAULT(/usr/share)
+dnl -- prefix is /usr/local by default, the exec_prefix default is setup later
+dnl AC_PREFIX_DEFAULT(/usr/share)
+
+AC_ARG_WITH(staticdir,
+  AC_HELP_STRING([--with-staticdir=DIR], [Static binary in DIR [[EPREFIX/sbin]]]),
+  [staticdir=$withval], [staticdir='${exec_prefix}/sbin'])
+
+AC_ARG_WITH(usrlibdir,
+  AC_HELP_STRING([--with-usrlibdir=DIR], [User library in DIR [[PREFIX/lib]]]),
+  [usrlibdir=$withval], [usrlibdir='${prefix}/lib'])
 
 dnl Enable Debugging
 AC_ARG_ENABLE(debug, 
@@ -212,6 +221,8 @@ AC_SUBST(LIBS)
 AC_SUBST(LIB_SO)
 AC_SUBST(SOFLAG)
 AC_SUBST(STATIC_LINK)
+AC_SUBST(usrlibdir)
+AC_SUBST(staticdir)
 
 dnl First and last lines should not contain files to generate in order to 
 dnl keep utility scripts running properly

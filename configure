@@ -635,9 +635,10 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_default_prefix=/usr/share
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+staticdir
+usrlibdir
 STATIC_LINK
 SOFLAG
 LIB_SO
@@ -675,6 +676,7 @@ INSTALL_DATA
 INSTALL_SCRIPT
 INSTALL_PROGRAM
 AWK
+SED
 target_os
 target_vendor
 target_cpu
@@ -728,6 +730,8 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_klibc
+with_staticdir
+with_usrlibdir
 enable_debug
 enable_debug_malloc
 enable_dietlibc
@@ -1391,6 +1395,12 @@ Optional Features:
                           tools to it. Default is static libdmraid
   --disable-testing       Disable testing with mapped devices
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-staticdir=DIR    Static binary in DIR [EPREFIX/sbin]
+  --with-usrlibdir=DIR    User library in DIR [PREFIX/lib]
+
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -1999,6 +2009,77 @@ test -n "$target_alias" &&
   test "$program_prefix$program_suffix$program_transform_name" = \
     NONENONEs,x,x, &&
   program_prefix=${target_alias}-
+
+{ $as_echo "$as_me:$LINENO: checking for a sed that does not truncate output" >&5
+$as_echo_n "checking for a sed that does not truncate output... " >&6; }
+if test "${ac_cv_path_SED+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+            ac_script=s/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/
+     for ac_i in 1 2 3 4 5 6 7; do
+       ac_script="$ac_script$as_nl$ac_script"
+     done
+     echo "$ac_script" 2>/dev/null | sed 99q >conftest.sed
+     $as_unset ac_script || ac_script=
+     if test -z "$SED"; then
+  ac_path_SED_found=false
+  # Loop through the user's path and test for each of PROGNAME-LIST
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_prog in sed gsed; do
+    for ac_exec_ext in '' $ac_executable_extensions; do
+      ac_path_SED="$as_dir/$ac_prog$ac_exec_ext"
+      { test -f "$ac_path_SED" && $as_test_x "$ac_path_SED"; } || continue
+# Check for GNU ac_path_SED and select it if it is found.
+  # Check for GNU $ac_path_SED
+case `"$ac_path_SED" --version 2>&1` in
+*GNU*)
+  ac_cv_path_SED="$ac_path_SED" ac_path_SED_found=:;;
+*)
+  ac_count=0
+  $as_echo_n 0123456789 >"conftest.in"
+  while :
+  do
+    cat "conftest.in" "conftest.in" >"conftest.tmp"
+    mv "conftest.tmp" "conftest.in"
+    cp "conftest.in" "conftest.nl"
+    $as_echo '' >> "conftest.nl"
+    "$ac_path_SED" -f conftest.sed < "conftest.nl" >"conftest.out" 2>/dev/null || break
+    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
+    ac_count=`expr $ac_count + 1`
+    if test $ac_count -gt ${ac_path_SED_max-0}; then
+      # Best one so far, save it but keep looking for a better one
+      ac_cv_path_SED="$ac_path_SED"
+      ac_path_SED_max=$ac_count
+    fi
+    # 10*(2^10) chars as input seems more than enough
+    test $ac_count -gt 10 && break
+  done
+  rm -f conftest.in conftest.tmp conftest.nl conftest.out;;
+esac
+
+      $ac_path_SED_found && break 3
+    done
+  done
+done
+IFS=$as_save_IFS
+  if test -z "$ac_cv_path_SED"; then
+    { { $as_echo "$as_me:$LINENO: error: no acceptable sed could be found in \$PATH" >&5
+$as_echo "$as_me: error: no acceptable sed could be found in \$PATH" >&2;}
+   { (exit 1); exit 1; }; }
+  fi
+else
+  ac_cv_path_SED=$SED
+fi
+
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_path_SED" >&5
+$as_echo "$ac_cv_path_SED" >&6; }
+ SED="$ac_cv_path_SED"
+  rm -f conftest.sed
 
 for ac_prog in gawk mawk nawk awk
 do
@@ -5227,6 +5308,23 @@ fi
 
 
 
+# Check whether --with-staticdir was given.
+if test "${with_staticdir+set}" = set; then
+  withval=$with_staticdir; staticdir=$withval
+else
+  staticdir='${exec_prefix}/sbin'
+fi
+
+
+
+# Check whether --with-usrlibdir was given.
+if test "${with_usrlibdir+set}" = set; then
+  withval=$with_usrlibdir; usrlibdir=$withval
+else
+  usrlibdir='${prefix}/lib'
+fi
+
+
 # Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then
   enableval=$enable_debug; DEBUG=$enableval
@@ -5944,6 +6042,8 @@ fi
 done
 
 fi
+
+
 
 
 
