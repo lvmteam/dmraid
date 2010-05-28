@@ -52,7 +52,7 @@ ifeq ("@STATIC_LINK@", "no")
 LIBS += -ldl
 endif
 
-OBJECTS=$(SOURCES:%.c=%.o)
+SOURCES2 = events/$(LIB_EVENTS_NAME).c
 
 LIB_STATIC=$(top_builddir)/lib/libdmraid.a
 LIB_EVENTS_NAME=libdmraid-events-isw
@@ -74,8 +74,8 @@ endif
 all: $(TARGETS)
 	@echo $(TARGETS) $(INSTALL_TARGETS)
 
-$(LIB_EVENTS_SHARED):
-	$(CC) -o $@ $(INCLUDES) $(CFLAGS) $(LDFLAGS) events/$(LIB_EVENTS_NAME).c \
+$(LIB_EVENTS_SHARED): $(OBJECTS2)
+	$(CC) -o $@ $(INCLUDES) $(CFLAGS) $(LDFLAGS) $(OBJECTS2) \
 	  -shared  -Wl,-soname,$(notdir $@).$(DMRAID_LIB_VERSION) \
 	  $(LIB_SHARED) -ldevmapper-event -lpthread
 
