@@ -41,7 +41,7 @@ endif
 
 # setup misc variables
 DMRAID_VERSION := $(shell cat $(top_srcdir)/tools/VERSION)
-DMRAID_LIB_VERSION := $(shell sed --quiet 's/^.*\(DMRAID_LIB_VERSION\)[[^_]].*"\(.*\)"/\2/p' $(top_srcdir)/lib/version.h)
+DMRAID_LIB_VERSION := $(shell sed --quiet 's/^.*\(DMRAID_LIB_VERSION\)[^_].*"\(.*\)"/\2/p' $(top_srcdir)/lib/version.h)
 INSTALL_PROGRAM = $(INSTALL) $(STRIP)
 INSTALL_DIR = $(INSTALL) -d
 INSTALL_DATA = $(INSTALL) -m 644 -p
@@ -99,7 +99,7 @@ SUBDIRS.remove := $(SUBDIRS:=.remove)
 SUBDIRS.clean := $(SUBDIRS:=.clean)
 SUBDIRS.distclean := $(SUBDIRS:=.distclean)
 
-.PHONY: all install distclean clean
+.PHONY: all install distclean clean cleandir
 .PHONY: $(SUBDIRS) $(SUBDIRS.install) $(SUBDIRS.clean) $(SUBDIRS.distclean)
 .PHONY: $(SUBDIRS.remove)
 
@@ -149,14 +149,15 @@ $(LIB_STATIC): $(OBJECTS)
 	$(AR) r $@ $(OBJECTS)
 	$(RANLIB) $@
 
-clean: $(SUBDIRS.clean)
-	$(RM) $(OBJECTS) $(TARGETS) $(CLEAN_TARGETS) $(SOURCES:%.c=%.d)
+cleandir:
+	$(RM) $(OBJECTS) $(OBJECTS2) $(TARGETS) $(CLEAN_TARGETS) \
+		$(SOURCES:%.c=%.d) $(SOURCES2:%.c=%.d)
 
-distclean: $(SUBDIRS.distclean)
-	$(RM) $(OBJECTS) $(TARGETS) $(CLEAN_TARGETS) $(SOURCES:%.c=%.d) \
-	      cscope.out \
-	      config.cache config.log config.status \
-	      Makefile make.tmpl core tools/version.h
+clean: $(SUBDIRS.clean) cleandir
+
+distclean: $(SUBDIRS.distclean) cleandir
+	$(RM) cscope.out config.cache config.log config.status \
+		Makefile make.tmpl core tools/version.h
 
 ifeq (,$(findstring $(MAKECMDGOALS), clean distclean))
     ifdef SOURCES
