@@ -18,6 +18,9 @@ SOURCES=\
 	commands.c \
 	toollib.c
 
+SOURCES2=\
+	dmevent_tool.c
+
 TARGETS=\
 	dmraid
 
@@ -68,8 +71,8 @@ all: $(TARGETS)
 dmraid:	$(OBJECTS) $(top_builddir)/lib/libdmraid.a
 	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) -L$(top_builddir)/lib $(DMRAIDLIBS) $(LIBS)
 
-dmevent_tool: $(top_builddir)/lib/libdmraid.a
-	$(CC) -o $@ $@.c $(INCLUDES) $(LDFLAGS) -L$(top_builddir)/lib \
+dmevent_tool: $(OBJECTS2) $(top_builddir)/lib/libdmraid.a
+	$(CC) -o $@ $(OBJECTS2) $(INCLUDES) $(LDFLAGS) -L$(top_builddir)/lib \
 	  $(DMRAIDLIBS) $(DMEVENTTOOLLIBS) $(LIBS)
 
 install_dmraid_tools: $(TARGETS)
