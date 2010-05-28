@@ -15,6 +15,9 @@ INSTALL = @INSTALL@
 MKDIR_P = @MKDIR_P@
 LN_S = @LN_S@
 LIBS = @LIBS@
+AWK = @AWK@
+SED = @SED@
+
 CFLAGS += @CFLAGS@
 CLDFLAGS += @CLDFLAGS@
 LDFLAGS += @LDFLAGS@
@@ -29,6 +32,7 @@ datadir = @datarootdir@
 datarootdir = @datarootdir@
 infodir = @infodir@
 mandir = @mandir@
+usrlibdir = @usrlibdir@
 ifeq ("@KLIBC@", "no")
   libdir = @libdir@
   sbindir = @sbindir@
@@ -41,7 +45,7 @@ endif
 
 # setup misc variables
 DMRAID_VERSION := $(shell cat $(top_srcdir)/tools/VERSION)
-DMRAID_LIB_VERSION := $(shell sed --quiet 's/^.*\(DMRAID_LIB_VERSION\)[^_].*"\(.*\)"/\2/p' $(top_srcdir)/lib/version.h)
+DMRAID_LIB_VERSION := $(shell $(SED) --quiet 's/^.*\(DMRAID_LIB_VERSION\)[^_].*"\(.*\)"/\2/p' $(top_srcdir)/lib/version.h)
 INSTALL_PROGRAM = $(INSTALL) $(STRIP)
 INSTALL_DIR = $(INSTALL) -d
 INSTALL_DATA = $(INSTALL) -m 644 -p
