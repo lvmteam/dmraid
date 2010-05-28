@@ -47,18 +47,19 @@ SOURCES  = \
 	format/partition/dos.c
 
 ifeq ("@STATIC_LINK@", "no")
-	SOURCES += register/dmreg.c
 # Dynamic linker library
-LIBS += -ldl
+	LIBS += -ldl
+	SOURCES += register/dmreg.c
 endif
 
 SOURCES2 = events/$(LIB_EVENTS_NAME).c
 
-LIB_STATIC=$(top_builddir)/lib/libdmraid.a
-LIB_EVENTS_NAME=libdmraid-events-isw
+LIB_STATIC = $(top_builddir)/lib/libdmraid.a
+LIB_EVENTS_NAME = libdmraid-events-isw
+USRLIB_RELPATH = $(shell echo $(abspath $(usrlibdir) $(libdir)) | \
+  $(AWK) -f $(top_srcdir)/tools/relpath.awk)
 
-TARGETS=$(LIB_STATIC)
-INSTALL_TARGETS=$(LIB_STATIC)
+TARGETS = $(LIB_STATIC)
 
 include $(top_builddir)/make.tmpl
 
@@ -67,43 +68,40 @@ ifeq ("@KLIBC@", "no")
 		LIB_SHARED=$(top_builddir)/lib/libdmraid.so
 		LIB_EVENTS_SHARED=$(LIB_EVENTS_NAME).so
 		TARGETS += $(LIB_SHARED) $(LIB_EVENTS_SHARED)
-		INSTALL_TARGETS += $(LIB_SHARED) $(LIB_EVENTS_SHARED)
 	endif
 endif
 
 all: $(TARGETS)
-	@echo $(TARGETS) $(INSTALL_TARGETS)
 
 $(LIB_EVENTS_SHARED): $(OBJECTS2)
 	$(CC) -o $@ $(INCLUDES) $(CFLAGS) $(LDFLAGS) $(OBJECTS2) \
 	  -shared  -Wl,-soname,$(notdir $@).$(DMRAID_LIB_VERSION) \
 	  $(LIB_SHARED) -ldevmapper-event -lpthread
 
-.PHONY: install_dmraid_libs remove_dmraid_libs
+.PHONY: $(addprefix install_,$(TARGETS)) $(addprefix remove_,$(TARGETS))
 
-install_dmraid_libs: $(INSTALL_TARGETS)
-	@echo "Installing $(INSTALL_TARGETS) in $(DESTDIR)$(libdir)"; \
-	$(INSTALL_DIR) $(DESTDIR)$(libdir); \
-	for f in $(INSTALL_TARGETS); \
-	do \
-		n=$$(basename $${f}) ; \
- 		if [[ "$$n" =~ .so$$ ]]; then \
-			$(INSTALL_PROGRAM) $$f $(DESTDIR)$(libdir)/$${n}.$(DMRAID_LIB_VERSION); \
-			$(LN_S) -f $${n}.$(DMRAID_LIB_VERSION) $(DESTDIR)$(libdir)/$${n}; \
-		else \
-			$(INSTALL_PROGRAM) $$f $(DESTDIR)$(libdir)/$${n}; \
-		fi \
-	done
+install_$(LIB_EVENTS_SHARED): $(LIB_EVENTS_SHARED)
+	$(INSTALL_PROGRAM) -D $< $(DESTDIR)$(libdir)/device-mapper/$(<F)
+	$(LN_S) -f device-mapper/$(<F) $(DESTDIR)$(libdir)/$(<F)
 
-install: install_dmraid_libs
+remove_$(LIB_EVENTS_SHARED):
+	$(RM) $(DESTDIR)$(libdir)/device-mapper/$(notdir $(LIB_EVENTS_SHARED))
+	$(RM) $(DESTDIR)$(libdir)/$(notdir $(LIB_EVENTS_SHARED))
 
-remove_dmraid_libs:
-	@echo "Removing $(INSTALL_TARGETS) from $(libdir)"; \
-	for f in $(INSTALL_TARGETS); \
-	do \
-		n=$$(basename $${f}) ; \
-		$(RM) $(DESTDIR)$(libdir)/$${n}.$(DMRAID_LIB_VERSION); \
-		$(RM) $(DESTDIR)$(libdir)/$${n}; \
-	done
+install_$(LIB_SHARED): $(LIB_SHARED)
+	$(INSTALL_PROGRAM) -D $< $(DESTDIR)$(libdir)/$(<F).$(DMRAID_LIB_VERSION)
+	$(INSTALL_DIR) $(DESTDIR)$(usrlibdir)
+	$(LN_S) -f $(USRLIB_RELPATH)$(<F).$(DMRAID_LIB_VERSION) $(DESTDIR)$(usrlibdir)/$(<F)
 
-remove:	remove_dmraid_libs
+remove_$(LIB_SHARED):
+	$(RM) $(DESTDIR)$(libdir)/$(notdir $(LIB_SHARED)).$(DMRAID_LIB_VERSION)
+	$(RM) $(DESTDIR)$(usrlibdir)/$(notdir $(LIB_SHARED))
+
+install_$(LIB_STATIC): $(LIB_STATIC)
+	$(INSTALL_DATA) -D $< $(DESTDIR)$(usrlibdir)/$(LIB_STATIC)
+
+remove_$(LIB_STATIC):
+	$(RM) $(DESTDIR)$(usrlibdir)/$(notdir $(LIB_STATIC))
+
+install: $(addprefix install_,$(TARGETS))
+remove: $(addprefix remove_,$(TARGETS))
