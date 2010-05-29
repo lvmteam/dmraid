@@ -130,8 +130,8 @@ $(SUBDIRS.distclean):
 
 $(TARGETS): $(OBJECTS)
 
-%.o: %.c
-	$(CC) -c $(INCLUDES) $(CFLAGS) $< -o $@
+%.o: %.c $(top_builddir)/include/config.h
+	$(CC) -o $@ -c $(INCLUDES) $(CFLAGS) -include $(top_builddir)/include/config.h $<
 
 %.d: %.c
 	$(MKDIR_P) $(dir $@); \
@@ -141,12 +141,6 @@ $(TARGETS): $(OBJECTS)
 	$(CC) -MM $(INCLUDES) $(DEFS) $(CFLAGS) -o $@ $<; \
 	sed -i "s/\(.*\)\.o[ :]*/$$FILE.o $$FILE.d $$FILE.pot: $$DEPS /g" $@; \
 	[ -s $@ ] || $(RM) $@
-
-%.so: $(OBJECTS) $(top_srcdir)/lib/.export.sym
-
-%.so: $(OBJECTS)
-	$(CC) -shared -Wl,-soname,$(notdir $@).$(DMRAID_LIB_VERSION) \
-	-Wl,--version-script,$(top_srcdir)/lib/.export.sym $(OBJECTS) -o $@ -ldevmapper-event
 
 $(LIB_STATIC): $(OBJECTS)
 	$(RM) $@

@@ -73,10 +73,16 @@ endif
 
 all: $(TARGETS)
 
+# FIXME  Use major version for -soname
+$(LIB_SHARED): $(OBJECTS) $(top_srcdir)/lib/.export.sym
+	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS) \
+		-shared -Wl,-soname,$(notdir $@).1 \
+		-Wl,--version-script,$(top_srcdir)/lib/.export.sym \
+		-ldevmapper-event
+
 $(LIB_EVENTS_SHARED): $(OBJECTS2)
-	$(CC) -o $@ $(INCLUDES) $(CFLAGS) $(LDFLAGS) $(OBJECTS2) \
-	  -shared  -Wl,-soname,$(notdir $@).$(DMRAID_LIB_VERSION) \
-	  $(LIB_SHARED) -ldevmapper-event -lpthread
+	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS2) \
+		-shared  -Wl,-soname,$(notdir $@) -ldevmapper-event -lpthread
 
 .PHONY: $(addprefix install_,$(TARGETS)) $(addprefix remove_,$(TARGETS))
 
