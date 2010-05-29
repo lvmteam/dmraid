@@ -7,13 +7,17 @@
 # configure.in for dmraid
 
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(lib/device/dev-io.h)
+AC_PREREQ(2.57)
+AC_INIT(dmraid)
+AC_CONFIG_SRCDIR(lib/device/dev-io.h)
 
 dnl setup the directory where autoconf has auxilary files
-AC_CONFIG_AUX_DIR(autoconf) 
+AC_CONFIG_AUX_DIR(autoconf)
+AC_CONFIG_HEADERS([include/config.h:include/config.h.in])
 
 dnl Get system type
-AC_CANONICAL_SYSTEM
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
 
 dnl Checks for programs.
 AC_PROG_SED
@@ -31,27 +35,41 @@ AC_CHECK_KLIBC
 dnl Checks for CC
 dnl This should be done after klibc check, as CC is changed
 AC_PROG_CC
+AC_LANG(C)
 
 dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
-AC_CHECK_HEADERS(fcntl.h sys/ioctl.h unistd.h)
-if test x$KLIBC != xyes; then
+AC_HEADER_TIME
+AC_CHECK_HEADERS([fcntl.h limits.h mntent.h paths.h sys/file.h sys/ioctl.h])
+AC_CHECK_HEADERS([netinet/in.h syslog.h unistd.h])
+
+if test "$KLIBC" = yes; then
 	AC_CHECK_HEADERS(malloc.h)
 fi
 
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_INLINE
+AC_TYPE_INT16_T
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_INT8_T
+AC_TYPE_MODE_T
 AC_TYPE_OFF_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
+
+dnl FIXME - HAVE_STRUCT_STAT_ST_RDEV
 AC_STRUCT_ST_RDEV
-AC_HEADER_TIME
 
 dnl Set system type flags
 dnl We do not want this with klibc
-if test x$KLIBC != xyes; then
+if test "$KLIBC" != yes; then
 	case "$host_os" in
 		linux*)
 			CFLAGS=-O2
@@ -73,21 +91,21 @@ AC_ARG_WITH(usrlibdir,
   [usrlibdir=$withval], [usrlibdir='${prefix}/lib'])
 
 dnl Enable Debugging
-AC_ARG_ENABLE(debug, 
+AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--enable-debug], [Enable debugging]),
   [DEBUG=$enableval], [DEBUG=no])
 AC_MSG_CHECKING([whether to enable debugging])
 AC_MSG_RESULT([$DEBUG])
 
 dnl Enable malloc debugging
-AC_ARG_ENABLE(debug_malloc, 
+AC_ARG_ENABLE(debug_malloc,
   AC_HELP_STRING([--enable-debug_malloc], [Enable malloc debugging]),
   [DEBUG_MALLOC=$enableval], [DEBUG_MALLOC=no])
 AC_MSG_CHECKING([whether to enable malloc debugging])
 AC_MSG_RESULT([$DEBUG_MALLOC])
 
 dnl Enables linking to dietlibc
-AC_ARG_ENABLE(dietlibc, 
+AC_ARG_ENABLE(dietlibc,
   AC_HELP_STRING([--enable-dietlibc], [Use this to link the tools to dietlibc]),
   [DIETLIBC=$enableval], [DIETLIBC=no])
 
@@ -105,12 +123,12 @@ AC_ARG_ENABLE(jobs,
 
 dnl Enables mini binary
 AC_ARG_ENABLE(mini,
-  AC_HELP_STRING([--enable-mini], 
+  AC_HELP_STRING([--enable-mini],
     [Use this to create a minimal binary suitable for early boot environments]),
   [DMRAID_MINI=$enableval], [DMRAID_MINI=no])
 
 dnl Enables LED support
-AC_ARG_ENABLE(led, 
+AC_ARG_ENABLE(led,
   AC_HELP_STRING([--enable-led], [Use this to enable LED support]),
   [DMRAID_LED=$enableval], [DMRAID_LED=no])
 
@@ -146,64 +164,64 @@ AC_ARG_ENABLE(testing,
 AC_MSG_CHECKING([whether to disable testing with mapped devices])
 AC_MSG_RESULT([$DMRAID_TEST])
 
-if test x$LIB_SO = xyes; then
-	FLAVOUR="shared "
-fi
+test "$LIB_SO" = yes && FLAVOUR="${FLAVOUR}shared "
 
-if test x$STATIC_LINK = xyes; then
-	FLAVOUR="static "
-	if test x$LIB_SO = xyes; then
+if test "$STATIC_LINK" = yes; then
+	if test "$LIB_SO" = yes; then
 		AC_MSG_ERROR([You cannot enable both shared_lib and static_link!])
 	fi
+	FLAVOUR="${FLAVOUR}static "
 fi
 
-if test x$DMRAID_MINI = xyes; then
-        CFLAGS="$CFLAGS -DDMRAID_MINI"
+if test "$DMRAID_MINI" = yes; then
+	AC_DEFINE(DMRAID_MINI, 1, [Define to 1 if you to create a minimal binary.])
 	FLAVOUR="${FLAVOUR}mini "
 else
-	if test x$DMRAID_NATIVE_LOG = xno; then
+	if test "$DMRAID_NATIVE_LOG" = no; then
 		FLAVOUR="${FLAVOUR}no_native_log "
 	else
-        	CFLAGS="$CFLAGS -DDMRAID_NATIVE_LOG"
+		AC_DEFINE(DMRAID_NATIVE_LOG, 1,
+			  [Define to 1 if you want native metadata logging.])
 	fi
 fi
 
-if test x$DMRAID_LED = xyes; then
-        CFLAGS="$CFLAGS -DDMRAID_LED"
+if test "$DMRAID_INTEL_LED" = yes; then
+        AC_DEFINE(DMRAID_INTEL_LED, 1, [Define to 1 if you want Intel LED support.])
+        DMRAID_LED=yes
 fi
 
-if test x$DMRAID_TEST = xyes; then
-        CFLAGS="$CFLAGS -DDMRAID_TEST"
+if test "$DMRAID_LED" = yes; then
+        AC_DEFINE(DMRAID_LED, 1, [Define to 1 if you want LED support.])
 fi
 
-if test x$DMRAID_INTEL_LED = xyes; then
-        CFLAGS="$CFLAGS -DDMRAID_LED -DDMRAID_INTEL_LED"
+if test "$DMRAID_TEST" = yes; then
+        AC_DEFINE(DMRAID_TEST, 1, [Define to 1 if you want to test mapped devices.])
 fi
 
-if test x$DEBUG = xyes; then
-	FLAVOUR="${FLAVOUR}debug "
-fi
 
-if test x$DEBUG_MALLOC = xyes; then
-	FLAVOUR="${FLAVOUR}debug_malloc "
-fi
+test "$DEBUG" = yes && FLAVOUR="${FLAVOUR}debug "
+test "$DEBUG_MALLOC" = yes && FLAVOUR="${FLAVOUR}debug_malloc "
 
 dnl Mess with default exec_prefix
-if [[ "x$exec_prefix" = xNONE -a "x$prefix" = xNONE ]];
- then  exec_prefix="";
-fi;
+test "$exec_prefix" = NONE -a "$prefix" = NONE && exec_prefix=""
 
 dnl Checks for library functions.
 AC_PROG_GCC_TRADITIONAL
 AC_TYPE_SIGNAL
 AC_FUNC_VPRINTF
-AC_CHECK_FUNCS(mkdir rmdir uname)
+AC_FUNC_GETMNTENT
+AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
+AC_FUNC_MALLOC
+AC_FUNC_REALLOC
+AC_FUNC_STRTOD
+AC_CHECK_FUNCS([getmntent memmove memset mkdir rmdir uname])
+AC_CHECK_FUNCS([strchr strerror strpbrk strrchr strstr])
 
 dnl Klibc do not currently support getopt_long, but the test passes anyhow as
 dnl it calls gcc -E without considering CFLAGS ...
-if test x$KLIBC != xyes; then
-	dnl Check for getopt
-	AC_CHECK_HEADERS(getopt.h, CFLAGS="$CFLAGS -DHAVE_GETOPTLONG")
+if test "$KLIBC" != yes; then
+	dnl Check for getopt  (FIXME)
+	AC_CHECK_HEADERS(getopt.h, AC_DEFINE(HAVE_GETOPTLONG, 1, [Define to 1 for longopt.]))
 fi
 
 AC_SUBST(CC)
@@ -211,8 +229,6 @@ AC_SUBST(CFLAGS)
 AC_SUBST(CLDFLAGS)
 AC_SUBST(DEBUG)
 AC_SUBST(DEBUG_MALLOC)
-AC_SUBST(DMRAID_VERSION)
-AC_SUBST(DMRAID_LIB_VERSION)
 AC_SUBST(DIETLIBC)
 AC_SUBST(JOBS)
 AC_SUBST(LD_DEPS)
@@ -224,7 +240,7 @@ AC_SUBST(STATIC_LINK)
 AC_SUBST(usrlibdir)
 AC_SUBST(staticdir)
 
-dnl First and last lines should not contain files to generate in order to 
+dnl First and last lines should not contain files to generate in order to
 dnl keep utility scripts running properly
 AC_OUTPUT(
 include/Makefile
