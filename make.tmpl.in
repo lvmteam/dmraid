@@ -17,6 +17,11 @@ LN_S = @LN_S@
 LIBS = @LIBS@
 AWK = @AWK@
 SED = @SED@
+DMRAID_LIB_MAJOR = @DMRAID_LIB_MAJOR@
+DMRAID_LIB_MINOR = @DMRAID_LIB_MINOR@
+DMRAID_LIB_SUBMINOR = @DMRAID_LIB_SUBMINOR@
+DMRAID_LIB_SUFFIX = @DMRAID_LIB_SUFFIX@
+DMRAID_LIB_DATE = @DMRAID_LIB_DATE@
 
 CFLAGS += @CFLAGS@
 CLDFLAGS += @CLDFLAGS@
@@ -44,11 +49,10 @@ else
 endif
 
 # setup misc variables
-DMRAID_VERSION := $(shell cat $(top_srcdir)/tools/VERSION)
-DMRAID_LIB_VERSION := $(shell $(SED) --quiet 's/^.*\(DMRAID_LIB_VERSION\)[^_].*"\(.*\)"/\2/p' $(top_srcdir)/lib/version.h)
 INSTALL_PROGRAM = $(INSTALL) $(STRIP)
 INSTALL_DIR = $(INSTALL) -d
 INSTALL_DATA = $(INSTALL) -m 644 -p
+DISTCLEAN_TARGETS += Makefile
 
 # The number of jobs to run, if blank, defaults to the make standard
 ifndef MAKEFLAGS
@@ -64,17 +68,13 @@ ifeq ("@KLIBC@", "yes")
   CFLAGS+=-Wshadow -Wmissing-prototypes -Wmissing-declarations -Wnested-externs
 endif
 
-ifeq ("@DMRAID_TEST@", "yes")
-  CFLAGS+=-DDMRAID_TEST
-endif
-
 # Don't allow for linking against DSO with static binary.
 ifeq ("@STATIC_LINK@", "no")
 	CFLAGS+=-DDMRAID_AUTOREGISTER
 endif
 
 ifeq ("@DEBUG@", "yes")
-  CFLAGS+=-g -fno-omit-frame-pointer -DDEBUG
+  CFLAGS+=-g -fno-omit-frame-pointer
 else
   ifeq ("@KLIBC@", "no")
     CFLAGS+=-O2
@@ -83,17 +83,12 @@ else
   endif
 endif
 
-ifeq ("@DEBUG_MALLOC@", "yes")
-  CFLAGS+=-DDEBUG_MALLOC
-endif
-
-CFLAGS+=-D_LARGEFILE64_SOURCE
-
-INCLUDES+=-I. -I$(top_srcdir)/include -I$(top_srcdir)/lib
-
+INCLUDES += -I. -I$(top_srcdir)/include -I$(top_srcdir)/lib
+INCLUDES += -include $(top_builddir)/include/config.h
 STRIP=
 
-DEPS=$(top_srcdir)/make.tmpl $(top_srcdir)/tools/VERSION Makefile
+DEPS = Makefile $(top_srcdir)/make.tmpl \
+	$(top_srcdir)/tools/VERSION $(top_builddir)/include/config.h
 
 OBJECTS=$(SOURCES:%.c=%.o)
 OBJECTS2=$(SOURCES2:%.c=%.o)
@@ -130,16 +125,16 @@ $(SUBDIRS.distclean):
 
 $(TARGETS): $(OBJECTS)
 
-%.o: %.c $(top_builddir)/include/config.h
-	$(CC) -o $@ -c $(INCLUDES) $(CFLAGS) -include $(top_builddir)/include/config.h $<
+%.o: %.c
+	$(CC) -o $@ -c $(INCLUDES) $(CFLAGS) $<
 
 %.d: %.c
 	$(MKDIR_P) $(dir $@); \
 	set -e; \
-	FILE=`echo $@ | sed 's/\\//\\\\\\//g;s/\\.d//g'`; \
-	DEPS=`echo $(DEPS) | sed -e 's/\\//\\\\\\//g'`; \
+	FILE=`echo $@ | $(SED) 's/\\//\\\\\\//g;s/\\.d//g'`; \
+	DEPS=`echo $(DEPS) | $(SED) -e 's/\\//\\\\\\//g'`; \
 	$(CC) -MM $(INCLUDES) $(DEFS) $(CFLAGS) -o $@ $<; \
-	sed -i "s/\(.*\)\.o[ :]*/$$FILE.o $$FILE.d $$FILE.pot: $$DEPS /g" $@; \
+	$(SED) -i "s/\(.*\)\.o[ :]*/$$FILE.o $$FILE.d $$FILE.pot: $$DEPS /g" $@; \
 	[ -s $@ ] || $(RM) $@
 
 $(LIB_STATIC): $(OBJECTS)
@@ -148,14 +143,12 @@ $(LIB_STATIC): $(OBJECTS)
 	$(RANLIB) $@
 
 cleandir:
-	$(RM) $(OBJECTS) $(OBJECTS2) $(TARGETS) $(CLEAN_TARGETS) \
-		$(SOURCES:%.c=%.d) $(SOURCES2:%.c=%.d)
+	$(RM) $(OBJECTS) $(OBJECTS2) $(SOURCES:%.c=%.d) $(SOURCES2:%.c=%.d) $(TARGETS)
 
 clean: $(SUBDIRS.clean) cleandir
 
 distclean: $(SUBDIRS.distclean) cleandir
-	$(RM) cscope.out config.cache config.log config.status \
-		Makefile make.tmpl core tools/version.h
+	$(RM) $(DISTCLEAN_TARGETS)
 
 ifeq (,$(findstring $(MAKECMDGOALS), clean distclean))
     ifdef SOURCES

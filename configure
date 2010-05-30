@@ -642,9 +642,14 @@ usrlibdir
 STATIC_LINK
 SOFLAG
 LIB_SO
-FLAVOUR
 LD_DEPS
 JOBS
+FLAVOUR
+DMRAID_LIB_SUFFIX
+DMRAID_LIB_SUBMINOR
+DMRAID_LIB_MINOR
+DMRAID_LIB_MAJOR
+DMRAID_LIB_DATE
 DIETLIBC
 DEBUG_MALLOC
 DEBUG
@@ -6334,8 +6339,8 @@ if test "$KLIBC" != yes; then
 	case "$host_os" in
 		linux*)
 			CFLAGS=-O2
-			CLDFLAGS="-Wl,--version-script,.export.sym"
-			LD_DEPS=".export.sym"
+			CLDFLAGS='-Wl,--version-script,$(top_srcdir)/lib/.export.sym'
+			LD_DEPS='$(top_srcdir)/lib/.export.sym'
 			SOFLAG="-shared" ;;
 	esac
 fi
@@ -6397,7 +6402,7 @@ if test x$DIETLIBC = xyes; then
 $as_echo "$as_me: error: You cannot enable both dietlibc and klibc!" >&2;}
    { (exit 1); exit 1; }; }
 	fi
-        CC="diet gcc"
+	CC="diet gcc"
 	FLAVOUR="dietlibc "
 fi
 
@@ -6509,7 +6514,7 @@ cat >>confdefs.h <<\_ACEOF
 #define DMRAID_INTEL_LED 1
 _ACEOF
 
-        DMRAID_LED=yes
+	DMRAID_LED=yes
 fi
 
 if test "$DMRAID_LED" = yes; then
@@ -6528,9 +6533,29 @@ _ACEOF
 
 fi
 
+if test "$DEBUG" = yes; then
 
-test "$DEBUG" = yes && FLAVOUR="${FLAVOUR}debug "
-test "$DEBUG_MALLOC" = yes && FLAVOUR="${FLAVOUR}debug_malloc "
+cat >>confdefs.h <<\_ACEOF
+#define DEBUG 1
+_ACEOF
+
+	FLAVOUR="${FLAVOUR}debug "
+fi
+
+if test "$DEBUG_MALLOC" = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define DEBUG_MALLOC 1
+_ACEOF
+
+	FLAVOUR="${FLAVOUR}debug_malloc "
+fi
+
+
+cat >>confdefs.h <<\_ACEOF
+#define _LARGEFILE64_SOURCE 1
+_ACEOF
+
 
 test "$exec_prefix" = NONE -a "$prefix" = NONE && exec_prefix=""
 
@@ -8124,6 +8149,12 @@ done
 
 fi
 
+VERSION=$srcdir/tools/VERSION
+DMRAID_LIB_MAJOR=$(cut -d. -f1 $VERSION)
+DMRAID_LIB_MINOR=$(cut -d. -f2 $VERSION)
+DMRAID_LIB_SUBMINOR=$(cut -d. -f3 $VERSION)
+DMRAID_LIB_SUFFIX=$(cut -d. -f4 $VERSION | cut -d' ' -f1)
+DMRAID_LIB_DATE=$(cut -d' ' -f2 $VERSION)
 
 
 
@@ -8140,7 +8171,13 @@ fi
 
 
 
-ac_config_files="$ac_config_files include/Makefile lib/Makefile man/Makefile tools/Makefile tools/version.h Makefile make.tmpl"
+
+
+
+
+
+
+ac_config_files="$ac_config_files include/Makefile lib/Makefile lib/version.h man/Makefile tools/Makefile tools/version.h Makefile make.tmpl"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -8741,6 +8778,7 @@ do
     "include/config.h") CONFIG_HEADERS="$CONFIG_HEADERS include/config.h:include/config.h.in" ;;
     "include/Makefile") CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
     "lib/Makefile") CONFIG_FILES="$CONFIG_FILES lib/Makefile" ;;
+    "lib/version.h") CONFIG_FILES="$CONFIG_FILES lib/version.h" ;;
     "man/Makefile") CONFIG_FILES="$CONFIG_FILES man/Makefile" ;;
     "tools/Makefile") CONFIG_FILES="$CONFIG_FILES tools/Makefile" ;;
     "tools/version.h") CONFIG_FILES="$CONFIG_FILES tools/version.h" ;;

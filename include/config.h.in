@@ -1,5 +1,11 @@
 /* include/config.h.in.  Generated from configure.in by autoheader.  */
 
+/* Define to 1 if you want debug. */
+#undef DEBUG
+
+/* Define to 1 if you want to debug malloc. */
+#undef DEBUG_MALLOC
+
 /* Define to 1 if you want Intel LED support. */
 #undef DMRAID_INTEL_LED
 
@@ -171,6 +177,9 @@
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #undef TIME_WITH_SYS_TIME
+
+/* Define to 1 if you want compile with large file. */
+#undef _LARGEFILE64_SOURCE
 
 /* Define for Solaris 2.5.1 so the uint32_t typedef from <sys/synch.h>,
    <pthread.h>, or <semaphore.h> is not used. If the typedef were allowed, the

@@ -73,8 +73,8 @@ if test "$KLIBC" != yes; then
 	case "$host_os" in
 		linux*)
 			CFLAGS=-O2
-			CLDFLAGS="-Wl,--version-script,.export.sym"
-			LD_DEPS=".export.sym"
+			CLDFLAGS='-Wl,--version-script,$(top_srcdir)/lib/.export.sym'
+			LD_DEPS='$(top_srcdir)/lib/.export.sym'
 			SOFLAG="-shared" ;;
 	esac
 fi
@@ -113,7 +113,7 @@ if test x$DIETLIBC = xyes; then
 	if test x$KLIBC = xyes; then
 		AC_MSG_ERROR([You cannot enable both dietlibc and klibc!])
 	fi
-        CC="diet gcc"
+	CC="diet gcc"
 	FLAVOUR="dietlibc "
 fi
 
@@ -186,21 +186,29 @@ else
 fi
 
 if test "$DMRAID_INTEL_LED" = yes; then
-        AC_DEFINE(DMRAID_INTEL_LED, 1, [Define to 1 if you want Intel LED support.])
-        DMRAID_LED=yes
+	AC_DEFINE(DMRAID_INTEL_LED, 1, [Define to 1 if you want Intel LED support.])
+	DMRAID_LED=yes
 fi
 
 if test "$DMRAID_LED" = yes; then
-        AC_DEFINE(DMRAID_LED, 1, [Define to 1 if you want LED support.])
+	AC_DEFINE(DMRAID_LED, 1, [Define to 1 if you want LED support.])
 fi
 
 if test "$DMRAID_TEST" = yes; then
-        AC_DEFINE(DMRAID_TEST, 1, [Define to 1 if you want to test mapped devices.])
+	AC_DEFINE(DMRAID_TEST, 1, [Define to 1 if you want to test mapped devices.])
 fi
 
+if test "$DEBUG" = yes; then
+	AC_DEFINE(DEBUG, 1, [Define to 1 if you want debug.])
+	FLAVOUR="${FLAVOUR}debug "
+fi
 
-test "$DEBUG" = yes && FLAVOUR="${FLAVOUR}debug "
-test "$DEBUG_MALLOC" = yes && FLAVOUR="${FLAVOUR}debug_malloc "
+if test "$DEBUG_MALLOC" = yes; then
+	AC_DEFINE(DEBUG_MALLOC, 1, [Define to 1 if you want to debug malloc.])
+	FLAVOUR="${FLAVOUR}debug_malloc "
+fi
+
+AC_DEFINE(_LARGEFILE64_SOURCE, 1, [Define to 1 if you want compile with large file.])
 
 dnl Mess with default exec_prefix
 test "$exec_prefix" = NONE -a "$prefix" = NONE && exec_prefix=""
@@ -224,15 +232,27 @@ if test "$KLIBC" != yes; then
 	AC_CHECK_HEADERS(getopt.h, AC_DEFINE(HAVE_GETOPTLONG, 1, [Define to 1 for longopt.]))
 fi
 
+VERSION=$srcdir/tools/VERSION
+DMRAID_LIB_MAJOR=$(cut -d. -f1 $VERSION)
+DMRAID_LIB_MINOR=$(cut -d. -f2 $VERSION)
+DMRAID_LIB_SUBMINOR=$(cut -d. -f3 $VERSION)
+DMRAID_LIB_SUFFIX=$(cut -d. -f4 $VERSION | cut -d' ' -f1)
+DMRAID_LIB_DATE=$(cut -d' ' -f2 $VERSION)
+
 AC_SUBST(CC)
 AC_SUBST(CFLAGS)
 AC_SUBST(CLDFLAGS)
 AC_SUBST(DEBUG)
 AC_SUBST(DEBUG_MALLOC)
 AC_SUBST(DIETLIBC)
+AC_SUBST(DMRAID_LIB_DATE)
+AC_SUBST(DMRAID_LIB_MAJOR)
+AC_SUBST(DMRAID_LIB_MINOR)
+AC_SUBST(DMRAID_LIB_SUBMINOR)
+AC_SUBST(DMRAID_LIB_SUFFIX)
+AC_SUBST(FLAVOUR)
 AC_SUBST(JOBS)
 AC_SUBST(LD_DEPS)
-AC_SUBST(FLAVOUR)
 AC_SUBST(LIBS)
 AC_SUBST(LIB_SO)
 AC_SUBST(SOFLAG)
@@ -245,6 +265,7 @@ dnl keep utility scripts running properly
 AC_OUTPUT(
 include/Makefile
 lib/Makefile
+lib/version.h
 man/Makefile
 tools/Makefile
 tools/version.h
