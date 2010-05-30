@@ -232,6 +232,14 @@ if test "$KLIBC" != yes; then
 	AC_CHECK_HEADERS(getopt.h, AC_DEFINE(HAVE_GETOPTLONG, 1, [Define to 1 for longopt.]))
 fi
 
+dnl FIXME static linking would need some extension here
+dnl best would be to use pkg-config in Makefiles 
+AC_CHECK_LIB(devmapper-event, dm_task_set_name,
+	[DEVMAPPEREVENT_LIBS="-ldevmapper-event"],
+	[AC_MSG_ERROR([device-mapper-event library is either missing or is too old and badly linked.])])
+AC_CHECK_HEADERS(libdevmapper.h libdevmapper-event.h,,
+	[AC_MSG_ERROR([Missing headers device-mapper headers.])])
+
 VERSION=$srcdir/tools/VERSION
 DMRAID_LIB_MAJOR=$(cut -d. -f1 $VERSION)
 DMRAID_LIB_MINOR=$(cut -d. -f2 $VERSION)
@@ -244,6 +252,7 @@ AC_SUBST(CFLAGS)
 AC_SUBST(CLDFLAGS)
 AC_SUBST(DEBUG)
 AC_SUBST(DEBUG_MALLOC)
+AC_SUBST(DEVMAPPEREVENT_LIBS)
 AC_SUBST(DIETLIBC)
 AC_SUBST(DMRAID_LIB_DATE)
 AC_SUBST(DMRAID_LIB_MAJOR)

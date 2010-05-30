@@ -75,12 +75,12 @@ all: $(TARGETS)
 
 DMRAID_LIB_VERSION = $(DMRAID_LIB_MAJOR).$(DMRAID_LIB_MINOR).$(DMRAID_LIB_SUBMINOR)
 $(LIB_SHARED): $(OBJECTS) $(LD_DEPS)
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS) -ldevmapper-event \
+	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS) $(DEVMAPPEREVENT_LIBS) \
 		-shared -Wl,-soname,$(notdir $@).$(DMRAID_LIB_MAJOR) $(CLDFLAGS)
 
 $(LIB_EVENTS_SHARED): $(OBJECTS2)
 	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS2) \
-		-shared  -Wl,-soname,$(notdir $@) -ldevmapper-event -lpthread
+		-shared  -Wl,-soname,$(notdir $@) $(DEVMAPPEREVENT_LIBS) -lpthread
 
 .PHONY: $(addprefix install_,$(TARGETS)) $(addprefix remove_,$(TARGETS))
 
