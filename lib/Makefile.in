@@ -54,7 +54,7 @@ endif
 
 SOURCES2 = events/$(LIB_EVENTS_NAME).c
 
-LIB_STATIC = $(top_builddir)/lib/libdmraid.a
+LIB_STATIC = libdmraid.a
 LIB_EVENTS_NAME = libdmraid-events-isw
 USRLIB_RELPATH = $(shell echo $(abspath $(usrlibdir) $(libdir)) | \
   $(AWK) -f $(top_srcdir)/tools/relpath.awk)
@@ -65,7 +65,7 @@ include $(top_builddir)/make.tmpl
 
 ifeq ("@KLIBC@", "no")
 	ifeq ("@STATIC_LINK@", "no")
-		LIB_SHARED=$(top_builddir)/lib/libdmraid.so
+		LIB_SHARED = libdmraid.so
 		LIB_EVENTS_SHARED=$(LIB_EVENTS_NAME).so
 		TARGETS += $(LIB_SHARED) $(LIB_EVENTS_SHARED)
 	endif
@@ -73,12 +73,10 @@ endif
 
 all: $(TARGETS)
 
-# FIXME  Use major version for -soname
-$(LIB_SHARED): $(OBJECTS) $(top_srcdir)/lib/.export.sym
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS) \
-		-shared -Wl,-soname,$(notdir $@).1 \
-		-Wl,--version-script,$(top_srcdir)/lib/.export.sym \
-		-ldevmapper-event
+DMRAID_LIB_VERSION = $(DMRAID_LIB_MAJOR).$(DMRAID_LIB_MINOR).$(DMRAID_LIB_SUBMINOR)
+$(LIB_SHARED): $(OBJECTS) $(LD_DEPS)
+	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS) -ldevmapper-event \
+		-shared -Wl,-soname,$(notdir $@).$(DMRAID_LIB_MAJOR) $(CLDFLAGS)
 
 $(LIB_EVENTS_SHARED): $(OBJECTS2)
 	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS2) \
