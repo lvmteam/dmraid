@@ -11,6 +11,7 @@ VPATH = @srcdir@
 DIETLIBC = @DIETLIBC@
 KLIBC = @KLIBC@
 
+DISTCLEAN_TARGETS += version.h
 INCLUDES += -I$(src_dir)
 
 SOURCES=\
@@ -24,13 +25,13 @@ SOURCES2=\
 TARGETS=\
 	dmraid
 
-include $(top_builddir)/make.tmpl
-
 ifeq ("@KLIBC@", "no")
 	ifeq ("@STATIC_LINK@", "no")
 		TARGETS += dmevent_tool
 	endif
 endif
+
+include $(top_builddir)/make.tmpl
 
 DMRAIDLIBS=-ldmraid
 
@@ -64,29 +65,20 @@ ifeq ("@KLIBC@", "no")
 	endif
 endif
 
-all: $(TARGETS)
+.PHONY: install_dmraid_tools
 
-.PHONY: install_dmraid_tools remove_dmraid_tools
-
-dmraid:	$(OBJECTS) $(top_builddir)/lib/libdmraid.a
+dmraid: $(OBJECTS) $(top_builddir)/lib/libdmraid.a
 	$(CC) -o $@ $(OBJECTS) $(LDFLAGS) -L$(top_builddir)/lib $(DMRAIDLIBS) $(LIBS)
 
 dmevent_tool: $(OBJECTS2) $(top_builddir)/lib/libdmraid.a
 	$(CC) -o $@ $(OBJECTS2) $(INCLUDES) $(LDFLAGS) -L$(top_builddir)/lib \
-	  $(DMRAIDLIBS) $(DMEVENTTOOLLIBS) $(LIBS)
+		$(DMEVENTTOOLLIBS) $(DMRAIDLIBS) $(LIBS)
 
 install_dmraid_tools: $(TARGETS)
-	@echo "Installing $(TARGETS) in $(DESTDIR)$(sbindir)"; \
-	$(INSTALL_DIR) $(DESTDIR)$(sbindir); \
+	$(INSTALL_DIR) $(DESTDIR)$(sbindir)
 	$(INSTALL_PROGRAM) $(TARGETS) $(DESTDIR)$(sbindir)
 
 install: install_dmraid_tools
 
-remove_dmraid_tools:
-	@echo "Removing $(TARGETS) from $(DESTDIR)$(sbindir)"; \
-	for f in $(TARGETS); \
-	do \
-		rm -f $(DESTDIR)$(sbindir)/$$f; \
-	done
-
-remove:	remove_dmraid_tools
+remove:
+	$(RM) $(addprefix $(DESTDIR)$(sbindir)/,$(TARGETS))
