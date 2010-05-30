@@ -1,16 +1,17 @@
 #
-# Copyright (C) 2004,2005  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
+# Copyright (C) 2004-2010  Heinz Mauelshagen, Red Hat GmbH. All rights reserved.
 #
 # See file LICENSE at the top of this source tree for license information.
 #
 
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
-VPATH = @srcdir@
 
 SUBDIRS = include lib man tools
 
-TARGETS = tools/dmraid
+DISTCLEAN_TARGETS = make.tmpl core cscope.out config.cache config.log config.status
+
+all: tools
 
 include make.tmpl
 
