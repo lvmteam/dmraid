@@ -7,7 +7,6 @@
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 top_builddir = @top_builddir@
-VPATH = @srcdir@
 
 SOURCES  = \
 	activate/activate.c \
@@ -56,22 +55,22 @@ SOURCES2 = events/$(LIB_EVENTS_NAME).c
 
 LIB_STATIC = libdmraid.a
 LIB_EVENTS_NAME = libdmraid-events-isw
+LIB_SHARED = libdmraid.so
+LIB_EVENTS_SHARED=$(LIB_EVENTS_NAME).so
 USRLIB_RELPATH = $(shell echo $(abspath $(usrlibdir) $(libdir)) | \
   $(AWK) -f $(top_srcdir)/tools/relpath.awk)
 
 TARGETS = $(LIB_STATIC)
 
-include $(top_builddir)/make.tmpl
-
 ifeq ("@KLIBC@", "no")
 	ifeq ("@STATIC_LINK@", "no")
-		LIB_SHARED = libdmraid.so
-		LIB_EVENTS_SHARED=$(LIB_EVENTS_NAME).so
 		TARGETS += $(LIB_SHARED) $(LIB_EVENTS_SHARED)
 	endif
 endif
 
-all: $(TARGETS)
+include $(top_builddir)/make.tmpl
+
+INCLUDES += $(DEVMAPPEREVENT_CFLAGS)
 
 DMRAID_LIB_VERSION = $(DMRAID_LIB_MAJOR).$(DMRAID_LIB_MINOR).$(DMRAID_LIB_SUBMINOR)
 $(LIB_SHARED): $(OBJECTS) $(LD_DEPS)
@@ -95,11 +94,13 @@ remove_$(LIB_EVENTS_SHARED):
 install_$(LIB_SHARED): $(LIB_SHARED)
 	$(INSTALL_PROGRAM) -D $< $(DESTDIR)$(libdir)/$(<F).$(DMRAID_LIB_VERSION)
 	$(INSTALL_DIR) $(DESTDIR)$(usrlibdir)
+	$(LN_S) -f $(<F).$(DMRAID_LIB_VERSION) $(DESTDIR)$(libdir)/$(<F).$(DMRAID_LIB_MAJOR)
 	$(LN_S) -f $(USRLIB_RELPATH)$(<F).$(DMRAID_LIB_VERSION) $(DESTDIR)$(usrlibdir)/$(<F)
 
 remove_$(LIB_SHARED):
-	$(RM) $(DESTDIR)$(libdir)/$(notdir $(LIB_SHARED)).$(DMRAID_LIB_VERSION)
 	$(RM) $(DESTDIR)$(usrlibdir)/$(notdir $(LIB_SHARED))
+	$(RM) $(DESTDIR)$(libdir)/$(notdir $(LIB_SHARED)).$(DMRAID_LIB_MAJOR)
+	$(RM) $(DESTDIR)$(libdir)/$(notdir $(LIB_SHARED)).$(DMRAID_LIB_VERSION)
 
 install_$(LIB_STATIC): $(LIB_STATIC)
 	$(INSTALL_DATA) -D $< $(DESTDIR)$(usrlibdir)/$(LIB_STATIC)
