@@ -14,20 +14,13 @@ MAN8DIR=${mandir}/man8
 
 include $(top_builddir)/make.tmpl
 
-.PHONY: install_dmraid_man remove_dmraid_man
+.PHONY: install_dmraid_man8
 
-%_install: %.8
-	$(INSTALL_DATA) -D $< $(DESTDIR)$(MAN8DIR)/$(<F)
+install_dmraid_man8: $(MAN8)
+	$(INSTALL_DIR) $(DESTDIR)$(MAN8DIR)
+	$(INSTALL_DATA) $? $(DESTDIR)$(MAN8DIR)
 
-install_dmraid_man: $(MAN8:.8=_install)
+install: install_dmraid_man8
 
-install: install_dmraid_man
-
-remove_dmraid_man:
-	@echo "Removing $(MAN8) in $(DESTDIR)$(MAN8DIR)"; \
-	for f in $(MAN8); \
-	do \
-	   $(RM) $(DESTDIR)$(MAN8DIR)/$$f; \
-	done
-
-remove: remove_dmraid_man
+remove:
+	$(RM) $(addprefix $(DESTDIR)$(MAN8DIR)/,$(MAN8))
