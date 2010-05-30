@@ -37,6 +37,10 @@ dnl This should be done after klibc check, as CC is changed
 AC_PROG_CC
 AC_LANG(C)
 
+AC_GNU_SOURCE
+AC_SYS_LARGEFILE
+dnl AC_DEFINE(_LARGEFILE64_SOURCE, 1, [Define to 1 if you want compile with large file.])
+
 dnl Checks for header files.
 AC_HEADER_DIRENT
 AC_HEADER_STDC
@@ -208,8 +212,6 @@ if test "$DEBUG_MALLOC" = yes; then
 	FLAVOUR="${FLAVOUR}debug_malloc "
 fi
 
-AC_DEFINE(_LARGEFILE64_SOURCE, 1, [Define to 1 if you want compile with large file.])
-
 dnl Mess with default exec_prefix
 test "$exec_prefix" = NONE -a "$prefix" = NONE && exec_prefix=""
 
@@ -234,11 +236,24 @@ fi
 
 dnl FIXME static linking would need some extension here
 dnl best would be to use pkg-config in Makefiles 
+AC_ARG_WITH(devmapper-event-prefix, 
+	AC_HELP_STRING([--with-devmapper-event-prefix=PFX],
+		[Where is 'd-m-e' library installed]),
+	[DEVMAPPEREVENT_LIBS="-L$withval/lib"
+	 DEVMAPPEREVENT_CFLAGS="-I$withval/include"],
+	[DEVMAPPEREVENT_LIBS=
+	 DEVMAPPEREVENT_CFLAGS=])
+save_LDFLAGS=$LDFLAGS
+save_CPPFLAGS=$CPPFLAGS
+LDFLAGS="$LDFLAGS $DEVMAPPEREVENT_LIBS"
+CPPFLAGS="$CPPFLAGS $DEVMAPPEREVENT_CFLAGS"
 AC_CHECK_LIB(devmapper-event, dm_task_set_name,
-	[DEVMAPPEREVENT_LIBS="-ldevmapper-event"],
-	[AC_MSG_ERROR([device-mapper-event library is either missing or is too old and badly linked.])])
+	[DEVMAPPEREVENT_LIBS="$DEVMAPPEREVENT_LIBS -ldevmapper-event"],
+	[AC_MSG_ERROR([device-mapper-event library is either missing or is too old and badly linked])])
 AC_CHECK_HEADERS(libdevmapper.h libdevmapper-event.h,,
-	[AC_MSG_ERROR([Missing headers device-mapper headers.])])
+	[AC_MSG_ERROR([Missing headers device-mapper headers])])
+CPPFLAGS=$save_CPPFLAGS
+LDFLAGS=$save_LDFLAGS
 
 VERSION=$srcdir/tools/VERSION
 DMRAID_LIB_MAJOR=$(cut -d. -f1 $VERSION)
@@ -252,6 +267,7 @@ AC_SUBST(CFLAGS)
 AC_SUBST(CLDFLAGS)
 AC_SUBST(DEBUG)
 AC_SUBST(DEBUG_MALLOC)
+AC_SUBST(DEVMAPPEREVENT_CFLAGS)
 AC_SUBST(DEVMAPPEREVENT_LIBS)
 AC_SUBST(DIETLIBC)
 AC_SUBST(DMRAID_LIB_DATE)
