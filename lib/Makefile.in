@@ -47,7 +47,6 @@ SOURCES  = \
 
 ifeq ("@STATIC_LINK@", "no")
 # Dynamic linker library
-	LIBS += -ldl
 	SOURCES += register/dmreg.c
 endif
 
@@ -74,12 +73,15 @@ INCLUDES += $(DEVMAPPEREVENT_CFLAGS)
 
 DMRAID_LIB_VERSION = $(DMRAID_LIB_MAJOR).$(DMRAID_LIB_MINOR).$(DMRAID_LIB_SUBMINOR)
 $(LIB_SHARED): $(OBJECTS) $(LD_DEPS)
-	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS) $(DEVMAPPEREVENT_LIBS) \
-		-shared -Wl,-soname,$(notdir $@).$(DMRAID_LIB_MAJOR) $(CLDFLAGS)
+	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS) \
+		-shared -Wl,--discard-all -Wl,--no-undefined $(CLDFLAGS) \
+		-Wl,-soname,$(notdir $@).$(DMRAID_LIB_MAJOR) \
+		$(DEVMAPPEREVENT_LIBS) $(DEVMAPPER_LIBS) $(DL_LIBS) $(LIBS)
 
 $(LIB_EVENTS_SHARED): $(OBJECTS2)
 	$(CC) -o $@ $(CFLAGS) $(LDFLAGS) $(OBJECTS2) \
-		-shared  -Wl,-soname,$(notdir $@) $(DEVMAPPEREVENT_LIBS) -lpthread
+		-shared -Wl,--discard-all -Wl,--no-undefined -Wl,-soname,$(notdir $@) \
+		$(LIB_SHARED) $(DEVMAPPEREVENT_LIBS) $(DEVMAPPER_LIBS) $(PTHREAD_LIBS) $(LIBS)
 
 .PHONY: $(addprefix install_,$(TARGETS)) $(addprefix remove_,$(TARGETS))
 

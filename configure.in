@@ -234,22 +234,33 @@ if test "$KLIBC" != yes; then
 	AC_CHECK_HEADERS(getopt.h, AC_DEFINE(HAVE_GETOPTLONG, 1, [Define to 1 for longopt.]))
 fi
 
+AC_CHECK_LIB(dl, dlopen,
+	[DL_LIBS="-ldl"],
+	[AC_MSG_ERROR([dl library is missing])])
+
+AC_CHECK_LIB(pthread, pthread_mutex_lock,
+	[PTHREAD_LIBS="-lpthread"],
+	[AC_MSG_ERROR([pthread library is missing])])
+
 dnl FIXME static linking would need some extension here
 dnl best would be to use pkg-config in Makefiles 
-AC_ARG_WITH(devmapper-event-prefix, 
-	AC_HELP_STRING([--with-devmapper-event-prefix=PFX],
-		[Where is 'd-m-e' library installed]),
-	[DEVMAPPEREVENT_LIBS="-L$withval/lib"
-	 DEVMAPPEREVENT_CFLAGS="-I$withval/include"],
-	[DEVMAPPEREVENT_LIBS=
-	 DEVMAPPEREVENT_CFLAGS=])
+AC_ARG_WITH(devmapper-prefix,
+	AC_HELP_STRING([--with-devmapper-prefix=PFX],
+		[Where is devmapper library installed]),
+	[DEVMAPPER_LIBS="-L$withval/lib"
+	 DEVMAPPER_CFLAGS="-I$withval/include"],
+	[DEVMAPPER_LIBS=
+	 DEVMAPPER_CFLAGS=])
 save_LDFLAGS=$LDFLAGS
 save_CPPFLAGS=$CPPFLAGS
-LDFLAGS="$LDFLAGS $DEVMAPPEREVENT_LIBS"
-CPPFLAGS="$CPPFLAGS $DEVMAPPEREVENT_CFLAGS"
-AC_CHECK_LIB(devmapper-event, dm_task_set_name,
-	[DEVMAPPEREVENT_LIBS="$DEVMAPPEREVENT_LIBS -ldevmapper-event"],
+LDFLAGS="$LDFLAGS $DEVMAPPER_LIBS"
+CPPFLAGS="$CPPFLAGS $DEVMAPPER_CFLAGS"
+AC_CHECK_LIB(devmapper-event, dm_event_handler_create,
+	[DEVMAPPEREVENT_LIBS="$DEVMAPPER_LIBS -ldevmapper-event"],
 	[AC_MSG_ERROR([device-mapper-event library is either missing or is too old and badly linked])])
+AC_CHECK_LIB(devmapper, dm_task_set_name,
+	[DEVMAPPER_LIBS="$DEVMAPPER_LIBS -ldevmapper"],
+	[AC_MSG_ERROR([device-mapper library is missing])])
 AC_CHECK_HEADERS(libdevmapper.h libdevmapper-event.h,,
 	[AC_MSG_ERROR([Missing headers device-mapper headers])])
 CPPFLAGS=$save_CPPFLAGS
@@ -269,7 +280,10 @@ AC_SUBST(DEBUG)
 AC_SUBST(DEBUG_MALLOC)
 AC_SUBST(DEVMAPPEREVENT_CFLAGS)
 AC_SUBST(DEVMAPPEREVENT_LIBS)
+AC_SUBST(DEVMAPPER_CFLAGS)
+AC_SUBST(DEVMAPPER_LIBS)
 AC_SUBST(DIETLIBC)
+AC_SUBST(DL_LIBS)
 AC_SUBST(DMRAID_LIB_DATE)
 AC_SUBST(DMRAID_LIB_MAJOR)
 AC_SUBST(DMRAID_LIB_MINOR)
@@ -280,6 +294,7 @@ AC_SUBST(JOBS)
 AC_SUBST(LD_DEPS)
 AC_SUBST(LIBS)
 AC_SUBST(LIB_SO)
+AC_SUBST(PTHREAD_LIBS)
 AC_SUBST(SOFLAG)
 AC_SUBST(STATIC_LINK)
 AC_SUBST(usrlibdir)

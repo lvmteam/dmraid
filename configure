@@ -641,6 +641,7 @@ staticdir
 usrlibdir
 STATIC_LINK
 SOFLAG
+PTHREAD_LIBS
 LIB_SO
 LD_DEPS
 JOBS
@@ -650,7 +651,10 @@ DMRAID_LIB_SUBMINOR
 DMRAID_LIB_MINOR
 DMRAID_LIB_MAJOR
 DMRAID_LIB_DATE
+DL_LIBS
 DIETLIBC
+DEVMAPPER_LIBS
+DEVMAPPER_CFLAGS
 DEVMAPPEREVENT_LIBS
 DEVMAPPEREVENT_CFLAGS
 DEBUG_MALLOC
@@ -751,7 +755,7 @@ enable_native_log
 enable_static_link
 enable_shared_lib
 enable_testing
-with_devmapper_event_prefix
+with_devmapper_prefix
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1410,8 +1414,8 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-staticdir=DIR    Static binary in DIR [EPREFIX/sbin]
   --with-usrlibdir=DIR    User library in DIR [PREFIX/lib]
-  --with-devmapper-event-prefix=PFX
-                          Where is 'd-m-e' library installed
+  --with-devmapper-prefix=PFX
+                          Where is devmapper library installed
 
 Some influential environment variables:
   CC          C compiler command
@@ -8914,27 +8918,248 @@ done
 
 fi
 
-
-# Check whether --with-devmapper-event-prefix was given.
-if test "${with_devmapper_event_prefix+set}" = set; then
-  withval=$with_devmapper_event_prefix; DEVMAPPEREVENT_LIBS="-L$withval/lib"
-	 DEVMAPPEREVENT_CFLAGS="-I$withval/include"
+{ $as_echo "$as_me:$LINENO: checking for dlopen in -ldl" >&5
+$as_echo_n "checking for dlopen in -ldl... " >&6; }
+if test "${ac_cv_lib_dl_dlopen+set}" = set; then
+  $as_echo_n "(cached) " >&6
 else
-  DEVMAPPEREVENT_LIBS=
-	 DEVMAPPEREVENT_CFLAGS=
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ldl  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char dlopen ();
+int
+main ()
+{
+return dlopen ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  ac_cv_lib_dl_dlopen=yes
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_dl_dlopen=no
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_lib_dl_dlopen" >&5
+$as_echo "$ac_cv_lib_dl_dlopen" >&6; }
+if test "x$ac_cv_lib_dl_dlopen" = x""yes; then
+  DL_LIBS="-ldl"
+else
+  { { $as_echo "$as_me:$LINENO: error: dl library is missing" >&5
+$as_echo "$as_me: error: dl library is missing" >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+
+{ $as_echo "$as_me:$LINENO: checking for pthread_mutex_lock in -lpthread" >&5
+$as_echo_n "checking for pthread_mutex_lock in -lpthread... " >&6; }
+if test "${ac_cv_lib_pthread_pthread_mutex_lock+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lpthread  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char pthread_mutex_lock ();
+int
+main ()
+{
+return pthread_mutex_lock ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  ac_cv_lib_pthread_pthread_mutex_lock=yes
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_pthread_pthread_mutex_lock=no
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_lib_pthread_pthread_mutex_lock" >&5
+$as_echo "$ac_cv_lib_pthread_pthread_mutex_lock" >&6; }
+if test "x$ac_cv_lib_pthread_pthread_mutex_lock" = x""yes; then
+  PTHREAD_LIBS="-lpthread"
+else
+  { { $as_echo "$as_me:$LINENO: error: pthread library is missing" >&5
+$as_echo "$as_me: error: pthread library is missing" >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+
+
+# Check whether --with-devmapper-prefix was given.
+if test "${with_devmapper_prefix+set}" = set; then
+  withval=$with_devmapper_prefix; DEVMAPPER_LIBS="-L$withval/lib"
+	 DEVMAPPER_CFLAGS="-I$withval/include"
+else
+  DEVMAPPER_LIBS=
+	 DEVMAPPER_CFLAGS=
 fi
 
 save_LDFLAGS=$LDFLAGS
 save_CPPFLAGS=$CPPFLAGS
-LDFLAGS="$LDFLAGS $DEVMAPPEREVENT_LIBS"
-CPPFLAGS="$CPPFLAGS $DEVMAPPEREVENT_CFLAGS"
-{ $as_echo "$as_me:$LINENO: checking for dm_task_set_name in -ldevmapper-event" >&5
-$as_echo_n "checking for dm_task_set_name in -ldevmapper-event... " >&6; }
-if test "${ac_cv_lib_devmapper_event_dm_task_set_name+set}" = set; then
+LDFLAGS="$LDFLAGS $DEVMAPPER_LIBS"
+CPPFLAGS="$CPPFLAGS $DEVMAPPER_CFLAGS"
+{ $as_echo "$as_me:$LINENO: checking for dm_event_handler_create in -ldevmapper-event" >&5
+$as_echo_n "checking for dm_event_handler_create in -ldevmapper-event... " >&6; }
+if test "${ac_cv_lib_devmapper_event_dm_event_handler_create+set}" = set; then
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
 LIBS="-ldevmapper-event  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char dm_event_handler_create ();
+int
+main ()
+{
+return dm_event_handler_create ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:$LINENO: $ac_try_echo\""
+$as_echo "$ac_try_echo") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  $as_echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 $as_test_x conftest$ac_exeext
+       }; then
+  ac_cv_lib_devmapper_event_dm_event_handler_create=yes
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_devmapper_event_dm_event_handler_create=no
+fi
+
+rm -rf conftest.dSYM
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_lib_devmapper_event_dm_event_handler_create" >&5
+$as_echo "$ac_cv_lib_devmapper_event_dm_event_handler_create" >&6; }
+if test "x$ac_cv_lib_devmapper_event_dm_event_handler_create" = x""yes; then
+  DEVMAPPEREVENT_LIBS="$DEVMAPPER_LIBS -ldevmapper-event"
+else
+  { { $as_echo "$as_me:$LINENO: error: device-mapper-event library is either missing or is too old and badly linked" >&5
+$as_echo "$as_me: error: device-mapper-event library is either missing or is too old and badly linked" >&2;}
+   { (exit 1); exit 1; }; }
+fi
+
+{ $as_echo "$as_me:$LINENO: checking for dm_task_set_name in -ldevmapper" >&5
+$as_echo_n "checking for dm_task_set_name in -ldevmapper... " >&6; }
+if test "${ac_cv_lib_devmapper_dm_task_set_name+set}" = set; then
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ldevmapper  $LIBS"
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -8978,12 +9203,12 @@ $as_echo "$ac_try_echo") >&5
 	 test "$cross_compiling" = yes ||
 	 $as_test_x conftest$ac_exeext
        }; then
-  ac_cv_lib_devmapper_event_dm_task_set_name=yes
+  ac_cv_lib_devmapper_dm_task_set_name=yes
 else
   $as_echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-	ac_cv_lib_devmapper_event_dm_task_set_name=no
+	ac_cv_lib_devmapper_dm_task_set_name=no
 fi
 
 rm -rf conftest.dSYM
@@ -8991,13 +9216,13 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-{ $as_echo "$as_me:$LINENO: result: $ac_cv_lib_devmapper_event_dm_task_set_name" >&5
-$as_echo "$ac_cv_lib_devmapper_event_dm_task_set_name" >&6; }
-if test "x$ac_cv_lib_devmapper_event_dm_task_set_name" = x""yes; then
-  DEVMAPPEREVENT_LIBS="$DEVMAPPEREVENT_LIBS -ldevmapper-event"
+{ $as_echo "$as_me:$LINENO: result: $ac_cv_lib_devmapper_dm_task_set_name" >&5
+$as_echo "$ac_cv_lib_devmapper_dm_task_set_name" >&6; }
+if test "x$ac_cv_lib_devmapper_dm_task_set_name" = x""yes; then
+  DEVMAPPER_LIBS="$DEVMAPPER_LIBS -ldevmapper"
 else
-  { { $as_echo "$as_me:$LINENO: error: device-mapper-event library is either missing or is too old and badly linked" >&5
-$as_echo "$as_me: error: device-mapper-event library is either missing or is too old and badly linked" >&2;}
+  { { $as_echo "$as_me:$LINENO: error: device-mapper library is missing" >&5
+$as_echo "$as_me: error: device-mapper library is missing" >&2;}
    { (exit 1); exit 1; }; }
 fi
 
@@ -9161,6 +9386,10 @@ DMRAID_LIB_MINOR=$(cut -d. -f2 $VERSION)
 DMRAID_LIB_SUBMINOR=$(cut -d. -f3 $VERSION)
 DMRAID_LIB_SUFFIX=$(cut -d. -f4 $VERSION | cut -d' ' -f1)
 DMRAID_LIB_DATE=$(cut -d' ' -f2 $VERSION)
+
+
+
+
 
 
 
