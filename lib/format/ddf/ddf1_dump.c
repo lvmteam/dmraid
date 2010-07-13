@@ -16,6 +16,7 @@
 #define FORMAT_HANDLER
 #include "ddf1.h"
 #include "ddf1_lib.h"
+#include "ddf1_dump.h"
 
 /* Print DDF GUIDs. */
 #ifdef  NATIVE_LOG_OFFSET
