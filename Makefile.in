@@ -10,7 +10,7 @@ top_srcdir = @top_srcdir@
 SUBDIRS = include lib man tools
 
 DISTCLEAN_TARGETS = autom4te.cache make.tmpl core cscope.out \
- config.cache config.log config.status
+ config.cache config.log config.status tags
 
 all: tools
 
@@ -23,3 +23,12 @@ rpm:
 
 srpm:
 	rpmbuild -bs dmraid.spec
+
+ifneq ($(shell which ctags),)
+.PHONY: tags
+all: tags
+tags:
+	$(RM) -f tags
+	find $(top_srcdir) -type f \( -name '*.c' -o -name '*.h' \) | xargs ctags -a
+endif
+
