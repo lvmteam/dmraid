@@ -108,7 +108,7 @@ valid_format(struct lib_context *lc, const char *fmt)
 	char *p, *p_sav, *sep;
 	const char delim = *OPT_STR_SEPARATOR(lc);
 
-	if (!(p_sav = dbg_strdup((char *) fmt)))
+	if (!(p_sav = dbg_strdup(fmt)))
 		return log_alloc_err(lc, __func__);
 
 	sep = p_sav;
