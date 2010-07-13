@@ -114,7 +114,7 @@ static void _usage(const char *cmd, FILE *file)
 		"\n" , cmd, options, cmd, cmd, cmd, cmd, cmd, cmd, cmd);
 }
 
-void _test_user_id(void)
+static void _test_user_id(void)
 {
 	if (geteuid()) {
 		fprintf(stderr, "This utility needs to be run as root.\n");
