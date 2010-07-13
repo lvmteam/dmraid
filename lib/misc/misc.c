@@ -45,7 +45,7 @@ get_basename(struct lib_context *lc, char *str)
 
 /* Return the dirname of a path. */
 char *
-get_dirname(struct lib_context *lc, char *str)
+get_dirname(struct lib_context *lc, const char *str)
 {
 	char *ret = strrchr(str, '/');
 	size_t len = ret ? ret - str : strlen(str);
@@ -228,7 +228,7 @@ p_fmt(struct lib_context *lc, char **string, const char *fmt, ...)
 	char *b, *f, *f_sav;
 	va_list ap;
 
-	if (!(f = f_sav = dbg_strdup((char *) fmt)))
+	if (!(f = f_sav = dbg_strdup(fmt)))
 		return 0;
 
 	va_start(ap, fmt);

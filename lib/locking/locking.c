@@ -68,7 +68,7 @@ init_file_locking(struct lib_context *lc)
 	int ret = 0;
 	char *dir;
 
-	if (!(dir = get_dirname(lc, (char *) lock_file)))
+	if (!(dir = get_dirname(lc, lock_file)))
 		return 0;
 
 	if (!mk_dir(lc, dir))
