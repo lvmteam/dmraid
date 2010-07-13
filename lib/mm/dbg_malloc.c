@@ -99,7 +99,7 @@ _dbg_realloc(void *ptr, size_t size)
 }
 
 void *
-_dbg_strndup(void *ptr, size_t len)
+_dbg_strndup(const void *ptr, size_t len)
 {
 	char *ret;
 
@@ -112,7 +112,7 @@ _dbg_strndup(void *ptr, size_t len)
 }
 
 void *
-_dbg_strdup(void *ptr)
+_dbg_strdup(const void *ptr)
 {
 	return _dbg_strndup(ptr, strlen(ptr));
 }

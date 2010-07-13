@@ -13,6 +13,9 @@
 
 #define DM_ASSERT(__cond) do { if (!(__cond)) { printf("ASSERT file:%s line:%d fuction:%s cond: %s\n", __FILE__, __LINE__, __FUNCTION__, #__cond); } } while(0);
 
+/*
+ * Library init/exit
+ */
 extern struct lib_context *libdmraid_init(int argc, char **argv);
 extern void libdmraid_exit(struct lib_context *lc);
 
@@ -20,7 +23,7 @@ extern void sysfs_workaround(struct lib_context *lc);
 extern void mk_alpha(struct lib_context *lc, char *str, size_t len);
 extern void mk_alphanum(struct lib_context *lc, char *str, size_t len);
 extern char *get_basename(struct lib_context *lc, char *str);
-extern char *get_dirname(struct lib_context *lc, char *str);
+extern char *get_dirname(struct lib_context *lc, const char *str);
 extern char *remove_white_space(struct lib_context *lc, char *str, size_t len);
 extern void remove_tail_space(char *str);
 extern char *remove_delimiter(char *ptr, char c);

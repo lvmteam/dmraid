@@ -23,18 +23,11 @@
 #include <dmraid/metadata.h>
 #include <dmraid/reconfig.h>
 #include <dmraid/dmreg.h>
-/*
- * Library init/exit
- */
-extern struct lib_context *libdmraid_init(int argc, char **argv);
-extern void libdmraid_exit(struct lib_context *lc);
 
 /*
  * Retrieve version identifiers.
  */
 extern int dm_version(struct lib_context *lc, char *version, size_t size);
-extern const char *libdmraid_date(struct lib_context *lc);
-extern const char *libdmraid_version(struct lib_context *lc);
 
 /*
  * Dealing with formats.
@@ -44,33 +37,19 @@ extern int check_valid_format(struct lib_context *lc, char *fmt);
 /*
  * Dealing with devices.
  */
-extern unsigned int count_devices(struct lib_context *lc, enum dev_type type);
 extern int discover_devices(struct lib_context *lc, char **devnodes);
-extern void discover_raid_devices(struct lib_context *lc, char **devices);
-extern void discover_partitions(struct lib_context *lc);
-extern int write_dev(struct lib_context *lc, struct raid_dev *rd, int erase);
-
-/*
- * Erase ondisk metadata.
- */
-extern int erase_metadata(struct lib_context *lc);
 
 /*
  * Dealing with RAID sets.
  */
-extern const char *get_set_type(struct lib_context *lc, void *rs);
-extern const char *get_set_name(struct lib_context *lc, void *rs);
-extern int group_set(struct lib_context *lc, char **name);
 extern char *libdmraid_make_table(struct lib_context *lc, struct raid_set *rs);
 
 enum activate_type {
 	A_ACTIVATE,
 	A_DEACTIVATE,
+	A_RELOAD,
 };
 
-extern void process_sets(struct lib_context *lc,
-			 int (*func) (struct lib_context * lc, void *rs,
-				      int arg), int arg, enum set_type type);
 extern int change_set(struct lib_context *lc, enum activate_type what,
 		      void *rs);
 
@@ -83,7 +62,7 @@ extern void *_dbg_malloc(size_t size, struct lib_context *lc,
 			 const char *who, unsigned int line);
 extern void *_dbg_realloc(void *ptr, size_t size, struct lib_context *lc,
 			  const char *who, unsigned int line);
-extern void *_dbg_strdup(void *ptr, struct lib_context *lc,
+extern void *_dbg_strdup(const void *ptr, struct lib_context *lc,
 			 const char *who, unsigned int line);
 extern void _dbg_free(void *ptr, struct lib_context *lc,
 		      const char *who, unsigned int line);
@@ -99,8 +78,8 @@ extern void _dbg_free(void *ptr, struct lib_context *lc,
 
 extern void *_dbg_malloc(size_t size);
 extern void *_dbg_realloc(void *ptr, size_t size);
-extern void *_dbg_strdup(void *ptr);
-extern void *_dbg_strndup(void *ptr, size_t len);
+extern void *_dbg_strdup(const void *ptr);
+extern void *_dbg_strndup(const void *ptr, size_t len);
 extern void _dbg_free(void *ptr);
 
 #define	dbg_malloc	_dbg_malloc

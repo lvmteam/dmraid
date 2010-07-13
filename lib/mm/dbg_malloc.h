@@ -18,9 +18,9 @@ void *_dbg_malloc(size_t size, struct lib_context *lc,
 		  const char *who, unsigned int line);
 void *_dbg_realloc(void *ptr, size_t size, struct lib_context *lc,
 		   const char *who, unsigned int line);
-void *_dbg_strdup(void *ptr, struct lib_context *lc,
+void *_dbg_strdup(const void *ptr, struct lib_context *lc,
 		  const char *who, unsigned int line);
-void *_dbg_strndup(void *ptr, size_t len, struct lib_context *lc,
+void *_dbg_strndup(const void *ptr, size_t len, struct lib_context *lc,
 		   const char *who, unsigned int line);
 void _dbg_free(void *ptr, struct lib_context *lc,
 	       const char *who, unsigned int line);
@@ -36,8 +36,8 @@ void _dbg_free(void *ptr, struct lib_context *lc,
 
 void *_dbg_malloc(size_t size);
 void *_dbg_realloc(void *ptr, size_t size);
-void *_dbg_strdup(void *ptr);
-void *_dbg_strndup(void *ptr, size_t len);
+void *_dbg_strdup(const void *ptr);
+void *_dbg_strndup(const void *ptr, size_t len);
 void _dbg_free(void *ptr);
 
 #define	dbg_malloc	_dbg_malloc

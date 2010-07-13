@@ -234,6 +234,7 @@ extern unsigned int count_sets(struct lib_context *lc, struct list_head *list);
 extern unsigned int count_devs(struct lib_context *lc, struct raid_set *rs,
 			       enum count_type type);
 extern void free_raid_set(struct lib_context *lc, struct raid_set *rs);
+extern struct dev_info *find_disk(struct lib_context *lc, const char *dp);
 extern struct raid_set *find_set(struct lib_context *lc,
 				 struct list_head *list, const char *name,
 				 enum find where);
@@ -275,6 +276,9 @@ extern void file_metadata(struct lib_context *lc, const char *handler,
 extern void file_dev_size(struct lib_context *lc, const char *handler,
 			  struct dev_info *di);
 extern int write_dev(struct lib_context *lc, struct raid_dev *rd, int erase);
+/*
+ * Erase ondisk metadata.
+ */
 extern int erase_metadata(struct lib_context *lc);
 extern int delete_raidsets(struct lib_context *lc);
 extern int lib_perform(struct lib_context *lc, enum action action,
