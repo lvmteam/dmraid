@@ -763,7 +763,7 @@ find_newest_drive(struct raid_set *rs)
 
 /* Creates a random integer for a drive magic section */
 static uint32_t
-create_drivemagic()
+create_drivemagic(void)
 {
 
 	srand(time(NULL));
