@@ -639,7 +639,7 @@ check_actions_arguments(struct lib_context *lc)
 }
 
 /* Save name of rebuild disk. */
-int
+static int
 save_drive_name(struct lib_context *lc, char *drive)
 {
 	lc->options[LC_REBUILD_DISK].opt++;
