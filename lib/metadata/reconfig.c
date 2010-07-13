@@ -87,7 +87,7 @@ dso_end_rebuild(struct lib_context *lc, int arg)
 
 int rebuild_config_raidset(struct lib_context *lc, struct raid_set *rs);
 
-void
+static void
 show_raid_stack(struct lib_context *lc)
 {
 	struct raid_set *_rs;
@@ -268,10 +268,8 @@ err:
 	return ret;
 }
 
-struct dev_info *find_disk(struct lib_context *lc, char *dp);
-
 /* check if disk is under a raid set */
-int
+static int
 check_busy_disk(struct lib_context *lc, struct raid_dev *check_rd)
 {
 	struct raid_dev *rd;
@@ -290,7 +288,7 @@ check_busy_disk(struct lib_context *lc, struct raid_dev *check_rd)
 	return 1;
 }
 
-int
+static int
 add_dev_to_array(struct lib_context *lc, struct raid_set *rs,
 		 uint build_metadata, struct raid_dev *hot_spare_rd)
 {
@@ -543,7 +541,7 @@ find_group(struct lib_context *lc, struct raid_set *sub_rs)
 struct raid_dev *find_spare(struct lib_context *lc, struct raid_set *sub_rs,
 			    struct raid_set **spare_set);
 
-int
+static int
 _rebuild_raidset(struct lib_context *lc, struct raid_set *sub_rs,
 		 char *set_name)
 {
@@ -704,7 +702,7 @@ rebuild_raidset(struct lib_context *lc, char *rs_name)
 }
 
 
-int
+static int
 write_set_spare(struct lib_context *lc, void *v)
 {
 	int ret = 1;
