@@ -260,7 +260,7 @@ sysfs_get_size(struct lib_context *lc, struct dev_info *di,
 }
 
 static int
-get_size(struct lib_context *lc, char *path, char *name, int sysfs)
+get_size(struct lib_context *lc, const char *path, char *name, int sysfs)
 {
 	int fd, ret = 0;
 	char *dev_path;
@@ -305,7 +305,8 @@ int
 discover_devices(struct lib_context *lc, char **devnodes)
 {
 	int sysfs, ret = 0;
-	char *path, *p;
+	const char *path;
+	char *p;
 	DIR *d;
 	struct dirent *de;
 
@@ -314,7 +315,7 @@ discover_devices(struct lib_context *lc, char **devnodes)
 		path = p;
 	} else {
 		sysfs = 0;
-		path = (char *) _PATH_DEV;
+		path = _PATH_DEV;
 		log_print(lc, "carrying on with %s", path);
 	}
 
