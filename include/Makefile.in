@@ -9,6 +9,7 @@ top_srcdir = @top_srcdir@
 top_builddir = @top_builddir@
 
 HEADERS=$(wildcard $(top_srcdir)/include/dmraid/*.h)
+DISTCLEAN_TARGETS += config.h
 
 all:
 

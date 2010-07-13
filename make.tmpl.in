@@ -156,7 +156,7 @@ cleandir:
 clean: $(SUBDIRS.clean) cleandir
 
 distclean: $(SUBDIRS.distclean) cleandir
-	$(RM) $(DISTCLEAN_TARGETS)
+	$(RM) -r $(DISTCLEAN_TARGETS)
 
 ifeq (,$(findstring $(MAKECMDGOALS), clean distclean))
     ifdef SOURCES

@@ -51,6 +51,7 @@ ifeq ("@STATIC_LINK@", "no")
 endif
 
 SOURCES2 = events/$(LIB_EVENTS_NAME).c
+DISTCLEAN_TARGETS += version.h
 
 LIB_STATIC = libdmraid.a
 LIB_EVENTS_NAME = libdmraid-events-isw

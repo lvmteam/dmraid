@@ -9,7 +9,8 @@ top_srcdir = @top_srcdir@
 
 SUBDIRS = include lib man tools
 
-DISTCLEAN_TARGETS = make.tmpl core cscope.out config.cache config.log config.status
+DISTCLEAN_TARGETS = autom4te.cache make.tmpl core cscope.out \
+ config.cache config.log config.status
 
 all: tools
 
