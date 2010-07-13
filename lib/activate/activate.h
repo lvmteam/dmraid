@@ -16,6 +16,9 @@ enum activate_type {
 	A_RELOAD,
 };
 
+/* FIXME - dmraid.h */
+extern char *libdmraid_make_table(struct lib_context *lc, struct raid_set *rs);
+
 int change_set(struct lib_context *lc, enum activate_type what, void *rs);
 void delete_error_target(struct lib_context *lc, struct raid_set *rs);
 

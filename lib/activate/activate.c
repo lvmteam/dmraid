@@ -20,6 +20,7 @@
 
 #include "internal.h"
 #include "devmapper.h"
+//#include "dmraid/dmraid.h"
 
 static int
 valid_rd(struct raid_dev *rd)
