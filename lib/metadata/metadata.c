@@ -761,7 +761,7 @@ _want_device(struct dev_info *di, char **devices)
 }
 
 /* Discover RAID devices that are spares */
-void
+static void
 discover_raid_devices_spares(struct lib_context *lc, const char *format)
 {
 	struct dev_info *di;
@@ -1146,7 +1146,7 @@ get_raid_size(char *rsp)
 }
 
 /* Parse RAID set creation arguments. */
-int
+static int
 parse_rs_args(struct lib_context *lc, char **argv, struct raid_set_descr *rsd)
 {
 	int o, n, opt_idx;
@@ -1215,7 +1215,7 @@ parse_rs_args(struct lib_context *lc, char **argv, struct raid_set_descr *rsd)
 }
 
 struct dev_info *
-find_disk(struct lib_context *lc, char *dp)
+find_disk(struct lib_context *lc, const char *dp)
 {
 	struct dev_info *di;
 
@@ -1337,7 +1337,7 @@ free_raidset(struct lib_context *lc, struct raid_set *rs)
 		_free_raid_set(lc, rs);
 }
 
-struct raid_dev *
+static struct raid_dev *
 find_raiddev(struct lib_context *lc, struct raid_set *rs, struct dev_info *di)
 {
 	struct raid_dev *rd;
@@ -1353,7 +1353,7 @@ find_raiddev(struct lib_context *lc, struct raid_set *rs, struct dev_info *di)
 	return NULL;
 }
 
-struct raid_set *
+static struct raid_set *
 create_raidset(struct lib_context *lc, struct raid_set_descr *rsd)
 {
 	struct raid_set *rs, *rs_sub, *rs_tmp;
@@ -1459,7 +1459,7 @@ err:
 	return NULL;
 }
 
-int
+static int
 rebuild_config_raidset(struct lib_context *lc, struct raid_set *rs)
 {
 
@@ -2056,7 +2056,7 @@ find_spare(struct lib_context *lc, struct raid_set *rs,
 }
 
 
-void
+static void
 format_error(struct lib_context *lc, const char *error, char **argv)
 {
 	log_print_nnl(lc, "no raid %s", error);
