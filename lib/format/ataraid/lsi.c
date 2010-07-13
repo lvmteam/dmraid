@@ -317,8 +317,8 @@ lsi_log(struct lib_context *lc, struct raid_dev *rd)
 		  i, disk->disk_number);
 		P("disks[%u].set_number: %u", lsi, disk->set_number,
 		  i, disk->set_number);
-		P("disks[%u].unknown1: %lu, 0x%lX", lsi, disk->unknown1,
-		  i, (uint64_t) disk->unknown1, (uint64_t) disk->unknown1);
+		P("disks[%u].unknown1: %d %p", lsi, disk->unknown1,
+		  i, disk->unknown1);
 	}
 
 	DP("disk_number: %u", lsi, lsi->disk_number);
