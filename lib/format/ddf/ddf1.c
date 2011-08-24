@@ -526,7 +526,8 @@ try_to_find_ddf1(struct lib_context *lc,
 		       ddf1_sboffset) || !is_ddf1(lc, di, ddf1))
 		goto bad;
 
-	ddf1->anchor_offset = ddf1_sboffset;
+	/* ddf1_sboffset is in bytes. */
+	ddf1->anchor_offset = ddf1_sboffset >> 9;
 
 	/* Convert endianness */
 	ddf1->in_cpu_format = 0;
@@ -962,6 +963,7 @@ setup_rd(struct lib_context *lc, struct raid_dev *rd,
 		ma[i].offset = ddf1->primary->primary_table_lba;
 
 	ma->offset = ddf1->anchor_offset;
+	ma->size = DDF1_BLKSIZE;
 	(ma++)->area = &ddf1->anchor;
 
 	(ma++)->area = ddf1->primary;

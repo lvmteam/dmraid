@@ -60,7 +60,7 @@ dump_top(struct lib_context *lc, struct dev_info *di,
 {
 	log_print(lc, "%s (%s):", di->path, handler);
 	log_print(lc, "DDF1 anchor at %llu with tables in %s-endian format.",
-		  ddf1->anchor_offset / DDF1_BLKSIZE,
+		  ddf1->anchor_offset,
 		  (ddf1->disk_format == LITTLE_ENDIAN ? "little" : "big"));
 }
 
