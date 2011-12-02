@@ -148,8 +148,11 @@ di_ioctl(struct lib_context *lc, int fd, struct dev_info *di)
 		sector_size = DMRAID_SECTOR_SIZE;
 
 	if (sector_size != DMRAID_SECTOR_SIZE)
+		return 0;
+#if 0
 		LOG_ERR(lc, 0, "unsupported sector size %d on %s.",
 			sector_size, di->path);
+#endif
 
 	/* Use size device ioctl in case we didn't get the size from sysfs. */
 	if (!di->sectors && !ioctl(fd, BLKGETSIZE, &size))

@@ -7,7 +7,7 @@
 Summary: dmraid (Device-mapper RAID tool and library)
 Name: dmraid
 Version: 1.0.0.rc16
-Release: 5%{?dist}
+Release: 6%{?dist}
 License: GPLv2+
 Group: System Environment/Base
 URL: http://people.redhat.com/heinzm/sw/dmraid
@@ -65,7 +65,7 @@ Device failure reporting has to be activated manually by activating the
 %build
 %define _libdir /%{_lib}
 
-%configure --prefix=/usr --sbindir=/sbin --libdir=%{_libdir} --mandir=%{_mandir} --includedir=%{_includedir} --enable-debug --enable-libselinux --enable-libsepol --disable-static_link --enable-led --enable-intel_led
+%configure --prefix=/usr --sbindir=/sbin --libdir=%{_libdir} --mandir=%{_mandir} --includedir=%{_includedir} --enable-debug --disable-static_link --enable-led --enable-intel_led
 make
 
 %install
@@ -125,6 +125,12 @@ rm -rf $RPM_BUILD_ROOT
 %ghost /var/cache/logwatch/dmeventd/syslogpattern.txt
 
 %changelog
+* Fri Dex 2 2011  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-7
+- Avoid error message for sector sizes != 512 bytes
+
+* Mon May 31 2010  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-6
+- remove superfluous libselinux/libsepol configure options
+
 * Tue Jan 12 2010  Heinz Mauelshagen <heinzm@redhat.com> - 1.0.0.rc16-5
 - Support DESTDIR in all Makefiles
 - Fix handling spares in RAID names in vendor metadata
