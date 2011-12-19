@@ -1,4 +1,18 @@
 
+Changelog from dmraid 1.0.0.rc16-1 to 1.0.0.rc16-4	2011.12.19
+o Added Ubuntu upstream patches [Philip Susi]
+  - fix hyphen used as minus sign in man pages
+  - support for checking virtio devices for dmraid metadata
+  - activate multiple raid sets
+  - probe isw disks with [some] HPA awareness
+  - fix isw raid0 sector calculation
+  - fix jmicron name
+  - dump all 4 sets of PDC metadata
+  - make partition separator follow standards
+
+
+....
+
 Changelog from dmraid 1.0.0.rc12 to 1.0.0.rc13		2006.10.11
 
 
