@@ -302,13 +302,14 @@ AC_SUBST(staticdir)
 
 dnl First and last lines should not contain files to generate in order to
 dnl keep utility scripts running properly
+# AC_CONFIG_FILES([
 AC_OUTPUT(
+Makefile
+make.tmpl
 include/Makefile
 lib/Makefile
 lib/version.h
 man/Makefile
 tools/Makefile
 tools/version.h
-Makefile
-make.tmpl
 )

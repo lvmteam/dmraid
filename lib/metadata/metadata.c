@@ -839,7 +839,7 @@ _discover_partitions(struct lib_context *lc, struct list_head *rs_list)
 		 */
 		if (T_GROUP(rs)) {
 			_discover_partitions(lc, &rs->sets);
-			return;
+			continue;
 		}
 
 		/*

@@ -177,7 +177,7 @@ interested(struct lib_context *lc, char *path)
 	 * Whole IDE and SCSI disks only.
 	 */
 	return (!isdigit(name[strlen(name) - 1]) &&
-		(*(name + 1) == 'd' && (*name == 'h' || *name == 's')))
+		(*(name + 1) == 'd' && (*name == 'h' || *name == 's' || *name == 'v')))
 #ifdef	DMRAID_TEST
 		/*
 		 * Include dm devices for testing.

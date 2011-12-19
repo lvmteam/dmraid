@@ -25,7 +25,7 @@ static int member(struct jm *jm);
 static char *
 name(struct lib_context *lc, struct raid_dev *rd, unsigned int subset)
 {
-	size_t i, len;
+	size_t i = JM_NAME_LEN - 1, len;
 	struct jm *jm = META(rd, jm);
 	char *ret, *name = (char *) jm->name;
 	char buf[JM_NAME_LEN + 1] = { '\0' };

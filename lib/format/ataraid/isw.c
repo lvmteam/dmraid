@@ -360,6 +360,7 @@ raiddev(struct isw *isw, unsigned i)
 enum convert { FULL, FIRST, LAST };
 #if	BYTE_ORDER == LITTLE_ENDIAN
 #  define	to_cpu(x, y)
+#  define       CVT16(x)
 #else
 /*
  * We can differ from the read_raid_dev template here,
@@ -554,15 +555,16 @@ disk_ok(struct lib_context *lc, struct dev_info *di, struct isw *isw)
 }
 
 static void *
-isw_read_metadata(struct lib_context *lc, struct dev_info *di,
-		  size_t * sz, uint64_t * offset, union read_info *info)
+isw_try_sboffset(struct lib_context *lc, struct dev_info *di,
+		 size_t * sz, uint64_t * offset, union read_info *info,
+		 uint64_t const isw_sboffset)
 {
 	size_t size = ISW_DISK_BLOCK_SIZE;
-	uint64_t isw_sboffset = ISW_CONFIGOFFSET(di);
 	struct isw *isw;
+	uint64_t temp_isw_sboffset = isw_sboffset;
 
 	if (!(isw = alloc_private_and_read(lc, handler, size,
-					   di->path, isw_sboffset)))
+					   di->path, temp_isw_sboffset)))
 		goto out;
 
 	/*
@@ -572,9 +574,15 @@ isw_read_metadata(struct lib_context *lc, struct dev_info *di,
 	to_cpu(isw, FIRST);
 
 	/* Check Signature and read optional extended metadata. */
-	if (!is_isw(lc, di, isw) ||
-	    !isw_read_extended(lc, di, &isw, &isw_sboffset, &size))
+	if (!is_isw(lc, di, isw)) {
+		log_dbg(lc, "not isw at %ld", isw_sboffset);
 		goto bad;
+	}
+	if (!isw_read_extended(lc, di, &isw, &temp_isw_sboffset, &size)) {
+		log_err(lc, "isw metadata, but extended read failed at %ld",
+			isw_sboffset);
+		goto bad;
+	}
 
 	/*
 	 * Now that we made sure, that we've got all the
@@ -585,6 +593,8 @@ isw_read_metadata(struct lib_context *lc, struct dev_info *di,
 	if (disk_ok(lc, di, isw)) {
 		*sz = size;
 		*offset = info->u64 = isw_sboffset;
+		log_dbg(lc, "isw metadata found at %ld from probe at %ld\n",
+			*offset, isw_sboffset);
 		goto out;
 	}
 
@@ -594,6 +604,54 @@ bad:
 
 out:
 	return (void *) isw;
+}
+
+/* HPA on a disk shifts everything down. This is a 'works-enough' approach to
+ * handling that. There is a better long term approach requiring kernel
+ * patches - see the lkml patches for alt_size.
+ */
+static void *
+isw_try_hpa(struct lib_context *lc, struct dev_info *di,
+	   size_t * sz, uint64_t * offset, union read_info *info)
+{
+	struct isw10 *isw10;
+	void *result = NULL;
+	uint64_t actual_offset;
+	if (!(isw10 = alloc_private_and_read(lc, handler, ISW_DISK_BLOCK_SIZE,
+		di->path, ISW_10_CONFIGOFFSET(di))))
+		goto out;
+	if (strncmp((const char *)isw10->sig, ISW10_SIGNATURE, ISW10_SIGNATURE_SIZE))
+		goto out_free;
+	log_dbg(lc, "Found isw 10 gafr signature.");
+	CVT16(isw10->offset);
+	actual_offset = isw10->offset + 2;
+	log_dbg(lc, "isw 10 sector offset calculated at %hd.", actual_offset);
+	if (actual_offset > di->sectors)
+		goto out_free;
+	result = isw_try_sboffset(lc, di, sz, offset, info,
+		ISW_SECTOR_TO_OFFSET(di->sectors - actual_offset));
+      out_free:
+	dbg_free(isw10);
+      out:
+	return result;
+}
+
+
+static void *
+isw_read_metadata(struct lib_context *lc, struct dev_info *di,
+		  size_t * sz, uint64_t * offset, union read_info *info)
+{
+	void *result;
+	if ((result = isw_try_sboffset(
+		lc, di, sz, offset, info, ISW_CONFIGOFFSET(di))))
+		return result;
+	if ((result = isw_try_hpa(lc, di, sz, offset, info)))
+		return result;
+        log_dbg(lc, "isw trying hard coded -2115 offset.");
+	if ((result = isw_try_sboffset(
+		lc, di, sz, offset, info, (di->sectors - 2115)*512)))
+		return result;
+	return NULL;
 }
 
 static int setup_rd(struct lib_context *lc, struct raid_dev *rd,
@@ -725,7 +783,9 @@ _create_rd(struct lib_context *lc,
 	r->di = rd->di;
 	r->fmt = rd->fmt;
 	r->offset = dev->vol.map[0].pba_of_lba0;
-	if ((r->sectors = dev->vol.map[0].blocks_per_member - RAID_DS_JOURNAL))
+	//fix bugs on ICH10R
+	//if ((r->sectors = dev->vol.map[0].blocks_per_member - RAID_DS_JOURNAL))
+	if ((r->sectors = dev->vol.map[0].blocks_per_member))
 		goto out;
 
 	log_zero_sectors(lc, rd->di->path, handler);

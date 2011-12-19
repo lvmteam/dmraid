@@ -172,7 +172,6 @@ pdc_read_metadata(struct lib_context *lc, struct dev_info *di,
 	unsigned *s = end_sectors;
 	uint64_t sector;
 
-	*size = sizeof(*ret);
 	pdc_sectors_max = di->sectors - div_up(*size, 512);
 
 	if (!(ret = alloc_private(lc, handler,
@@ -222,7 +221,9 @@ out:
 		dbg_free(ret);
 		ret = NULL;
 	}
-
+	*size = sizeof(*ret) * ma;
+	*offset = di->sectors - info->u32;
+	*offset <<= 9;
 	return ret;
 }
 
@@ -544,60 +545,64 @@ event_io(struct lib_context *lc, struct event_io *e_io)
 static void
 _pdc_log(struct lib_context *lc, struct dev_info *di, struct pdc *pdc)
 {
-	unsigned i;
+	unsigned i, ma = count_meta_areas(pdc);
 	struct pdc_disk *disk;
 
-	log_print(lc, "%s (%s):", di->path, handler);
-	DP("promise_id: \"%s\"", pdc, pdc->promise_id);
-	P("unknown_0: 0x%x %u",
-	  pdc, pdc->unknown_0, pdc->unknown_0, pdc->unknown_0);
-	DP("magic_0: 0x%x", pdc, pdc->magic_0);
-	P("unknown_1: 0x%x %u",
-	  pdc, pdc->unknown_1, pdc->unknown_1, pdc->unknown_1);
-	DP("magic_1: 0x%x", pdc, pdc->magic_1);
-	P("unknown_2: 0x%x %u",
-	  pdc, pdc->unknown_2, pdc->unknown_2, pdc->unknown_2);
-	DP("raid.flags: 0x%x", pdc, pdc->raid.flags);
-	P("raid.unknown_0: 0x%x %d",
-	  pdc, pdc->raid.unknown_0, pdc->raid.unknown_0, pdc->raid.unknown_0);
-	DP("raid.disk_number: %u", pdc, pdc->raid.disk_number);
-	DP("raid.channel: %u", pdc, pdc->raid.channel);
-	DP("raid.device: %u", pdc, pdc->raid.device);
-	DP("raid.magic_0: 0x%x", pdc, pdc->raid.magic_0);
-	P("raid.unknown_1: 0x%x %u",
-	  pdc, pdc->raid.unknown_1, pdc->raid.unknown_1, pdc->raid.unknown_1);
-	P("raid.start: 0x%x %u",
-	  pdc, pdc->raid.start, pdc->raid.start, pdc->raid.start);
-	DP("raid.disk_secs: %u", pdc, pdc->raid.disk_secs);
-	P("raid.unknown_3: 0x%x %u",
-	  pdc, pdc->raid.unknown_3, pdc->raid.unknown_3, pdc->raid.unknown_3);
-	P("raid.unknown_4: 0x%x %u",
-	  pdc, pdc->raid.unknown_4, pdc->raid.unknown_4, pdc->raid.unknown_4);
-	DP("raid.status: 0x%x", pdc, pdc->raid.status);
-	DP("raid.type: 0x%x", pdc, pdc->raid.type);
-	DP("raid.total_disks: %u", pdc, pdc->raid.total_disks);
-	DP("raid.raid0_shift: %u", pdc, pdc->raid.raid0_shift);
-	DP("raid.raid0_disks: %u", pdc, pdc->raid.raid0_disks);
-	DP("raid.array_number: %u", pdc, pdc->raid.array_number);
-	DP("raid.total_secs: %u", pdc, pdc->raid.total_secs);
-	DP("raid.cylinders: %u", pdc, pdc->raid.cylinders);
-	DP("raid.heads: %u", pdc, pdc->raid.heads);
-	DP("raid.sectors: %u", pdc, pdc->raid.sectors);
-	DP("raid.magic_1: 0x%x", pdc, pdc->raid.magic_1);
-	P("raid.unknown_5: 0x%x %u",
-	  pdc, pdc->raid.unknown_5, pdc->raid.unknown_5, pdc->raid.unknown_5);
+	while (ma) {
+		log_print(lc, "%s (%s):", di->path, handler);
+		DP("promise_id: \"%s\"", pdc, pdc->promise_id);
+		P("unknown_0: 0x%x %u",
+		  pdc, pdc->unknown_0, pdc->unknown_0, pdc->unknown_0);
+		DP("magic_0: 0x%x", pdc, pdc->magic_0);
+		P("unknown_1: 0x%x %u",
+		  pdc, pdc->unknown_1, pdc->unknown_1, pdc->unknown_1);
+		DP("magic_1: 0x%x", pdc, pdc->magic_1);
+		P("unknown_2: 0x%x %u",
+		  pdc, pdc->unknown_2, pdc->unknown_2, pdc->unknown_2);
+		DP("raid.flags: 0x%x", pdc, pdc->raid.flags);
+		P("raid.unknown_0: 0x%x %d",
+		  pdc, pdc->raid.unknown_0, pdc->raid.unknown_0, pdc->raid.unknown_0);
+		DP("raid.disk_number: %u", pdc, pdc->raid.disk_number);
+		DP("raid.channel: %u", pdc, pdc->raid.channel);
+		DP("raid.device: %u", pdc, pdc->raid.device);
+		DP("raid.magic_0: 0x%x", pdc, pdc->raid.magic_0);
+		P("raid.unknown_1: 0x%x %u",
+		  pdc, pdc->raid.unknown_1, pdc->raid.unknown_1, pdc->raid.unknown_1);
+		P("raid.start: 0x%x %u",
+		  pdc, pdc->raid.start, pdc->raid.start, pdc->raid.start);
+		DP("raid.disk_secs: %u", pdc, pdc->raid.disk_secs);
+		P("raid.unknown_3: 0x%x %u",
+		  pdc, pdc->raid.unknown_3, pdc->raid.unknown_3, pdc->raid.unknown_3);
+		P("raid.unknown_4: 0x%x %u",
+		  pdc, pdc->raid.unknown_4, pdc->raid.unknown_4, pdc->raid.unknown_4);
+		DP("raid.status: 0x%x", pdc, pdc->raid.status);
+		DP("raid.type: 0x%x", pdc, pdc->raid.type);
+		DP("raid.total_disks: %u", pdc, pdc->raid.total_disks);
+		DP("raid.raid0_shift: %u", pdc, pdc->raid.raid0_shift);
+		DP("raid.raid0_disks: %u", pdc, pdc->raid.raid0_disks);
+		DP("raid.array_number: %u", pdc, pdc->raid.array_number);
+		DP("raid.total_secs: %u", pdc, pdc->raid.total_secs);
+		DP("raid.cylinders: %u", pdc, pdc->raid.cylinders);
+		DP("raid.heads: %u", pdc, pdc->raid.heads);
+		DP("raid.sectors: %u", pdc, pdc->raid.sectors);
+		DP("raid.magic_1: 0x%x", pdc, pdc->raid.magic_1);
+		P("raid.unknown_5: 0x%x %u",
+		  pdc, pdc->raid.unknown_5, pdc->raid.unknown_5, pdc->raid.unknown_5);
 
-	for (disk = pdc->raid.disk, i = 0;
-	     i < pdc->raid.total_disks; disk++, i++) {
-		P2("raid.disk[%d].unknown_0: 0x%x", pdc, i, disk->unknown_0);
-		P2("raid.disk[%d].channel: %u", pdc, i, disk->channel);
-		P2("raid.disk[%d].device: %u", pdc, i, disk->device);
-		P2("raid.disk[%d].magic_0: 0x%x", pdc, i, disk->magic_0);
-		P2("raid.disk[%d].disk_number: %u", pdc, i, disk->disk_number);
+		for (disk = pdc->raid.disk, i = 0;
+		     i < pdc->raid.total_disks; disk++, i++) {
+			P2("raid.disk[%d].unknown_0: 0x%x", pdc, i, disk->unknown_0);
+			P2("raid.disk[%d].channel: %u", pdc, i, disk->channel);
+			P2("raid.disk[%d].device: %u", pdc, i, disk->device);
+			P2("raid.disk[%d].magic_0: 0x%x", pdc, i, disk->magic_0);
+			P2("raid.disk[%d].disk_number: %u", pdc, i, disk->disk_number);
+		}
+
+		P("checksum: 0x%x %s", pdc, pdc->checksum, pdc->checksum,
+		  checksum(pdc) ? "Ok" : "BAD");
+		ma--;
+		pdc++;
 	}
-
-	P("checksum: 0x%x %s", pdc, pdc->checksum, pdc->checksum,
-	  checksum(pdc) ? "Ok" : "BAD");
 }
 
 static void

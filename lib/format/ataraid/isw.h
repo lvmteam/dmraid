@@ -36,8 +36,11 @@
 
 /* Intel metadata offset in bytes */
 #define	ISW_CONFIGSECTOR(di)	((di)->sectors - 2)
-#define	ISW_CONFIGOFFSET(di)	(ISW_CONFIGSECTOR(di) << 9)
+#define ISW_SECTOR_TO_OFFSET(sector) ((sector) << 9)
+#define	ISW_CONFIGOFFSET(di)	(ISW_SECTOR_TO_OFFSET(ISW_CONFIGSECTOR(di)))
 #define	ISW_DATAOFFSET		0	/* Data offset in sectors */
+#define ISW_10_CONFIGSECTOR(di) ((di)->sectors - 1)
+#define ISW_10_CONFIGOFFSET(di) (ISW_SECTOR_TO_OFFSET(ISW_10_CONFIGSECTOR(di)))
 
 #define MPB_SIGNATURE	     "Intel Raid ISM Cfg Sig. "
 #define MPB_SIGNATURE_SIZE	(sizeof(MPB_SIGNATURE) - 1)
@@ -221,6 +224,14 @@ struct isw {
 	struct isw_disk disk[1];	/* 0xD8 diskTbl[numDisks] */
 	// here comes isw_dev[num_raid_devs]
 } __attribute__ ((packed));
+
+#define ISW10_SIGNATURE "$GAFR\x10"
+#define ISW10_SIGNATURE_SIZE (sizeof(ISW10_SIGNATURE) - 1)
+struct isw10 {
+	int8_t sig[ISW10_SIGNATURE_SIZE];
+	uint32_t offset; /* offset to real data, in sectors back */
+} __attribute__ ((packed));
+
 
 #endif
 
